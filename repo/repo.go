@@ -13,6 +13,7 @@ import (
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/op/go-logging"
 	"github.com/tyler-smith/go-bip39"
 	"io/ioutil"
 	"os"
@@ -23,6 +24,8 @@ import (
 const (
 	dbName = "openbazaar.db"
 )
+
+var log = logging.MustGetLogger("REPO")
 
 func init() {
 	// Install IPFS database plugins. This is guarded by a sync.Once.
@@ -149,6 +152,10 @@ func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
 	}
 	if dbMnemonic != nil {
 		db.Create(&dbMnemonic)
+	}
+
+	if err := CheckAndSetUlimit(); err != nil {
+		return nil, err
 	}
 
 	return &Repo{

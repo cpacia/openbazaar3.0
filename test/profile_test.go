@@ -11,6 +11,8 @@ func TestSetAndGetProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	defer network.TearDown()
+
 	for _, node := range network.Nodes {
 		node.Start()
 	}
@@ -31,4 +33,5 @@ func TestSetAndGetProfile(t *testing.T) {
 	if profile.Name != name {
 		t.Fatalf("Invalid name. Expected %s, got %s", name, profile.Name)
 	}
+
 }

@@ -15,15 +15,15 @@ type Profile struct {
 	Vendor    bool `json:"vendor"`
 	Moderator bool `json:"moderator"`
 
-	ModeratorInfo ModeratorInfo      `json:"moderatorInfo"`
-	ContactInfo   ProfileContactInfo `json:"contactInfo"`
+	ModeratorInfo *ModeratorInfo      `json:"moderatorInfo"`
+	ContactInfo   *ProfileContactInfo `json:"contactInfo"`
 
 	Colors ProfileColors `json:"colors"`
 
 	AvatarHashes ProfileImage `json:"avatarHashes"`
 	HeaderHashes ProfileImage `json:"headerHashes"`
 
-	Stats ProfileStats `json:"stats"`
+	Stats *ProfileStats `json:"stats"`
 
 	PublicKey string `json:"publicKey"`
 
@@ -85,7 +85,7 @@ const (
 )
 
 type ModeratorFee struct {
-	FixedFee   CurrencyValue    `json:"fixedFee"`
+	FixedFee   *CurrencyValue    `json:"fixedFee"`
 	Percentage float64          `json:"percentage"`
 	FeeType    ModeratorFeeType `json:"feeType"`
 }

@@ -18,7 +18,6 @@ package badger
 
 import (
 	"bytes"
-	"time"
 	"context"
 	"encoding/hex"
 	"math"
@@ -26,9 +25,10 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/dgraph-io/badger/v2/y"
-	farm "github.com/dgryski/go-farm"
+	"github.com/dgryski/go-farm"
 	"github.com/pkg/errors"
 )
 

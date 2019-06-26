@@ -3,13 +3,16 @@ package core
 import (
 	"context"
 	"errors"
+	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core/coreapi"
 	"github.com/ipfs/go-ipfs/namesys"
+	ipnspb "github.com/ipfs/go-ipns/pb"
 	nameopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/multiformats/go-base32"
 	"io/ioutil"
 	"time"
 )
@@ -17,6 +20,8 @@ import (
 const (
 	catTimeout     = time.Second * 30
 	resolveTimeout = time.Second * 120
+
+	persistentCacheDbPrefix = "/ipns/persistentcache/"
 )
 
 // cat fetches the given path from IPFS.
@@ -72,7 +77,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 					return
 				}
 				if n.ipfsNode.Identity != p {
-					if err := putToDatastore(n.ipfsNode.Repo.Datastore(), p, pth); err != nil {
+					if err := putToDatastoreCache(n.ipfsNode.Repo.Datastore(), p, pth); err != nil {
 						log.Error("Error putting IPNS record to datastore: %s", err.Error())
 					}
 				}
@@ -91,7 +96,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 	}
 	// Resolving succeeded. Update the cache.
 	if n.ipfsNode.Identity != p {
-		if err := putToDatastore(n.ipfsNode.Repo.Datastore(), p, pth); err != nil {
+		if err := putToDatastoreCache(n.ipfsNode.Repo.Datastore(), p, pth); err != nil {
 			log.Error("Error putting IPNS record to datastore: %s", err.Error())
 		}
 	}
@@ -118,18 +123,36 @@ func (n *OpenBazaarNode) resolveOnce(p peer.ID, timeout time.Duration, quorum ui
 	return path.New(pth.String()), nil
 }
 
+// getFromDatastore looks in two places in the database for a record. First is
+// under the /ipfs/<peerID> key which is sometimes used by the DHT. The value
+// returned by this location is a serialized protobuf record. The second is
+// under /ipfs/persistentcache/<peerID> which returns only the value (the path)
+// inside the protobuf record.
 func getFromDatastore(datastore ds.Datastore, p peer.ID) (path.Path, error) {
-	// resolve to what we may already have in the datastore
-	data, err := datastore.Get(namesys.IpnsDsKey(p))
+	ival, err := datastore.Get(namesys.IpnsDsKey(p))
 	if err != nil {
-		if err == ds.ErrNotFound {
-			return nil, namesys.ErrResolveFailed
+		pth, err := datastore.Get(ipnsCacheDsKey(p))
+		if err != nil {
+			if err == ds.ErrNotFound {
+				return nil, namesys.ErrResolveFailed
+			}
+			return nil, err
 		}
+		return path.New(string(pth)), nil
+	}
+
+	rec := new(ipnspb.IpnsEntry)
+	err = proto.Unmarshal(ival, rec)
+	if err != nil {
 		return nil, err
 	}
-	return path.New(string(data)), nil
+	return path.New(string(rec.Value)), nil
 }
 
-func putToDatastore(datastore ds.Datastore, p peer.ID, pth path.Path) error {
-	return datastore.Put(namesys.IpnsDsKey(p), []byte(pth.String()))
+func putToDatastoreCache(datastore ds.Datastore, p peer.ID, pth path.Path) error {
+	return datastore.Put(ipnsCacheDsKey(p), []byte(pth.String()))
+}
+
+func ipnsCacheDsKey(id peer.ID) ds.Key {
+	return ds.NewKey(persistentCacheDbPrefix + base32.RawStdEncoding.EncodeToString([]byte(id)))
 }

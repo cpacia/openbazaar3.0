@@ -101,7 +101,8 @@ func NewTestNetwork(numNodes int) (*TestNetwork, error) {
 // used by another test.
 func unusedPort() int {
 	portMapMtx.Lock()
-	portMapMtx.Unlock()
+	defer portMapMtx.Unlock()
+
 	for {
 		port := rand.Intn(65535)
 		port++
