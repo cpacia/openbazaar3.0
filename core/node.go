@@ -3,8 +3,11 @@ package core
 import (
 	"context"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/cpacia/openbazaar3.0/net"
+	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
 	"os/signal"
@@ -30,6 +33,20 @@ type OpenBazaarNode struct {
 	// resolve faster but run the risk of getting back older records.
 	ipnsQuorum uint
 
+	// messenger is the primary object used to send messages to other peers.
+	// It ensures reliable delivery by persisting messages and retrying them.
+	// Generally you should always send messages using this and not the
+	// NetworkService as the later will only attempt to send direct messages
+	// and will not retry.
+	messenger *net.Messenger
+
+	// networkService manages the sending and receiving of messages
+	// on the OpenBazaar protocol.
+	networkService *net.NetworkService
+
+	// banManager holds a list of peers that have been banned by this node.
+	banManager *net.BanManager
+
 	// shutdown is closed when the node is stopped. Any listening
 	// goroutines can use this to terminate.
 	shutdown chan struct{}
@@ -54,6 +71,8 @@ func (n *OpenBazaarNode) Stop() {
 	close(n.shutdown)
 	n.ipfsNode.Close()
 	n.repo.Close()
+	n.networkService.Close()
+	n.messenger.Stop()
 }
 
 // DestroyNode shutsdown the node and deletes the entire data directory.
@@ -76,18 +95,29 @@ func (n *OpenBazaarNode) Identity() peer.ID {
 
 // Publish will publish the current public data directory to IPNS.
 // It will interrupt the publish if a shutdown happens during.
-func (n *OpenBazaarNode) Publish() error {
-	publishDone := make(chan struct{})
-
-	ctx, cancel := context.WithCancel(context.Background())
+func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 	go func() {
-		select {
-		case <-publishDone:
-			return
-		case <-n.shutdown:
-			cancel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go func() {
+			select {
+			case <-ctx.Done():
+			case <-n.shutdown:
+				cancel()
+			}
+			if done != nil {
+				close(done)
+			}
+		}()
+		if err := n.repo.PublicData().Publish(ctx, n.ipfsNode); err != nil {
+			log.Errorf("Publish error: %s", err.Error())
 		}
 	}()
+}
 
-	return n.repo.PublicData().Publish(ctx, n.ipfsNode)
+func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) error {
+	return n.repo.DBUpdate(func(tx *gorm.DB) error {
+		return n.messenger.ProcessACK(tx, message)
+	})
 }

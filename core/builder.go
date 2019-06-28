@@ -2,16 +2,20 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
+	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
 	bitswap "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-datastore"
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
+	"github.com/jinzhu/gorm"
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
@@ -61,9 +65,9 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	// Load our identity key from the db and set it in the config.
 	var dbIdentityKey models.Key
-	if err := obRepo.DB().Where("name = ?", "identity").First(&dbIdentityKey).Error; err != nil {
-		return nil, err
-	}
+	err = obRepo.DBRead(func(tx *gorm.DB) error {
+		return tx.Where("name = ?", "identity").First(&dbIdentityKey).Error
+	})
 
 	ipfsConfig.Identity, err = repo.IdentityFromKey(dbIdentityKey.Value)
 	if err != nil {
@@ -98,22 +102,31 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	// Load the seed from the db so we can build the masterPrivKey
 	var dbSeed models.Key
-	if err := obRepo.DB().Where("name = ?", "seed").First(&dbSeed).Error; err != nil {
-		return nil, err
-	}
+	err = obRepo.DBRead(func(tx *gorm.DB) error {
+		return tx.Where("name = ?", "seed").First(&dbSeed).Error
+	})
+
 	masterPrivKey, err := hdkeychain.NewMaster(dbSeed.Value, &chaincfg.MainNetParams)
 	if err != nil {
 		return nil, err
 	}
+	bm := net.NewBanManager(nil) // TODO: load ids from db
+	service := net.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
+	messenger := net.NewMessenger(service, obRepo)
 
 	// Construct our OpenBazaar node.repo object
 	obNode := &OpenBazaarNode{
-		ipfsNode:      ipfsNode,
-		repo:          obRepo,
-		masterPrivKey: masterPrivKey,
-		ipnsQuorum:    cfg.IPNSQuorum,
-		shutdown:      make(chan struct{}),
+		ipfsNode:       ipfsNode,
+		repo:           obRepo,
+		masterPrivKey:  masterPrivKey,
+		ipnsQuorum:     cfg.IPNSQuorum,
+		messenger:      messenger,
+		networkService: service,
+		banManager:     bm,
+		shutdown:       make(chan struct{}),
 	}
+
+	obNode.registerHandlers()
 
 	return obNode, nil
 }
@@ -141,5 +154,18 @@ func updateIPFSGlobalProtocolVars(testnetEnable bool) {
 		bitswap.ProtocolBitswap = net.ProtocolBitswapTestnetTwo
 		bitswap.ProtocolBitswapOne = net.ProtocolBitswapTestnetTwoDotOne
 		bitswap.ProtocolBitswapNoVers = net.ProtocolBitswapTestnetNoVers
+	}
+}
+
+func (n *OpenBazaarNode) registerHandlers() {
+	n.networkService.RegisterHandler(pb.Message_CHAT, n.handleChatMessage)
+	n.networkService.RegisterHandler(pb.Message_ACK, n.handleAckMessage)
+}
+
+func newMessageWithID() *pb.Message {
+	messageID := make([]byte, 20)
+	rand.Read(messageID)
+	return &pb.Message{
+		MessageID: base64.StdEncoding.EncodeToString(messageID),
 	}
 }

@@ -41,6 +41,7 @@ func init() {
 // - A wallet directory which holds wallet plugin data
 type Repo struct {
 	db         *gorm.DB
+	dbMtx      sync.RWMutex
 	publicData *PublicData
 	dataDir    string
 }
@@ -63,11 +64,6 @@ func (r *Repo) PublicData() *PublicData {
 	return r.publicData
 }
 
-// DB returns the database instance.
-func (r *Repo) DB() *gorm.DB {
-	return r.db
-}
-
 // DataDir returns the data directory associated with this repo.
 func (r *Repo) DataDir() string {
 	return r.dataDir
@@ -82,6 +78,30 @@ func (r *Repo) Close() {
 // positive you want to wipe all data.
 func (r *Repo) DestroyRepo() error {
 	return os.RemoveAll(r.dataDir)
+}
+
+// DBUpdate opens a database tranasactions and provides capability to
+// execute a function, containing database updates, atomically where
+// the db will be rolled back if the function errors.
+func (r *Repo) DBUpdate(fn func(tx *gorm.DB) error) error {
+	r.dbMtx.Lock()
+	defer r.dbMtx.Unlock()
+
+	tx := r.db.Begin()
+	if err := fn(tx); err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit().Error
+}
+
+// DBRead opens a database transaction for reads. It's important
+// this is only used for reads since only the read lock is held.
+func (r *Repo) DBRead(fn func(tx *gorm.DB) error) error {
+	r.dbMtx.RLock()
+	defer r.dbMtx.RUnlock()
+
+	return fn(r.db)
 }
 
 func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
@@ -142,7 +162,9 @@ func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&models.Key{})
+	if err := autoMigrateDatabase(db); err != nil {
+		return nil, err
+	}
 
 	if dbIdentity != nil {
 		db.Create(&dbIdentity)
@@ -162,6 +184,7 @@ func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
 		publicData: pd,
 		dataDir:    dataDir,
 		db:         db,
+		dbMtx:      sync.RWMutex{},
 	}, nil
 }
 
@@ -316,4 +339,20 @@ func cleanIdentityFromConfig(dataDir string) error {
 		return err
 	}
 	return ioutil.WriteFile(configPath, out, os.ModePerm)
+}
+
+func autoMigrateDatabase(db *gorm.DB) error {
+	if err := db.AutoMigrate(&models.Key{}).Error; err != nil {
+		return err
+	}
+	if err := db.AutoMigrate(&models.CachedIPNSEntry{}).Error; err != nil {
+		return err
+	}
+	if err := db.AutoMigrate(&models.OutgoingMessage{}).Error; err != nil {
+		return err
+	}
+	if err := db.AutoMigrate(&models.ChatMessage{}).Error; err != nil {
+		return err
+	}
+	return nil
 }

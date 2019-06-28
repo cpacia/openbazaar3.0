@@ -1,0 +1,35 @@
+syntax = "proto3";
+option go_package = "pb";
+
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+message Message {
+    MessageType messageType     = 1;
+    string messageID            = 2;
+    google.protobuf.Any payload = 3;
+
+    enum MessageType {
+        ACK                      = 0;
+        PING                     = 1;
+        CHAT                     = 2;
+    }
+}
+
+message ChatMessage {
+    string subject                      = 1;
+    string message                      = 2;
+    google.protobuf.Timestamp timestamp = 3;
+    Flag flag                           = 4;
+
+    enum Flag {
+        MESSAGE = 0;
+        TYPING  = 1;
+        READ    = 2;
+    }
+}
+
+message AckMessage {
+    string ackedMessageID = 1;
+}

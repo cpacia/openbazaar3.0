@@ -19,12 +19,14 @@ func TestSetAndGetProfile(t *testing.T) {
 
 	name := "Chris"
 
-	err = network.Nodes[0].SetProfile(&models.Profile{
+	done := make(chan struct{})
+	pro := &models.Profile{
 		Name: name,
-	})
-	if err != nil {
+	}
+	if err := network.Nodes[0].SetProfile(pro, done); err != nil {
 		t.Fatal(err)
 	}
+	<-done
 
 	profile, err := network.Nodes[1].GetProfile(network.Nodes[0].Identity(), false)
 	if err != nil {
@@ -34,4 +36,11 @@ func TestSetAndGetProfile(t *testing.T) {
 		t.Fatalf("Invalid name. Expected %s, got %s", name, profile.Name)
 	}
 
+	profile, err = network.Nodes[1].GetProfile(network.Nodes[0].Identity(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if profile.Name != name {
+		t.Fatalf("Invalid name. Expected %s, got %s", name, profile.Name)
+	}
 }

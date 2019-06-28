@@ -9,10 +9,10 @@ github.com/Stebalien/go-bitfield
 # github.com/bren2010/proquint v0.0.0-20160323162903-38337c27106d
 github.com/bren2010/proquint
 # github.com/btcsuite/btcd v0.0.0-20190427004231-96897255fd17
-github.com/btcsuite/btcd/btcec
 github.com/btcsuite/btcd/chaincfg
 github.com/btcsuite/btcd/chaincfg/chainhash
 github.com/btcsuite/btcd/wire
+github.com/btcsuite/btcd/btcec
 # github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
 github.com/btcsuite/btcutil/hdkeychain
 github.com/btcsuite/btcutil
@@ -43,12 +43,16 @@ github.com/dustin/go-humanize
 # github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5
 github.com/facebookgo/atomicfile
 # github.com/gogo/protobuf v1.2.1
-github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/io
+github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 # github.com/golang/protobuf v1.3.1
+github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/proto
+github.com/golang/protobuf/ptypes/any
+github.com/golang/protobuf/ptypes/timestamp
+github.com/golang/protobuf/ptypes/duration
 # github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
 github.com/golang/snappy
 # github.com/google/uuid v1.1.1
@@ -118,8 +122,8 @@ github.com/ipfs/go-ds-measure
 github.com/ipfs/go-fs-lock
 # github.com/ipfs/go-ipfs v0.4.21
 github.com/ipfs/go-ipfs/core
-github.com/ipfs/go-ipfs/repo/fsrepo
 github.com/ipfs/go-ipfs/core/coreapi
+github.com/ipfs/go-ipfs/repo/fsrepo
 github.com/ipfs/go-ipfs/namesys
 github.com/ipfs/go-ipfs/plugin/loader
 github.com/ipfs/go-ipfs
@@ -134,14 +138,14 @@ github.com/ipfs/go-ipfs/pin
 github.com/ipfs/go-ipfs/provider
 github.com/ipfs/go-ipfs/repo
 github.com/ipfs/go-ipfs/reprovide
-github.com/ipfs/go-ipfs/keystore
-github.com/ipfs/go-ipfs/repo/common
-github.com/ipfs/go-ipfs/repo/fsrepo/migrations
-github.com/ipfs/go-ipfs/thirdparty/dir
 github.com/ipfs/go-ipfs/blocks/blockstoreutil
 github.com/ipfs/go-ipfs/core/coreunix
 github.com/ipfs/go-ipfs/dagutils
+github.com/ipfs/go-ipfs/keystore
 github.com/ipfs/go-ipfs/namesys/resolve
+github.com/ipfs/go-ipfs/repo/common
+github.com/ipfs/go-ipfs/repo/fsrepo/migrations
+github.com/ipfs/go-ipfs/thirdparty/dir
 github.com/ipfs/go-ipfs/core/coredag
 github.com/ipfs/go-ipfs/plugin
 github.com/ipfs/go-ipfs/plugin/plugins/badgerds
@@ -224,10 +228,10 @@ github.com/ipfs/go-unixfs/hamt
 # github.com/ipfs/go-verifcid v0.0.1
 github.com/ipfs/go-verifcid
 # github.com/ipfs/interface-go-ipfs-core v0.0.8
-github.com/ipfs/interface-go-ipfs-core/options
-github.com/ipfs/interface-go-ipfs-core/path
-github.com/ipfs/interface-go-ipfs-core
 github.com/ipfs/interface-go-ipfs-core/options/namesys
+github.com/ipfs/interface-go-ipfs-core/path
+github.com/ipfs/interface-go-ipfs-core/options
+github.com/ipfs/interface-go-ipfs-core
 # github.com/jackpal/gateway v1.0.5
 github.com/jackpal/gateway
 # github.com/jackpal/go-nat-pmp v1.0.1

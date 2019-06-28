@@ -17,7 +17,11 @@ const (
 )
 
 // SetProfile sets the public profile for the node and publishes to IPNS.
-func (n *OpenBazaarNode) SetProfile(profile *models.Profile) error {
+//
+// The publishing is done in a separate goroutine so this function will
+// return as soon as the profile is saved to disk. The optional done
+// chan will be closed when publishing is complete.
+func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{}) error {
 	if err := validateProfile(profile); err != nil {
 		return err
 	}
@@ -36,7 +40,8 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile) error {
 	if err := n.repo.PublicData().SetProfile(profile); err != nil {
 		return err
 	}
-	return n.Publish()
+	n.Publish(done)
+	return nil
 }
 
 // GetMyProfile returns the profile for this node.
@@ -47,8 +52,8 @@ func (n *OpenBazaarNode) GetMyProfile() (*models.Profile, error) {
 // GetProfile returns the profile of the node with the given peer ID.
 // If checkCache is set it will return a profile from the local cache
 // (if it has one) if profile is not found on the network.
-func (n *OpenBazaarNode) GetProfile(peerID peer.ID, checkCache bool) (*models.Profile, error) {
-	pth, err := n.resolve(peerID, checkCache)
+func (n *OpenBazaarNode) GetProfile(peerID peer.ID, fromCache bool) (*models.Profile, error) {
+	pth, err := n.resolve(peerID, fromCache)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +71,8 @@ func (n *OpenBazaarNode) GetProfile(peerID peer.ID, checkCache bool) (*models.Pr
 	return profile, nil
 }
 
-// ValidateProfile - validate fetched profile
+// validateProfile checks each field to make sure they're formatted properly and/or
+// within the desired limits.
 func validateProfile(profile *models.Profile) error {
 	if len(profile.Name) == 0 {
 		return errors.New("profile name not set")

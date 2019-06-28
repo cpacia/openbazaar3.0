@@ -85,7 +85,7 @@ const (
 )
 
 type ModeratorFee struct {
-	FixedFee   *CurrencyValue    `json:"fixedFee"`
+	FixedFee   *CurrencyValue   `json:"fixedFee"`
 	Percentage float64          `json:"percentage"`
 	FeeType    ModeratorFeeType `json:"feeType"`
 }
