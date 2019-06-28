@@ -68,7 +68,7 @@ func (n *OpenBazaarNode) cat(pth path.Path) ([]byte, error) {
 func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 	if usecache {
 		var pth path.Path
-		err := n.repo.DBRead(func(tx *gorm.DB) error {
+		err := n.repo.DB().View(func(tx *gorm.DB) error {
 			var err error
 			pth, err = getFromDatastore(tx, p)
 			return err
@@ -81,7 +81,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 					return
 				}
 				if n.ipfsNode.Identity != p {
-					err = n.repo.DBUpdate(func(tx *gorm.DB) error {
+					err = n.repo.DB().Update(func(tx *gorm.DB) error {
 						return putToDatastoreCache(tx, p, pth)
 					})
 					if err != nil {
@@ -97,7 +97,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 	if err != nil {
 		// Resolving fail. See if we have it in the db.
 		var pth path.Path
-		err := n.repo.DBRead(func(tx *gorm.DB) error {
+		err := n.repo.DB().View(func(tx *gorm.DB) error {
 			var err error
 			pth, err = getFromDatastore(tx, p)
 			return err
@@ -109,7 +109,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 	}
 	// Resolving succeeded. Update the cache.
 	if n.ipfsNode.Identity != p {
-		err = n.repo.DBUpdate(func(tx *gorm.DB) error {
+		err = n.repo.DB().Update(func(tx *gorm.DB) error {
 			return putToDatastoreCache(tx, p, pth)
 		})
 		if err != nil {

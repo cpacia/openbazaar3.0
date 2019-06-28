@@ -12,7 +12,6 @@ import (
 	"github.com/ipfs/go-ipfs/plugin/loader"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/op/go-logging"
 	"github.com/tyler-smith/go-bip39"
 	"io/ioutil"
@@ -40,7 +39,7 @@ func init() {
 // - The OpenBazaar database
 // - A wallet directory which holds wallet plugin data
 type Repo struct {
-	db         *gorm.DB
+	db         *SqliteDB
 	dbMtx      sync.RWMutex
 	publicData *PublicData
 	dataDir    string
@@ -64,6 +63,11 @@ func (r *Repo) PublicData() *PublicData {
 	return r.publicData
 }
 
+// DB returns the database implementation.
+func (r *Repo) DB() Database {
+	return r.db
+}
+
 // DataDir returns the data directory associated with this repo.
 func (r *Repo) DataDir() string {
 	return r.dataDir
@@ -78,30 +82,6 @@ func (r *Repo) Close() {
 // positive you want to wipe all data.
 func (r *Repo) DestroyRepo() error {
 	return os.RemoveAll(r.dataDir)
-}
-
-// DBUpdate opens a database tranasactions and provides capability to
-// execute a function, containing database updates, atomically where
-// the db will be rolled back if the function errors.
-func (r *Repo) DBUpdate(fn func(tx *gorm.DB) error) error {
-	r.dbMtx.Lock()
-	defer r.dbMtx.Unlock()
-
-	tx := r.db.Begin()
-	if err := fn(tx); err != nil {
-		tx.Rollback()
-		return err
-	}
-	return tx.Commit().Error
-}
-
-// DBRead opens a database transaction for reads. It's important
-// this is only used for reads since only the read lock is held.
-func (r *Repo) DBRead(fn func(tx *gorm.DB) error) error {
-	r.dbMtx.RLock()
-	defer r.dbMtx.RUnlock()
-
-	return fn(r.db)
 }
 
 func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
@@ -157,23 +137,23 @@ func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
 		}
 	}
 
-	db, err := gorm.Open("sqlite3", path.Join(dataDir, "datastore", dbName))
+	sdb, err := NewSqliteDB(dataDir)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := autoMigrateDatabase(db); err != nil {
+	if err := autoMigrateDatabase(sdb.db); err != nil {
 		return nil, err
 	}
 
 	if dbIdentity != nil {
-		db.Create(&dbIdentity)
+		sdb.db.Create(&dbIdentity)
 	}
 	if dbSeed != nil {
-		db.Create(&dbSeed)
+		sdb.db.Create(&dbSeed)
 	}
 	if dbMnemonic != nil {
-		db.Create(&dbMnemonic)
+		sdb.db.Create(&dbMnemonic)
 	}
 
 	if err := CheckAndSetUlimit(); err != nil {
@@ -183,7 +163,7 @@ func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
 	return &Repo{
 		publicData: pd,
 		dataDir:    dataDir,
-		db:         db,
+		db:         sdb,
 		dbMtx:      sync.RWMutex{},
 	}, nil
 }

@@ -6,6 +6,8 @@ import (
 )
 
 func TestSetAndGetProfile(t *testing.T) {
+	t.Parallel()
+
 	network, err := NewTestNetwork(2)
 	if err != nil {
 		t.Fatal(err)

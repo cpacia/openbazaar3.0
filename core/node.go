@@ -117,7 +117,7 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 }
 
 func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) error {
-	return n.repo.DBUpdate(func(tx *gorm.DB) error {
+	return n.repo.DB().Update(func(tx *gorm.DB) error {
 		return n.messenger.ProcessACK(tx, message)
 	})
 }

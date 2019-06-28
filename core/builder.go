@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 	"crypto/rand"
-	"encoding/base64"
+	"encoding/hex"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -65,7 +65,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	// Load our identity key from the db and set it in the config.
 	var dbIdentityKey models.Key
-	err = obRepo.DBRead(func(tx *gorm.DB) error {
+	err = obRepo.DB().View(func(tx *gorm.DB) error {
 		return tx.Where("name = ?", "identity").First(&dbIdentityKey).Error
 	})
 
@@ -102,7 +102,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	// Load the seed from the db so we can build the masterPrivKey
 	var dbSeed models.Key
-	err = obRepo.DBRead(func(tx *gorm.DB) error {
+	err = obRepo.DB().View(func(tx *gorm.DB) error {
 		return tx.Where("name = ?", "seed").First(&dbSeed).Error
 	})
 
@@ -112,7 +112,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	}
 	bm := net.NewBanManager(nil) // TODO: load ids from db
 	service := net.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
-	messenger := net.NewMessenger(service, obRepo)
+	messenger := net.NewMessenger(service, obRepo.DB())
 
 	// Construct our OpenBazaar node.repo object
 	obNode := &OpenBazaarNode{
@@ -166,6 +166,6 @@ func newMessageWithID() *pb.Message {
 	messageID := make([]byte, 20)
 	rand.Read(messageID)
 	return &pb.Message{
-		MessageID: base64.StdEncoding.EncodeToString(messageID),
+		MessageID: hex.EncodeToString(messageID),
 	}
 }

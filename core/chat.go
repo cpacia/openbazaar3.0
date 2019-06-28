@@ -33,7 +33,7 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 	}
 
 	log.Debugf("Sending CHAT message to %s. MessageID: %s", to, msg.MessageID)
-	return n.repo.DBUpdate(func(tx *gorm.DB) error {
+	return n.repo.DB().Update(func(tx *gorm.DB) error {
 		if err := tx.Save(chatModel).Error; err != nil {
 			return err
 		}
@@ -66,6 +66,32 @@ func (n *OpenBazaarNode) SendTypingMessage(ctx context.Context, to peer.ID) erro
 	return n.networkService.SendMessage(ctx, to, msg)
 }
 
+func (n *OpenBazaarNode) GetChatConversations() ([]*models.ChatMessage, error) {
+	return nil, nil
+}
+
+func (n *OpenBazaarNode) GetChatMessagesByPeer(peer peer.ID) ([]models.ChatMessage, error) {
+	var messages []models.ChatMessage
+	err := n.repo.DB().View(func(tx *gorm.DB) error {
+		return tx.Where("peer_id = ?", peer.Pretty()).Find(&messages).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	return messages, nil
+}
+
+func (n *OpenBazaarNode) GetChatMessagesBySubject(subject string) ([]models.ChatMessage, error) {
+	var messages []models.ChatMessage
+	err := n.repo.DB().View(func(tx *gorm.DB) error {
+		return tx.Where("subject = ?", subject).Find(&messages).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	return messages, nil
+}
+
 func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) error {
 	defer n.messenger.SendACK(message.MessageID, from)
 
@@ -76,12 +102,13 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 
 	switch chatMsg.Flag {
 	case pb.ChatMessage_MESSAGE:
-		log.Debugf("Received CHAT message from %s", from)
-		return n.repo.DBUpdate(func(tx *gorm.DB) error {
+		log.Infof("Received CHAT message from %s. MessageID: %s", from, message.MessageID)
+		return n.repo.DB().Update(func(tx *gorm.DB) error {
 			incomingMsg, err := models.NewChatMessageFromProto(from, message)
 			if err != nil {
 				return err
 			}
+			incomingMsg.Read = true
 			// Save the incoming message to the DB
 			if err := tx.Save(incomingMsg).Error; err != nil {
 				return err
@@ -92,7 +119,8 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 			// transport. The READ message is just to show the message was
 			// read in the UI.
 			readMsg := &pb.ChatMessage{
-				Flag: pb.ChatMessage_READ,
+				Flag:    pb.ChatMessage_READ,
+				Subject: message.MessageID,
 			}
 
 			payload, err := ptypes.MarshalAny(readMsg)
@@ -109,13 +137,15 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 				return err
 			}
 
+			// TODO: send chat message notification to the UI
+
 			return nil
 		})
 	case pb.ChatMessage_READ:
-		log.Debugf("Received READ message from %s", from)
-		return n.repo.DBUpdate(func(tx *gorm.DB) error {
+		log.Infof("Received READ message from %s. MessageID: %s", from, message.MessageID)
+		return n.repo.DB().Update(func(tx *gorm.DB) error {
 			msg := models.ChatMessage{
-				MessageID: message.MessageID,
+				MessageID: chatMsg.Subject,
 			}
 			if err := tx.Model(&msg).Update("read", true).Error; err != nil {
 				return err

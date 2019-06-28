@@ -3,7 +3,7 @@ package net
 import (
 	"context"
 	"crypto/rand"
-	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
@@ -28,16 +28,16 @@ const (
 // until the recipient receives it.
 type Messenger struct {
 	ns        *NetworkService
-	repo      *repo.Repo
+	db        repo.Database
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	mtx       sync.RWMutex
 }
 
 // NewMessenger returns a Messenger and starts the retry service.
-func NewMessenger(ns *NetworkService, repo *repo.Repo) *Messenger {
+func NewMessenger(ns *NetworkService, db repo.Database) *Messenger {
 	ctx, cancel := context.WithCancel(context.Background())
-	m := &Messenger{ns, repo, ctx, cancel, sync.RWMutex{}}
+	m := &Messenger{ns, db, ctx, cancel, sync.RWMutex{}}
 	go m.startRetryingMessages()
 	return m
 }
@@ -118,9 +118,9 @@ func (m *Messenger) SendACK(messageID string, peer peer.ID) {
 	rand.Read(mid)
 
 	msg := &pb.Message{
-		MessageID:   base64.StdEncoding.EncodeToString(mid),
+		MessageID:   hex.EncodeToString(mid),
 		MessageType: pb.Message_ACK,
-		Payload: payload,
+		Payload:     payload,
 	}
 	go m.trySendMessage(peer, msg, nil)
 }
@@ -171,7 +171,7 @@ func (m *Messenger) trySendMessage(peer peer.ID, message *pb.Message, done chan<
 func (m *Messenger) retryAllMessages() {
 	m.mtx.RLock()
 	var messages []models.OutgoingMessage
-	err := m.repo.DBRead(func(tx *gorm.DB) error {
+	err := m.db.View(func(tx *gorm.DB) error {
 		return tx.Find(&messages).Error
 	})
 	if err != nil {
@@ -194,7 +194,7 @@ func (m *Messenger) retryAllMessages() {
 		}
 		go m.trySendMessage(pid, pmes, nil)
 
-		err = m.repo.DBUpdate(func(tx *gorm.DB) error {
+		err = m.db.Update(func(tx *gorm.DB) error {
 			return tx.Model(&message).Update("last_attempt", time.Now()).Error
 		})
 		if err != nil {
