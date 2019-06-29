@@ -23,6 +23,9 @@ message ChatMessage {
     google.protobuf.Timestamp timestamp = 3;
     Flag flag                           = 4;
 
+    // Only used when Flag is READ.
+    string readID                       = 5;
+
     enum Flag {
         MESSAGE = 0;
         TYPING  = 1;

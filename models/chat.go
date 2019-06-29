@@ -14,6 +14,7 @@ type ChatMessage struct {
 	Subject   string    `gorm:"index"`
 	Timestamp time.Time `gorm:"index"`
 	Read      bool      `gorm:"index"`
+	Outgoing  bool
 	Message   string
 }
 
@@ -38,4 +39,12 @@ func NewChatMessageFromProto(peerID peer.ID, msg *pb.Message) (*ChatMessage, err
 
 func (cm *ChatMessage) GetPeerID() (peer.ID, error) {
 	return peer.IDFromString(cm.PeerID)
+}
+
+type ChatConversation struct {
+	PeerID    string    `json:"peerID"`
+	Unread    int       `json:"unread"`
+	Last      string    `json:"lastMessage"`
+	Timestamp time.Time `json:"timestamp"`
+	Outgoing  bool      `json:"outgoing"`
 }

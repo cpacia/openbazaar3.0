@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -21,7 +22,11 @@ func TestChat(t *testing.T) {
 		t.Error(err)
 	}
 	<-done
-	time.Sleep(time.Second * 1) // TODO: listen for notification once wired up
+	time.Sleep(time.Second * 5) // TODO: listen for notification once wired up
+
+	if err := network.Nodes[1].MarkChatMessagesAsRead(network.Nodes[0].Identity(), ""); err != nil {
+		t.Error(err)
+	}
 
 	messages0, err := network.Nodes[0].GetChatMessagesBySubject("")
 	if err != nil {
@@ -63,4 +68,10 @@ func TestChat(t *testing.T) {
 	if messages1[0].Subject != "" {
 		t.Errorf("Node 1 failed to save correct subject. Expected %s, got %s", "", messages0[0].Message)
 	}
+
+	convos, err := network.Nodes[0].GetChatConversations()
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(convos)
 }
