@@ -39,7 +39,7 @@ func NewChatMessageFromProto(peerID peer.ID, msg *pb.Message) (*ChatMessage, err
 }
 
 func (cm *ChatMessage) GetPeerID() (peer.ID, error) {
-	return peer.IDFromString(cm.PeerID)
+	return peer.IDB58Decode(cm.PeerID)
 }
 
 func (cm *ChatMessage) ToChatNotification() *events.ChatMessageNotification {

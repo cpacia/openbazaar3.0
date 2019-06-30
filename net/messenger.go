@@ -91,7 +91,7 @@ func (m *Messenger) ProcessACK(tx *gorm.DB, message *pb.Message) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	return tx.Delete(&models.OutgoingMessage{ID: ack.AckedMessageID}).Error
+	return tx.Where("id = ?", ack.AckedMessageID).Delete(&models.OutgoingMessage{}).Error
 }
 
 // SendACK sends an ACK for the message with the given ID to the provided
@@ -187,7 +187,7 @@ func (m *Messenger) retryAllMessages() {
 			log.Error("Error unmarshalling outgoing message: %s", err)
 			continue
 		}
-		pid, err := peer.IDFromString(message.Recipient)
+		pid, err := peer.IDB58Decode(message.Recipient)
 		if err != nil {
 			log.Error("Error parsing peer ID in outgoing message: %s", err)
 			continue

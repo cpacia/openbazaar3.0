@@ -14,7 +14,7 @@ type CachedIPNSEntry struct {
 
 // GetPeerID returns the peer.ID object for this entry.
 func (e *CachedIPNSEntry) GetPeerID() (peer.ID, error) {
-	return peer.IDFromString(e.PeerID)
+	return peer.IDB58Decode(e.PeerID)
 }
 
 // GetCID returns the CID object which is the value for

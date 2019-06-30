@@ -271,6 +271,7 @@ github.com/libp2p/go-flow-metrics
 github.com/libp2p/go-libp2p/p2p/discovery
 github.com/libp2p/go-libp2p/p2p/host/basic
 github.com/libp2p/go-libp2p/p2p/protocol/identify
+github.com/libp2p/go-libp2p/p2p/net/mock
 github.com/libp2p/go-libp2p
 github.com/libp2p/go-libp2p/p2p/host/routed
 github.com/libp2p/go-libp2p/p2p/protocol/ping
@@ -317,9 +318,12 @@ github.com/libp2p/go-libp2p-mplex
 github.com/libp2p/go-libp2p-nat
 # github.com/libp2p/go-libp2p-net v0.0.2
 github.com/libp2p/go-libp2p-net
+# github.com/libp2p/go-libp2p-netutil v0.0.1
+github.com/libp2p/go-libp2p-netutil
 # github.com/libp2p/go-libp2p-peer v0.1.1
 github.com/libp2p/go-libp2p-peer
 github.com/libp2p/go-libp2p-peer/peerset
+github.com/libp2p/go-libp2p-peer/test
 # github.com/libp2p/go-libp2p-peerstore v0.0.6
 github.com/libp2p/go-libp2p-peerstore
 github.com/libp2p/go-libp2p-peerstore/queue
@@ -376,6 +380,8 @@ github.com/libp2p/go-stream-muxer
 github.com/libp2p/go-stream-muxer-multistream
 # github.com/libp2p/go-tcp-transport v0.0.4
 github.com/libp2p/go-tcp-transport
+# github.com/libp2p/go-testutil v0.0.1
+github.com/libp2p/go-testutil
 # github.com/libp2p/go-ws-transport v0.0.4
 github.com/libp2p/go-ws-transport
 # github.com/libp2p/go-yamux v1.2.3
