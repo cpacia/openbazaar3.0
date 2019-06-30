@@ -2,8 +2,8 @@ package test
 
 import (
 	"fmt"
+	"github.com/cpacia/openbazaar3.0/events"
 	"testing"
-	"time"
 )
 
 func TestChat(t *testing.T) {
@@ -16,17 +16,24 @@ func TestChat(t *testing.T) {
 
 	defer network.TearDown()
 
+	sub, err := network.Nodes[0].SubscribeEvent(&events.ChatReadNotification{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sub.Close()
+
 	messageText := "Hello there!"
 	done := make(chan struct{})
 	if err := network.Nodes[0].SendChatMessage(network.Nodes[1].Identity(), messageText, "", done); err != nil {
 		t.Error(err)
 	}
 	<-done
-	time.Sleep(time.Second * 5) // TODO: listen for notification once wired up
 
 	if err := network.Nodes[1].MarkChatMessagesAsRead(network.Nodes[0].Identity(), ""); err != nil {
 		t.Error(err)
 	}
+
+	<-sub.Out()
 
 	messages0, err := network.Nodes[0].GetChatMessagesBySubject("")
 	if err != nil {

@@ -322,17 +322,18 @@ func cleanIdentityFromConfig(dataDir string) error {
 }
 
 func autoMigrateDatabase(db *gorm.DB) error {
-	if err := db.AutoMigrate(&models.Key{}).Error; err != nil {
-		return err
+	dbModels := []interface{}{
+		&models.Key{},
+		&models.CachedIPNSEntry{},
+		&models.OutgoingMessage{},
+		&models.ChatMessage{},
+		&models.NotificationRecord{},
 	}
-	if err := db.AutoMigrate(&models.CachedIPNSEntry{}).Error; err != nil {
-		return err
-	}
-	if err := db.AutoMigrate(&models.OutgoingMessage{}).Error; err != nil {
-		return err
-	}
-	if err := db.AutoMigrate(&models.ChatMessage{}).Error; err != nil {
-		return err
+
+	for _, m := range dbModels {
+		if err := db.AutoMigrate(m).Error; err != nil {
+			return err
+		}
 	}
 	return nil
 }

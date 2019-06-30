@@ -3,13 +3,19 @@ package core
 import (
 	"context"
 	"errors"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"time"
 )
 
+// SendChatMessage sends a chat message to the given peer. The message is sent
+// reliably using the messenger in a separate goroutine so this method will
+// not block during the send. The done chan will be closed when the sending is
+// complete if you need this information.
 func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, done chan<- struct{}) error {
 	chatMsg := pb.ChatMessage{
 		Message:   message,
@@ -47,7 +53,11 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 	})
 }
 
-func (n *OpenBazaarNode) SendTypingMessage(ctx context.Context, to peer.ID) error {
+// SendTypingMessage sends the typing message to the remote peer which
+// the UI can then using to display that the peer is typing. This message
+// is only sent using direct messaging and on a best effort basis. This
+// means it's not guaranteed to make it to the remote peer.
+func (n *OpenBazaarNode) SendTypingMessage(to peer.ID) error {
 	chatMsg := pb.ChatMessage{
 		Flag: pb.ChatMessage_TYPING,
 	}
@@ -64,6 +74,8 @@ func (n *OpenBazaarNode) SendTypingMessage(ctx context.Context, to peer.ID) erro
 	// A Typing message is one of the rare messages that we don't care if it's
 	// sent reliably so we don't need to send it with the Messenger. A simple
 	// best effort direct message suffices.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
 	return n.networkService.SendMessage(ctx, to, msg)
 }
 
@@ -72,7 +84,7 @@ func (n *OpenBazaarNode) SendTypingMessage(ctx context.Context, to peer.ID) erro
 // that was marked as read the remote peer will set that message and everything before
 // it as read.
 func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, subject string) error {
-	return n.repo.DB().Update(func(tx *gorm.DB)error {
+	return n.repo.DB().Update(func(tx *gorm.DB) error {
 		// Check unread count. If zero we can just exit.
 		var unreadCount int
 		if err := tx.Where("peer_id = ? AND read = ? AND subject = ?", peer.Pretty(), false, subject).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
@@ -206,24 +218,25 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 	switch chatMsg.Flag {
 	case pb.ChatMessage_MESSAGE:
 		log.Infof("Received CHAT message from %s. MessageID: %s", from, message.MessageID)
-		return n.repo.DB().Update(func(tx *gorm.DB) error {
-			incomingMsg, err := models.NewChatMessageFromProto(from, message)
-			if err != nil {
-				return err
-			}
-
+		incomingMsg, err := models.NewChatMessageFromProto(from, message)
+		if err != nil {
+			return err
+		}
+		err = n.repo.DB().Update(func(tx *gorm.DB) error {
 			// Save the incoming message to the DB
 			if err := tx.Save(incomingMsg).Error; err != nil {
 				return err
 			}
-
-			// TODO: send chat message notification to the UI
-
 			return nil
 		})
+		if err != nil {
+			return err
+		}
+		n.eventBus.Emit(incomingMsg.ToChatNotification())
+		return nil
 	case pb.ChatMessage_READ:
 		log.Infof("Received READ message from %s. MessageID: %s", from, message.MessageID)
-		return n.repo.DB().Update(func(tx *gorm.DB) error {
+		err := n.repo.DB().Update(func(tx *gorm.DB) error {
 			// Load the message with the provided ID
 			var message models.ChatMessage
 			if err := tx.Where("message_id", chatMsg.ReadID).First(&message).Error; err != nil {
@@ -234,12 +247,23 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 			if err := tx.Model(&models.ChatMessage{}).Where("peer_id = ? AND read = ? AND subject = ? AND timestamp <= ?", from.Pretty(), false, chatMsg.Subject, message.Timestamp).UpdateColumn("read", true).Error; err != nil {
 				return err
 			}
-
-			// TODO: send read notification to UI
 			return nil
 		})
+		if err != nil {
+			return err
+		}
+		n.eventBus.Emit(&events.ChatReadNotification{
+			Subject:   chatMsg.Subject,
+			PeerId:    from.String(),
+			MessageId: chatMsg.ReadID,
+		})
+		return nil
 	case pb.ChatMessage_TYPING:
-		// TODO: send typing notification to API
+		n.eventBus.Emit(&events.ChatTypingNotification{
+			MessageId: message.MessageID,
+			PeerId:    from.Pretty(),
+			Subject:   chatMsg.Subject,
+		})
 		return nil
 
 	default:

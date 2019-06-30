@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/net/pb"
@@ -123,6 +124,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		messenger:      messenger,
 		networkService: service,
 		banManager:     bm,
+		eventBus:       events.NewBus(),
 		shutdown:       make(chan struct{}),
 	}
 

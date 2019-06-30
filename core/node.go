@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
@@ -46,6 +47,9 @@ type OpenBazaarNode struct {
 
 	// banManager holds a list of peers that have been banned by this node.
 	banManager *net.BanManager
+
+	// eventBus allows a subscriber to receive event notifications from the node.
+	eventBus events.Bus
 
 	// shutdown is closed when the node is stopped. Any listening
 	// goroutines can use this to terminate.
@@ -114,6 +118,12 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 			log.Errorf("Publish error: %s", err.Error())
 		}
 	}()
+}
+
+// SubscribeEvent returns a subscription to the provided event. The event argument
+// may be an interface slice.
+func (n *OpenBazaarNode) SubscribeEvent(event interface{}) (events.Subscription, error) {
+	return n.eventBus.Subscribe(event)
 }
 
 func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) error {

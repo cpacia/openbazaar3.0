@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/ptypes"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -9,13 +10,13 @@ import (
 )
 
 type ChatMessage struct {
-	MessageID string    `gorm:"primary_key"`
-	PeerID    string    `gorm:"index"`
-	Subject   string    `gorm:"index"`
-	Timestamp time.Time `gorm:"index"`
-	Read      bool      `gorm:"index"`
-	Outgoing  bool
-	Message   string
+	MessageID string    `gorm:"primary_key" json:"messageID"`
+	PeerID    string    `gorm:"index" json:"peerID"`
+	Subject   string    `gorm:"index" json:"subject"`
+	Timestamp time.Time `gorm:"index" json:"timestamp"`
+	Read      bool      `gorm:"index" json:"read"`
+	Outgoing  bool      `json:"outgoing"`
+	Message   string    `json:"message"`
 }
 
 func NewChatMessageFromProto(peerID peer.ID, msg *pb.Message) (*ChatMessage, error) {
@@ -39,6 +40,18 @@ func NewChatMessageFromProto(peerID peer.ID, msg *pb.Message) (*ChatMessage, err
 
 func (cm *ChatMessage) GetPeerID() (peer.ID, error) {
 	return peer.IDFromString(cm.PeerID)
+}
+
+func (cm *ChatMessage) ToChatNotification() *events.ChatMessageNotification {
+	return &events.ChatMessageNotification{
+		MessageID: cm.MessageID,
+		Timestamp: cm.Timestamp,
+		PeerID:    cm.PeerID,
+		Subject:   cm.Subject,
+		Outgoing:  cm.Outgoing,
+		Read:      cm.Read,
+		Message:   cm.Message,
+	}
 }
 
 type ChatConversation struct {
