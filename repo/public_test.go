@@ -112,7 +112,7 @@ func TestPublicData_Publish(t *testing.T) {
 	}
 
 	bsinf := bootstrap.BootstrapConfigWithPeers(
-		[]peerstore.PeerInfo {
+		[]peerstore.PeerInfo{
 			nodes[0].Peerstore.PeerInfo(nodes[0].Identity),
 		},
 	)
