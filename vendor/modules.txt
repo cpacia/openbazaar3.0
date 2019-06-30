@@ -152,17 +152,21 @@ github.com/ipfs/go-ipfs/plugin/plugins/badgerds
 github.com/ipfs/go-ipfs/plugin/plugins/flatfs
 github.com/ipfs/go-ipfs/plugin/plugins/git
 github.com/ipfs/go-ipfs/plugin/plugins/levelds
+github.com/ipfs/go-ipfs/core/mock
 github.com/ipfs/go-ipfs/core/node/helpers
 github.com/ipfs/go-ipfs/thirdparty/cidv0v1
 github.com/ipfs/go-ipfs/thirdparty/verifbs
 github.com/ipfs/go-ipfs/filestore/pb
 github.com/ipfs/go-ipfs/pin/internal/pb
+github.com/ipfs/go-ipfs/commands
 # github.com/ipfs/go-ipfs-addr v0.0.1
 github.com/ipfs/go-ipfs-addr
 # github.com/ipfs/go-ipfs-blockstore v0.0.1
 github.com/ipfs/go-ipfs-blockstore
 # github.com/ipfs/go-ipfs-chunker v0.0.1
 github.com/ipfs/go-ipfs-chunker
+# github.com/ipfs/go-ipfs-cmds v0.0.8
+github.com/ipfs/go-ipfs-cmds
 # github.com/ipfs/go-ipfs-config v0.0.3
 github.com/ipfs/go-ipfs-config
 github.com/ipfs/go-ipfs-config/serialize

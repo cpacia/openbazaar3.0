@@ -38,7 +38,6 @@ func TestMessenger(t *testing.T) {
 	messenger1 := &Messenger{service1, db1, ctx, cancel, sync.RWMutex{}}
 	messenger2 := &Messenger{service2, db2, ctx, cancel, sync.RWMutex{}}
 
-
 	ch := make(chan struct{})
 	service2.RegisterHandler(pb.Message_PING, func(p peer.ID, msg *pb.Message) error {
 		ch <- struct{}{}
@@ -113,20 +112,19 @@ func TestMessenger_retryAllMessages(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	messenger := &Messenger{service1, db1, ctx, cancel, sync.RWMutex{}}
 
-	err = db1.Update(func(tx *gorm.DB)error {
+	err = db1.Update(func(tx *gorm.DB) error {
 		ping := &pb.Message{
 			MessageType: pb.Message_PING,
-			MessageID: "abc",
+			MessageID:   "abc",
 		}
 		ser, err := proto.Marshal(ping)
 		if err != nil {
 			return err
 		}
 		return tx.Save(&models.OutgoingMessage{
-			ID: "abc",
-			Recipient: service2.host.ID().Pretty(),
+			ID:                "abc",
+			Recipient:         service2.host.ID().Pretty(),
 			SerializedMessage: ser,
-
 		}).Error
 	})
 	if err != nil {

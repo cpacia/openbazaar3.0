@@ -19,8 +19,8 @@ func TestSqliteDB_Update(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = sdb.Update(func(tx *gorm.DB)error {
-		return tx.Save(&models.OutgoingMessage{ID:"abc"}).Error
+	err = sdb.Update(func(tx *gorm.DB) error {
+		return tx.Save(&models.OutgoingMessage{ID: "abc"}).Error
 	})
 	if err != nil {
 		t.Error(err)
@@ -35,10 +35,10 @@ func TestSqliteDB_Update(t *testing.T) {
 		t.Error("Db update failed to roll back.")
 	}
 
-	err = sdb.Update(func(tx *gorm.DB)error {
+	err = sdb.Update(func(tx *gorm.DB) error {
 		err := errors.New("atomic update failure")
 
-		if err := tx.Save(&models.OutgoingMessage{ID:"abc"}).Error; err != nil {
+		if err := tx.Save(&models.OutgoingMessage{ID: "abc"}).Error; err != nil {
 			t.Fatal(err)
 		}
 		return err
@@ -68,15 +68,15 @@ func TestSqliteDB_View(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = sdb.Update(func(tx *gorm.DB)error {
-		return tx.Save(&models.OutgoingMessage{ID:"abc"}).Error
+	err = sdb.Update(func(tx *gorm.DB) error {
+		return tx.Save(&models.OutgoingMessage{ID: "abc"}).Error
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
 	var messages []models.OutgoingMessage
-	err = sdb.View(func(tx *gorm.DB)error {
+	err = sdb.View(func(tx *gorm.DB) error {
 		return tx.Find(&messages).Error
 	})
 	if err != nil {
