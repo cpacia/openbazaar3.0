@@ -60,6 +60,7 @@ func MockNode() (*OpenBazaarNode, error) {
 	}
 
 	node.registerHandlers()
+	node.listenNetworkEvents()
 	return node, nil
 }
 
@@ -122,6 +123,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		}
 
 		node.registerHandlers()
+		node.listenNetworkEvents()
 
 		nodes = append(nodes, node)
 	}

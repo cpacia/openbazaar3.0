@@ -20,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
+	inet "github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-protocol"
 	"github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p-routing"
@@ -129,6 +130,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	}
 
 	obNode.registerHandlers()
+	obNode.listenNetworkEvents()
 
 	return obNode, nil
 }
@@ -162,6 +164,22 @@ func updateIPFSGlobalProtocolVars(testnetEnable bool) {
 func (n *OpenBazaarNode) registerHandlers() {
 	n.networkService.RegisterHandler(pb.Message_CHAT, n.handleChatMessage)
 	n.networkService.RegisterHandler(pb.Message_ACK, n.handleAckMessage)
+}
+
+func (n *OpenBazaarNode) listenNetworkEvents() {
+	connected := func(_ inet.Network, conn inet.Conn) {
+		n.eventBus.Emit(&events.PeerConnected{Peer: conn.RemotePeer()})
+	}
+	disConnected := func(_ inet.Network, conn inet.Conn) {
+		n.eventBus.Emit(&events.PeerDisconnected{Peer: conn.RemotePeer()})
+	}
+
+	notifier := &inet.NotifyBundle{
+		ConnectedF:    connected,
+		DisconnectedF: disConnected,
+	}
+
+	n.ipfsNode.PeerHost.Network().Notify(notifier)
 }
 
 func newMessageWithID() *pb.Message {

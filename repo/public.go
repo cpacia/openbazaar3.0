@@ -137,41 +137,25 @@ func (pd *PublicData) dataPathJoin(pathArgs ...string) string {
 }
 
 func (pd *PublicData) initializeDirectory() error {
-	if err := os.MkdirAll(pd.rootDir, os.ModePerm); err != nil {
-		return err
+	directories := []string{
+		pd.rootDir,
+		pd.dataPathJoin("listings"),
+		pd.dataPathJoin("ratings"),
+		pd.dataPathJoin("images"),
+		pd.dataPathJoin("images", "tiny"),
+		pd.dataPathJoin("images", "small"),
+		pd.dataPathJoin("images", "medium"),
+		pd.dataPathJoin("images", "large"),
+		pd.dataPathJoin("images", "original"),
+		pd.dataPathJoin("posts"),
+		pd.dataPathJoin("channel"),
+		pd.dataPathJoin("files"),
 	}
-	if err := os.MkdirAll(pd.dataPathJoin("listings"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("ratings"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("images"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("images", "tiny"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("images", "small"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("images", "medium"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("images", "large"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("images", "original"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("posts"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("channel"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(pd.dataPathJoin("files"), os.ModePerm); err != nil {
-		return err
+
+	for _, dir := range directories {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return err
+		}
 	}
 	return nil
 }

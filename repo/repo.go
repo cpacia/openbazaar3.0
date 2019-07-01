@@ -330,6 +330,7 @@ func autoMigrateDatabase(db *gorm.DB) error {
 		&models.OutgoingMessage{},
 		&models.ChatMessage{},
 		&models.NotificationRecord{},
+		&models.FollowerStat{},
 	}
 
 	for _, m := range dbModels {
