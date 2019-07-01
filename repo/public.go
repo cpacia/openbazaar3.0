@@ -21,7 +21,9 @@ import (
 )
 
 const (
-	profileFile = "profile.json"
+	profileFile   = "profile.json"
+	followersFile = "followers.json"
+	followingFile = "following.json"
 )
 
 // PublicData represents the IPFS root directory that holds the node's
@@ -77,6 +79,66 @@ func (pd *PublicData) SetProfile(profile *models.Profile) error {
 	}
 
 	return ioutil.WriteFile(path.Join(pd.rootDir, profileFile), out, os.ModePerm)
+}
+
+// GetFollowers loads the follower list from disk and returns it.
+func (pd *PublicData) GetFollowers() (models.Followers, error) {
+	pd.mtx.RLock()
+	defer pd.mtx.RUnlock()
+
+	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, followersFile))
+	if err != nil {
+		return nil, err
+	}
+	var followers models.Followers
+	err = json.Unmarshal(raw, &followers)
+	if err != nil {
+		return nil, err
+	}
+	return followers, nil
+}
+
+// SetFollowers saves the followers list to disk.
+func (pd *PublicData) SetFollowers(followers *models.Followers) error {
+	pd.mtx.RLock()
+	defer pd.mtx.RUnlock()
+
+	out, err := json.MarshalIndent(followers, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(path.Join(pd.rootDir, followersFile), out, os.ModePerm)
+}
+
+// GetFollowing loads the following list from disk and returns it.
+func (pd *PublicData) GetFollowing() (models.Following, error) {
+	pd.mtx.RLock()
+	defer pd.mtx.RUnlock()
+
+	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, followingFile))
+	if err != nil {
+		return nil, err
+	}
+	var following models.Following
+	err = json.Unmarshal(raw, &following)
+	if err != nil {
+		return nil, err
+	}
+	return following, nil
+}
+
+// SetFollowing saves the following list to disk.
+func (pd *PublicData) SetFollowing(following *models.Following) error {
+	pd.mtx.RLock()
+	defer pd.mtx.RUnlock()
+
+	out, err := json.MarshalIndent(following, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(path.Join(pd.rootDir, followingFile), out, os.ModePerm)
 }
 
 // Publish does the following:
