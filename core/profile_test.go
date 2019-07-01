@@ -11,11 +11,13 @@ func TestOpenBazaarNode_Profile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer node.repo.DestroyRepo()
 
 	name := "Ron Swanson"
 
 	err = node.SetProfile(&models.Profile{
-		Name: name,
+		Name:      name,
+		PublicKey: strings.Repeat("s", 66),
 	}, nil)
 	if err != nil {
 		t.Error(err)
@@ -41,7 +43,8 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 	name := "Ron Swanson"
 	done := make(chan struct{})
 	err = mocknet.Nodes()[0].SetProfile(&models.Profile{
-		Name: name,
+		Name:      name,
+		PublicKey: strings.Repeat("s", 66),
 	}, done)
 	if err != nil {
 		t.Fatal(err)
@@ -61,7 +64,8 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 	name2 := "Peter Griffin"
 	done = make(chan struct{})
 	err = mocknet.Nodes()[0].SetProfile(&models.Profile{
-		Name: name2,
+		Name:      name2,
+		PublicKey: strings.Repeat("s", 66),
 	}, done)
 	if err != nil {
 		t.Fatal(err)
@@ -543,6 +547,28 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 					Original: "xxx",
 					Small:    "xxx",
 					Tiny:     "xxx",
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "Average rating correct range",
+			profile: &models.Profile{
+				Name:      "Ron Swanson",
+				PublicKey: strings.Repeat("r", 66),
+				Stats: &models.ProfileStats{
+					AverageRating: 5,
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "Average rating incorrect range",
+			profile: &models.Profile{
+				Name:      "Ron Swanson",
+				PublicKey: strings.Repeat("r", 66),
+				Stats: &models.ProfileStats{
+					AverageRating: 6,
 				},
 			},
 			valid: false,

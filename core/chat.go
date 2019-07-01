@@ -57,9 +57,10 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 // the UI can then using to display that the peer is typing. This message
 // is only sent using direct messaging and on a best effort basis. This
 // means it's not guaranteed to make it to the remote peer.
-func (n *OpenBazaarNode) SendTypingMessage(to peer.ID) error {
+func (n *OpenBazaarNode) SendTypingMessage(to peer.ID, subject string) error {
 	chatMsg := pb.ChatMessage{
-		Flag: pb.ChatMessage_TYPING,
+		Flag:    pb.ChatMessage_TYPING,
+		Subject: subject,
 	}
 
 	payload, err := ptypes.MarshalAny(&chatMsg)
@@ -254,14 +255,14 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		}
 		n.eventBus.Emit(&events.ChatReadNotification{
 			Subject:   chatMsg.Subject,
-			PeerId:    from.String(),
-			MessageId: chatMsg.ReadID,
+			PeerID:    from.String(),
+			MessageID: chatMsg.ReadID,
 		})
 		return nil
 	case pb.ChatMessage_TYPING:
 		n.eventBus.Emit(&events.ChatTypingNotification{
-			MessageId: message.MessageID,
-			PeerId:    from.Pretty(),
+			MessageID: message.MessageID,
+			PeerID:    from.Pretty(),
 			Subject:   chatMsg.Subject,
 		})
 		return nil

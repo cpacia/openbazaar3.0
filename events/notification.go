@@ -213,16 +213,16 @@ type ChatMessageNotification struct {
 func (n *ChatMessageNotification) Type() string { return "ChatMessageNotification" }
 
 type ChatReadNotification struct {
-	MessageId string `json:"messageId"`
-	PeerId    string `json:"peerId"`
+	MessageID string `json:"messageID"`
+	PeerID    string `json:"peerID"`
 	Subject   string `json:"subject"`
 }
 
 func (n *ChatReadNotification) Type() string { return "ChatReadNotification" }
 
 type ChatTypingNotification struct {
-	MessageId string `json:"messageId"`
-	PeerId    string `json:"peerId"`
+	MessageID string `json:"messageID"`
+	PeerID    string `json:"peerID"`
 	Subject   string `json:"subject"`
 }
 

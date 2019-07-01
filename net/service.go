@@ -119,7 +119,7 @@ func (ns *NetworkService) handleNewMessage(s inet.Stream) {
 		}
 		ns.handlerMtx.RUnlock()
 		if err := handler(remotePeer, pmes); err != nil {
-			log.Errorf("Error processing %s message from %s", pmes.MessageType.String(), remotePeer)
+			log.Errorf("Error processing %s message from %s: %s", pmes.MessageType.String(), remotePeer, err)
 		}
 	}
 }
