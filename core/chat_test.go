@@ -29,7 +29,7 @@ func TestOpenBazaarNode_SendChatMessage(t *testing.T) {
 	if err := node.SendChatMessage(p, message, subject, done); err != nil {
 		t.Fatal(err)
 	}
-	<- done
+	<-done
 
 	var messages []models.ChatMessage
 	err = node.repo.DB().View(func(tx *gorm.DB) error {
@@ -191,5 +191,104 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	}
 	if !chatMessage2.Read {
 		t.Error("Node 1 failed to mark chat message as read in database")
+	}
+}
+
+func TestOpenBazaarNode_Get(t *testing.T) {
+	network, err := NewMocknet(4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer network.TearDown()
+
+	var (
+		firstMessage = "hola"
+		lastMessage  = "hi again"
+	)
+
+	for _, node := range network.Nodes()[1:] {
+		if err := network.Nodes()[0].SendChatMessage(node.Identity(), firstMessage, "", nil); err != nil {
+			t.Fatal(err)
+		}
+		if err := network.Nodes()[0].SendChatMessage(node.Identity(), lastMessage, "", nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	convos, err := network.Nodes()[0].GetChatConversations()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(convos) != 3 {
+		t.Errorf("Expected 3 conversations got %d", len(convos))
+	}
+
+	for _, convo := range convos {
+		if convo.Outgoing != true {
+			t.Error("Outgoing bool is false")
+		}
+		if convo.Last != lastMessage {
+			t.Errorf("Received incorrect last message. Expected %s, got %s", lastMessage, convo.Last)
+		}
+		if convo.Unread != 0 {
+			t.Error("Non-zero unread incoming messages")
+		}
+	}
+
+	for _, node := range network.Nodes()[1:] {
+		messages, err := network.Nodes()[0].GetChatMessagesByPeer(node.Identity())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(messages) != 2 {
+			t.Errorf("Expected 2 chat messages got %d", len(messages))
+		}
+
+		if messages[0].Read {
+			t.Errorf("Message0 to peer %s is marked read when it should not be", node.Identity())
+		}
+
+		if messages[1].Read {
+			t.Errorf("Message1 is to peer %s marked read when it should not be", node.Identity())
+		}
+
+		if messages[0].Message != firstMessage {
+			t.Errorf("Incorrect first message. Expected %s, got %s", firstMessage, messages[0].Message)
+		}
+		if messages[1].Message != lastMessage {
+			t.Errorf("Incorrect first message. Expected %s, got %s", firstMessage, messages[0].Message)
+		}
+		if messages[0].Outgoing != true {
+			t.Error("Message0 is not set to outgoing when it should be")
+		}
+		if messages[1].Outgoing != true {
+			t.Error("Message1 is not set to outgoing when it should be")
+		}
+		if messages[0].PeerID != node.Identity().Pretty() {
+			t.Errorf("Message0 peer ID does not match peer. Expected %s, got %s", node.Identity().Pretty(), messages[0].PeerID)
+		}
+		if messages[1].PeerID != node.Identity().Pretty() {
+			t.Errorf("Message1 peer ID does not match peer. Expected %s, got %s", node.Identity().Pretty(), messages[1].PeerID)
+		}
+	}
+
+	messages, err := network.Nodes()[0].GetChatMessagesBySubject("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(messages) != 6 {
+		t.Errorf("Expected 6 messages, got %d", len(messages))
+	}
+
+	for _, message := range messages {
+		if message.Read {
+			t.Error("Message is marked as read when it should not be")
+		}
+		if !message.Outgoing {
+			t.Error("Message is not set to outgoing when it should be")
+		}
 	}
 }

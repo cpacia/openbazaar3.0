@@ -157,11 +157,11 @@ func (n *OpenBazaarNode) GetChatConversations() ([]models.ChatConversation, erro
 
 		for _, peer := range ids {
 			var message models.ChatMessage
-			if err := tx.Order("timestamp desc").Where("peer_id", peer).Last(&message).Error; err != nil {
+			if err := tx.Order("timestamp desc").Where("peer_id = ?", peer).Last(&message).Error; err != nil {
 				return err
 			}
-			var count int
-			if err := tx.Where("peer_id = ? AND read = ?", peer, false).Find(&models.ChatMessage{}).Count(&count).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			var unreadCount int
+			if err := tx.Where("peer_id = ? AND read = ? AND subject = ? AND outgoing = ?", peer, false, "", false).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 				return err
 			}
 
@@ -170,7 +170,7 @@ func (n *OpenBazaarNode) GetChatConversations() ([]models.ChatConversation, erro
 				PeerID:    peer,
 				Outgoing:  message.Outgoing,
 				Timestamp: message.Timestamp,
-				Unread:    count,
+				Unread:    unreadCount,
 			}
 			convos = append(convos, convo)
 		}
