@@ -31,7 +31,7 @@ func Test_ipfsCat(t *testing.T) {
 	}
 
 	var (
-		testFile = []byte("test")
+		testFile     = []byte("test")
 		testFilePath = gpath.Join(network.Nodes()[0].repo.DataDir(), "test.bin")
 	)
 
@@ -113,7 +113,7 @@ func Test_ipfsCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	pth := path.New("/ipfs/Qmd9hFFuueFrSR7YwUuAfirXXJ7ANZAMc5sx4HFxn7mPkc")
-	err = db.Update(func(tx *gorm.DB)error {
+	err = db.Update(func(tx *gorm.DB) error {
 		return putToDatastoreCache(tx, p, pth)
 	})
 	if err != nil {
@@ -121,7 +121,7 @@ func Test_ipfsCache(t *testing.T) {
 	}
 
 	var ret path.Path
-	err = db.View(func(tx *gorm.DB)error {
+	err = db.View(func(tx *gorm.DB) error {
 		ret, err = getFromDatastore(tx, p)
 		return err
 	})

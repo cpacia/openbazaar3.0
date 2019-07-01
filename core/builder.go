@@ -182,6 +182,8 @@ func (n *OpenBazaarNode) listenNetworkEvents() {
 	n.ipfsNode.PeerHost.Network().Notify(notifier)
 }
 
+// newMessageWithID returns a new *pb.Message with a random
+// message ID.
 func newMessageWithID() *pb.Message {
 	messageID := make([]byte, 20)
 	rand.Read(messageID)
