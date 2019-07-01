@@ -82,7 +82,7 @@ func TestNewRepo(t *testing.T) {
 
 func TestNewRepoWithCustomMnemonicSeed(t *testing.T) {
 	var (
-		dir = path.Join(os.TempDir(), "openbazaar", "newRepoTest")
+		dir      = path.Join(os.TempDir(), "openbazaar", "newRepoTest")
 		mnemonic = "abc"
 	)
 	r, err := NewRepoWithCustomMnemonicSeed(dir, mnemonic)

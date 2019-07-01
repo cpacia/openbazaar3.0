@@ -181,8 +181,8 @@ func validateProfile(profile *models.Profile) error {
 			return errors.New("original image hashes must be properly formatted CID")
 		}
 	}
-	if len(profile.PublicKey) > 66 {
-		return fmt.Errorf("bitcoin public key character length is greater than the max of %d", 66)
+	if len(profile.PublicKey) != 66 {
+		return fmt.Errorf("secp256k1 public key character length is greater than the max of %d", 66)
 	}
 	if profile.Stats != nil {
 		if profile.Stats.AverageRating > 5 {

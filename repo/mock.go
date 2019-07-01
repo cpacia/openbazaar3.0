@@ -2,6 +2,10 @@ package repo
 
 import (
 	"github.com/jinzhu/gorm"
+	"math/rand"
+	"os"
+	"path"
+	"strconv"
 	"sync"
 )
 
@@ -15,4 +19,12 @@ func MockDB() (Database, error) {
 		return nil, err
 	}
 	return &SqliteDB{db, sync.RWMutex{}}, nil
+}
+
+// MockRepo returns a repo which uses a tmp data directory
+// and in-memory database.
+func MockRepo() (*Repo, error) {
+	n := rand.Intn(1000000)
+	dataDir := path.Join(os.TempDir(), "openbazaar-test", strconv.Itoa(n))
+	return newRepo(dataDir, "", true)
 }

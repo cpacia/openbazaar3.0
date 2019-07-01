@@ -67,6 +67,7 @@ func (n *OpenBazaarNode) Start() {
 			os.Exit(1)
 		}
 	}()
+	go n.messenger.Start()
 }
 
 // Stop cleanly shutsdown the OpenBazaarNode and signals to any

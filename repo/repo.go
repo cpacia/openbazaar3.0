@@ -40,7 +40,6 @@ func init() {
 // - A wallet directory which holds wallet plugin data
 type Repo struct {
 	db         *SqliteDB
-	dbMtx      sync.RWMutex
 	publicData *PublicData
 	dataDir    string
 }
@@ -48,14 +47,14 @@ type Repo struct {
 // NewRepo returns a new Repo for the given data directory. It will
 // be initialized if it is not already.
 func NewRepo(dataDir string) (*Repo, error) {
-	return newRepo(dataDir, "")
+	return newRepo(dataDir, "", false)
 }
 
 // NewRepoWithCustomMnemonicSeed behaves the same as NewRepo but allows
 // the caller to pass in a custom mnemonic seed. This is usuful for
 // restoring a node from seed.
 func NewRepoWithCustomMnemonicSeed(dataDir, mnemonic string) (*Repo, error) {
-	return newRepo(dataDir, mnemonic)
+	return newRepo(dataDir, mnemonic, false)
 }
 
 // PublicData returns the public database associated with this repo.
@@ -84,7 +83,7 @@ func (r *Repo) DestroyRepo() error {
 	return os.RemoveAll(r.dataDir)
 }
 
-func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
+func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 	pd, err := NewPublicData(path.Join(dataDir, "public"))
 	if err != nil {
 		return nil, err
@@ -136,8 +135,12 @@ func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
 			return nil, err
 		}
 	}
+	dbPath := dataDir
+	if inMemoryDB {
+		dbPath = ":memory:"
+	}
 
-	sdb, err := NewSqliteDB(dataDir)
+	sdb, err := NewSqliteDB(dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +167,6 @@ func newRepo(dataDir, mnemonicSeed string) (*Repo, error) {
 		publicData: pd,
 		dataDir:    dataDir,
 		db:         sdb,
-		dbMtx:      sync.RWMutex{},
 	}, nil
 }
 

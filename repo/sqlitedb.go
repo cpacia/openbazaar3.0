@@ -16,7 +16,11 @@ type SqliteDB struct {
 
 // NewSqliteDB instantiates a new db which satisfies the Database interface.
 func NewSqliteDB(dataDir string) (*SqliteDB, error) {
-	db, err := gorm.Open("sqlite3", path.Join(dataDir, "datastore", dbName))
+	pth := path.Join(dataDir, "datastore", dbName)
+	if dataDir == ":memory:" {
+		pth = dataDir
+	}
+	db, err := gorm.Open("sqlite3", pth)
 	if err != nil {
 		return nil, err
 	}

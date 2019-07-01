@@ -38,7 +38,6 @@ type Messenger struct {
 func NewMessenger(ns *NetworkService, db repo.Database) *Messenger {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &Messenger{ns, db, ctx, cancel, sync.RWMutex{}}
-	go m.startRetryingMessages()
 	return m
 }
 
@@ -125,7 +124,9 @@ func (m *Messenger) SendACK(messageID string, peer peer.ID) {
 	go m.trySendMessage(peer, msg, nil)
 }
 
-func (m *Messenger) startRetryingMessages() {
+// Start will start a recurring process which will attempt
+// to resend any messages than have not yet been ACKed.
+func (m *Messenger) Start() {
 	// Run once at startup
 	go m.retryAllMessages()
 
