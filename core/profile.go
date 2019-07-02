@@ -6,14 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"os"
 	"time"
-)
-
-const (
-	profileFile = "profile.json"
 )
 
 // SetProfile sets the public profile for the node and publishes to IPNS.
@@ -22,10 +20,6 @@ const (
 // return as soon as the profile is saved to disk. The optional done
 // chan will be closed when publishing is complete.
 func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{}) error {
-	if err := validateProfile(profile); err != nil {
-		return err
-	}
-
 	pubkey, err := n.masterPrivKey.ECPubKey()
 	if err != nil {
 		return err
@@ -34,6 +28,14 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 	profile.PublicKey = hex.EncodeToString(pubkey.SerializeCompressed())
 	profile.PeerID = n.ipfsNode.Identity.Pretty()
 	profile.LastModified = time.Now()
+
+	if err := validateProfile(profile); err != nil {
+		return err
+	}
+
+	if err := n.updateProfileStats(profile); err != nil {
+		return err
+	}
 
 	// TODO: add accepted currencies if moderator
 
@@ -50,14 +52,14 @@ func (n *OpenBazaarNode) GetMyProfile() (*models.Profile, error) {
 }
 
 // GetProfile returns the profile of the node with the given peer ID.
-// If checkCache is set it will return a profile from the local cache
+// If useCache is set it will return a profile from the local cache
 // (if it has one) if profile is not found on the network.
-func (n *OpenBazaarNode) GetProfile(peerID peer.ID, fromCache bool) (*models.Profile, error) {
-	pth, err := n.resolve(peerID, fromCache)
+func (n *OpenBazaarNode) GetProfile(peerID peer.ID, useCache bool) (*models.Profile, error) {
+	pth, err := n.resolve(peerID, useCache)
 	if err != nil {
 		return nil, err
 	}
-	profileBytes, err := n.cat(path.Join(pth, profileFile))
+	profileBytes, err := n.cat(path.Join(pth, repo.ProfileFile))
 	if err != nil {
 		return nil, err
 	}
@@ -69,6 +71,42 @@ func (n *OpenBazaarNode) GetProfile(peerID peer.ID, fromCache bool) (*models.Pro
 		return nil, err
 	}
 	return profile, nil
+}
+
+// updateAndSaveProfile loads the profile from disk, updates
+// the profile stats, then saves it back to disk.
+func (n *OpenBazaarNode) updateAndSaveProfile() error {
+	profile, err := n.GetMyProfile()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if profile == nil {
+		return nil
+	}
+	if err := n.updateProfileStats(profile); err != nil {
+		return err
+	}
+	return n.repo.PublicData().SetProfile(profile)
+}
+
+// updateProfileStats updates all stats on the passed in profile
+func (n *OpenBazaarNode) updateProfileStats(profile *models.Profile) error {
+	followers, err := n.repo.PublicData().GetFollowers()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	following, err := n.repo.PublicData().GetFollowing()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	profile.Stats = &models.ProfileStats{
+		FollowerCount:  uint32(followers.Count()),
+		FollowingCount: uint32(following.Count()),
+	}
+
+	return nil
 }
 
 // validateProfile checks each field to make sure they're formatted properly and/or

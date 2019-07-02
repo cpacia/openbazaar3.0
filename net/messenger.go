@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
@@ -64,6 +63,7 @@ func (m *Messenger) ReliablySendMessage(tx *gorm.DB, peer peer.ID, message *pb.M
 		ID:                message.MessageID,
 		Recipient:         peer.Pretty(),
 		SerializedMessage: ser,
+		Timestamp:         time.Now(),
 		LastAttempt:       time.Now(),
 	}).Error
 	if err != nil {
@@ -78,14 +78,7 @@ func (m *Messenger) ReliablySendMessage(tx *gorm.DB, peer peer.ID, message *pb.M
 
 // ProcessACK deletes the message from the database after it has been
 // ACKed so we no longer try sending.
-func (m *Messenger) ProcessACK(tx *gorm.DB, message *pb.Message) error {
-	if message.MessageType != pb.Message_ACK {
-		return errors.New("message is not type ACK")
-	}
-	ack := new(pb.AckMessage)
-	if err := ptypes.UnmarshalAny(message.Payload, ack); err != nil {
-		return err
-	}
+func (m *Messenger) ProcessACK(tx *gorm.DB, ack *pb.AckMessage) error {
 	log.Debugf("Received ACK for message ID %s", ack.AckedMessageID)
 	m.mtx.Lock()
 	defer m.mtx.Unlock()

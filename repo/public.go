@@ -21,9 +21,12 @@ import (
 )
 
 const (
-	profileFile   = "profile.json"
-	followersFile = "followers.json"
-	followingFile = "following.json"
+	// ProfileFile is the filename of the profile on disk.
+	ProfileFile = "profile.json"
+	// FollowersFile is the filename of the followers file on disk.
+	FollowersFile = "followers.json"
+	// FollowingFile is the filename of the following file on disk.
+	FollowingFile = "following.json"
 )
 
 // PublicData represents the IPFS root directory that holds the node's
@@ -56,7 +59,7 @@ func (pd *PublicData) GetProfile() (*models.Profile, error) {
 	pd.mtx.RLock()
 	defer pd.mtx.RUnlock()
 
-	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, profileFile))
+	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, ProfileFile))
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +81,7 @@ func (pd *PublicData) SetProfile(profile *models.Profile) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(pd.rootDir, profileFile), out, os.ModePerm)
+	return ioutil.WriteFile(path.Join(pd.rootDir, ProfileFile), out, os.ModePerm)
 }
 
 // GetFollowers loads the follower list from disk and returns it.
@@ -86,7 +89,7 @@ func (pd *PublicData) GetFollowers() (models.Followers, error) {
 	pd.mtx.RLock()
 	defer pd.mtx.RUnlock()
 
-	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, followersFile))
+	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, FollowersFile))
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,7 @@ func (pd *PublicData) GetFollowers() (models.Followers, error) {
 }
 
 // SetFollowers saves the followers list to disk.
-func (pd *PublicData) SetFollowers(followers *models.Followers) error {
+func (pd *PublicData) SetFollowers(followers models.Followers) error {
 	pd.mtx.RLock()
 	defer pd.mtx.RUnlock()
 
@@ -108,7 +111,7 @@ func (pd *PublicData) SetFollowers(followers *models.Followers) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(pd.rootDir, followersFile), out, os.ModePerm)
+	return ioutil.WriteFile(path.Join(pd.rootDir, FollowersFile), out, os.ModePerm)
 }
 
 // GetFollowing loads the following list from disk and returns it.
@@ -116,7 +119,7 @@ func (pd *PublicData) GetFollowing() (models.Following, error) {
 	pd.mtx.RLock()
 	defer pd.mtx.RUnlock()
 
-	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, followingFile))
+	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, FollowingFile))
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +132,7 @@ func (pd *PublicData) GetFollowing() (models.Following, error) {
 }
 
 // SetFollowing saves the following list to disk.
-func (pd *PublicData) SetFollowing(following *models.Following) error {
+func (pd *PublicData) SetFollowing(following models.Following) error {
 	pd.mtx.RLock()
 	defer pd.mtx.RUnlock()
 
@@ -138,7 +141,7 @@ func (pd *PublicData) SetFollowing(following *models.Following) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(pd.rootDir, followingFile), out, os.ModePerm)
+	return ioutil.WriteFile(path.Join(pd.rootDir, FollowingFile), out, os.ModePerm)
 }
 
 // Publish does the following:

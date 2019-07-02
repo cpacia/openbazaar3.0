@@ -209,7 +209,11 @@ func (n *OpenBazaarNode) GetChatMessagesBySubject(subject string) ([]models.Chat
 
 // handleChatMessage handles incoming chat messages from the network.
 func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) error {
-	defer n.messenger.SendACK(message.MessageID, from)
+	defer n.sendAckMessage(message.MessageID, from)
+
+	if n.isDuplicate(message) {
+		return nil
+	}
 
 	chatMsg := new(pb.ChatMessage)
 	if err := ptypes.UnmarshalAny(message.Payload, chatMsg); err != nil {

@@ -5,10 +5,8 @@ import (
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
-	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
 	"os/signal"
@@ -125,10 +123,4 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 // may be an interface slice.
 func (n *OpenBazaarNode) SubscribeEvent(event interface{}) (events.Subscription, error) {
 	return n.eventBus.Subscribe(event)
-}
-
-func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) error {
-	return n.repo.DB().Update(func(tx *gorm.DB) error {
-		return n.messenger.ProcessACK(tx, message)
-	})
 }

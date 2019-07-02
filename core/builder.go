@@ -164,6 +164,8 @@ func updateIPFSGlobalProtocolVars(testnetEnable bool) {
 func (n *OpenBazaarNode) registerHandlers() {
 	n.networkService.RegisterHandler(pb.Message_CHAT, n.handleChatMessage)
 	n.networkService.RegisterHandler(pb.Message_ACK, n.handleAckMessage)
+	n.networkService.RegisterHandler(pb.Message_FOLLOW, n.handleFollowMessage)
+	n.networkService.RegisterHandler(pb.Message_UNFOLLOW, n.handleUnFollowMessage)
 }
 
 func (n *OpenBazaarNode) listenNetworkEvents() {

@@ -83,6 +83,96 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 	}
 }
 
+func Test_updateProfileStats(t *testing.T) {
+	node, err := MockNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer node.DestroyNode()
+
+	if err := node.repo.PublicData().SetFollowers(models.Followers{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := node.repo.PublicData().SetFollowing(models.Following{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
+		t.Fatal(err)
+	}
+
+	name := "Ron Paul"
+	profile := &models.Profile{Name: name}
+	if err := node.updateProfileStats(profile); err != nil {
+		t.Fatal(err)
+	}
+
+	if profile.Name != name {
+		t.Errorf("Incorrect profile name. Expected %s got %s", name, profile.Name)
+	}
+
+	if profile.Stats == nil {
+		t.Error("Profile stats is nil")
+	}
+
+	if profile.Stats.FollowerCount != 1 {
+		t.Errorf("Incorrect follower count. Expected 1 got %d", profile.Stats.FollowerCount)
+	}
+
+	if profile.Stats.FollowingCount != 1 {
+		t.Errorf("Incorrect following count. Expected 1 got %d", profile.Stats.FollowingCount)
+	}
+}
+
+func Test_updateAndSaveProfile(t *testing.T) {
+	node, err := MockNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer node.DestroyNode()
+
+	if err := node.repo.PublicData().SetFollowers(models.Followers{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := node.repo.PublicData().SetFollowing(models.Following{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
+		t.Fatal(err)
+	}
+
+	name := "Ron Paul"
+	profile := &models.Profile{
+		Name:      name,
+		PublicKey: strings.Repeat("s", 66),
+	}
+	if err := node.SetProfile(profile, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := node.updateAndSaveProfile(); err != nil {
+		t.Fatal(err)
+	}
+
+	ret, err := node.GetMyProfile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if ret.Name != name {
+		t.Errorf("Incorrect profile name. Expected %s got %s", name, ret.Name)
+	}
+
+	if ret.Stats == nil {
+		t.Error("Profile stats is nil")
+	}
+
+	if ret.Stats.FollowerCount != 1 {
+		t.Errorf("Incorrect follower count. Expected 1 got %d", ret.Stats.FollowerCount)
+	}
+
+	if ret.Stats.FollowingCount != 1 {
+		t.Errorf("Incorrect following count. Expected 1 got %d", ret.Stats.FollowingCount)
+	}
+}
+
 func TestOpenBazaarNode_validateProfile(t *testing.T) {
 	tests := []struct {
 		name    string

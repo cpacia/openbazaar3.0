@@ -14,6 +14,8 @@ message Message {
         ACK                      = 0;
         PING                     = 1;
         CHAT                     = 2;
+        FOLLOW                   = 3;
+        UNFOLLOW                 = 4;
     }
 }
 

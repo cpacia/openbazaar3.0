@@ -13,3 +13,9 @@ type PeerConnected struct {
 type PeerDisconnected struct {
 	Peer peer.ID
 }
+
+// MessageACK is an event that gets pushed to the bus
+// whenever a message ACK is received.
+type MessageACK struct {
+	MessageID string
+}
