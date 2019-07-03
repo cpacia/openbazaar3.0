@@ -120,10 +120,12 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 		subject = "advice"
 		message = "abolish the state"
 	)
+	// Send message from 0 to 1
 	if err := network.Nodes()[0].SendChatMessage(network.Nodes()[1].Identity(), message, subject, nil); err != nil {
 		t.Fatal(err)
 	}
 
+	// Wait for 1 to receive the message.
 	event := <-sub.Out()
 	notif, ok := event.(*events.ChatMessageNotification)
 	if !ok {
@@ -147,10 +149,12 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Node 1 mark as read.
 	if err := network.Nodes()[1].MarkChatMessagesAsRead(network.Nodes()[0].Identity(), notif.Subject); err != nil {
 		t.Fatal(err)
 	}
 
+	// Wait for node 0 to receive the read notification.
 	event2 := <-sub2.Out()
 	notif2, ok := event2.(*events.ChatReadNotification)
 	if !ok {

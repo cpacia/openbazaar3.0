@@ -47,15 +47,15 @@ type FollowerTracker struct {
 // not yet been started.
 func NewFollowerTracker(repo *repo.Repo, bus events.Bus, net inet.Network) *FollowerTracker {
 	return &FollowerTracker{
-		connected: make(map[peer.ID]time.Time),
+		connected:  make(map[peer.ID]time.Time),
 		triedPeers: make(map[peer.ID]time.Time),
-		peerCh:    make(chan peer.ID),
-		followers: make(map[peer.ID]bool),
-		shutdown:  make(chan struct{}),
-		mtx:       sync.RWMutex{},
-		repo:      repo,
-		bus:       bus,
-		net:       net,
+		peerCh:     make(chan peer.ID),
+		followers:  make(map[peer.ID]bool),
+		shutdown:   make(chan struct{}),
+		mtx:        sync.RWMutex{},
+		repo:       repo,
+		bus:        bus,
+		net:        net,
 	}
 }
 

@@ -52,11 +52,7 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 		}
 
 		log.Debugf("Sending CHAT message to %s. MessageID: %s", to, msg.MessageID)
-		if err := n.messenger.ReliablySendMessage(tx, to, msg, done); err != nil {
-			return err
-		}
-
-		return nil
+		return n.messenger.ReliablySendMessage(tx, to, msg, done)
 	})
 }
 
@@ -134,11 +130,7 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, subject string) er
 		msg.Payload = payload
 
 		log.Debugf("Sending READ message to %s. MessageID: %s", peer, msg.MessageID)
-		if err := n.messenger.ReliablySendMessage(tx, peer, msg, nil); err != nil {
-			return err
-		}
-
-		return nil
+		return n.messenger.ReliablySendMessage(tx, peer, msg, nil)
 	})
 }
 
@@ -236,10 +228,7 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		}
 		err = n.repo.DB().Update(func(tx *gorm.DB) error {
 			// Save the incoming message to the DB
-			if err := tx.Save(incomingMsg).Error; err != nil {
-				return err
-			}
-			return nil
+			return tx.Save(incomingMsg).Error
 		})
 		if err != nil {
 			return err
@@ -247,16 +236,16 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		n.eventBus.Emit(incomingMsg.ToChatNotification())
 		return nil
 	case pb.ChatMessage_READ:
-		log.Infof("Received READ message from %s. MessageID: %s", from, message.MessageID)
+		log.Infof("Received READ message from %s. MessageID: %s. ReadID: %s", from, message.MessageID, chatMsg.ReadID)
 		err := n.repo.DB().Update(func(tx *gorm.DB) error {
 			// Load the message with the provided ID
-			var message models.ChatMessage
-			if err := tx.Where("message_id", chatMsg.ReadID).First(&message).Error; err != nil {
+			var chmsg models.ChatMessage
+			if err := tx.Where("message_id", chatMsg.ReadID).Find(&chmsg).Error; err != nil {
 				return err
 			}
 
 			// Update all unread messages before the given message ID.
-			if err := tx.Model(&models.ChatMessage{}).Where("peer_id = ? AND read = ? AND subject = ? AND timestamp <= ?", from.Pretty(), false, chatMsg.Subject, message.Timestamp).UpdateColumn("read", true).Error; err != nil {
+			if err := tx.Model(&models.ChatMessage{}).Where("peer_id = ? AND read = ? AND subject = ? AND timestamp <= ?", from.Pretty(), false, chatMsg.Subject, chmsg.Timestamp).UpdateColumn("read", true).Error; err != nil {
 				return err
 			}
 			return nil
