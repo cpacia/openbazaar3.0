@@ -26,8 +26,7 @@ type NetworkService struct {
 
 	msMtx sync.RWMutex
 
-	handlers   map[pb.Message_MessageType]func(peerID peer.ID, msg *pb.Message) error
-	handlerMtx sync.RWMutex
+	handler func(peerID peer.ID, msg *pb.Message) error
 
 	banManager *BanManager
 
@@ -46,8 +45,6 @@ func NewNetworkService(host host.Host, banManager *BanManager, useTestnet bool) 
 		host:           host,
 		messageSenders: make(map[peer.ID]*messageSender),
 		msMtx:          sync.RWMutex{},
-		handlers:       make(map[pb.Message_MessageType]func(peerID peer.ID, message *pb.Message) error),
-		handlerMtx:     sync.RWMutex{},
 		banManager:     banManager,
 		protocolID:     protocol.ID(protocolID),
 	}
@@ -55,14 +52,14 @@ func NewNetworkService(host host.Host, banManager *BanManager, useTestnet bool) 
 	return ns
 }
 
+// Close shuts down the network service.
 func (ns *NetworkService) Close() {
 	ns.ctxCancel()
 }
 
-func (ns *NetworkService) RegisterHandler(messageType pb.Message_MessageType, handler func(peerID peer.ID, message *pb.Message) error) {
-	ns.handlerMtx.Lock()
-	defer ns.handlerMtx.Unlock()
-	ns.handlers[messageType] = handler
+// RegisterHandler register a message handler for the OpenBazaar service.
+func (ns *NetworkService) RegisterHandler(handler func(peerID peer.ID, message *pb.Message) error) {
+	ns.handler = handler
 }
 
 // HandleNewStream receives new incoming streams from other peers.
@@ -110,20 +107,13 @@ func (ns *NetworkService) handleNewMessage(s inet.Stream) {
 			return
 		}
 
-		ns.handlerMtx.RLock()
-		handler, ok := ns.handlers[pmes.MessageType]
-		if !ok {
-			log.Warningf("Received message type %s with unregistered handler", pmes.MessageType.String())
-			ns.handlerMtx.RUnlock()
-			continue
-		}
-		ns.handlerMtx.RUnlock()
-		if err := handler(remotePeer, pmes); err != nil {
+		if err := ns.handler(remotePeer, pmes); err != nil {
 			log.Errorf("Error processing %s message from %s: %s", pmes.MessageType.String(), remotePeer, err)
 		}
 	}
 }
 
+// SendMessage will attempt to send a direct message to the provided peer.
 func (ns *NetworkService) SendMessage(ctx context.Context, peerID peer.ID, message *pb.Message) error {
 	ms, err := ns.messageSenderForPeer(ctx, peerID)
 	if err != nil {

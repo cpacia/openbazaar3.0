@@ -41,8 +41,10 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 			return err
 		}
 
-		msg := newMessageWithID()
-		msg.MessageType = pb.Message_FOLLOW
+		msg, err := prepMessage(tx, peerID, pb.Message_FOLLOW)
+		if err != nil {
+			return err
+		}
 
 		log.Debugf("Sending FOLLOW message to %s. MessageID: %s", peerID, msg.MessageID)
 		if err := n.messenger.ReliablySendMessage(tx, peerID, msg, done); err != nil {
@@ -83,8 +85,10 @@ func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) erro
 			return err
 		}
 
-		msg := newMessageWithID()
-		msg.MessageType = pb.Message_UNFOLLOW
+		msg, err := prepMessage(tx, peerID, pb.Message_UNFOLLOW)
+		if err != nil {
+			return err
+		}
 
 		log.Debugf("Sending UNFOLLOW message to %s. MessageID: %s", peerID, msg.MessageID)
 		if err := n.messenger.ReliablySendMessage(tx, peerID, msg, done); err != nil {
@@ -154,12 +158,6 @@ func (n *OpenBazaarNode) GetFollowing(peerID peer.ID, useCache bool) (models.Fol
 
 // handleFollowMessage handles incoming follow messages from the network.
 func (n *OpenBazaarNode) handleFollowMessage(from peer.ID, message *pb.Message) error {
-	defer n.sendAckMessage(message.MessageID, from)
-
-	if n.isDuplicate(message) {
-		return nil
-	}
-
 	log.Infof("Received FOLLOW message from %s", from)
 
 	followers, err := n.repo.PublicData().GetFollowers()
@@ -186,13 +184,7 @@ func (n *OpenBazaarNode) handleFollowMessage(from peer.ID, message *pb.Message) 
 }
 
 // handleUnFollowMessage handles incoming unfollow messages from the network.
-func (n *OpenBazaarNode) handleUnFollowMessage(from peer.ID, message *pb.Message) error {
-	defer n.sendAckMessage(message.MessageID, from)
-
-	if n.isDuplicate(message) {
-		return nil
-	}
-
+func (n *OpenBazaarNode) handleUnfollowMessage(from peer.ID, message *pb.Message) error {
 	log.Infof("Received UNFOLLOW message from %s", from)
 
 	followers, err := n.repo.PublicData().GetFollowers()

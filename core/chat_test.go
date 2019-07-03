@@ -194,7 +194,7 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	}
 }
 
-func TestOpenBazaarNode_Get(t *testing.T) {
+func TestOpenBazaarNode_GetMessages(t *testing.T) {
 	network, err := NewMocknet(4)
 	if err != nil {
 		t.Fatal(err)

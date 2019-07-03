@@ -59,7 +59,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		masterPrivKey:  masterPrivKey,
 	}
 
-	node.registerHandlers()
+	service.RegisterHandler(node.handleMessages)
 	node.listenNetworkEvents()
 	return node, nil
 }
@@ -122,7 +122,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			masterPrivKey:  masterPrivKey,
 		}
 
-		node.registerHandlers()
+		service.RegisterHandler(node.handleMessages)
 		node.listenNetworkEvents()
 
 		nodes = append(nodes, node)

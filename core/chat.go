@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
@@ -17,34 +16,33 @@ import (
 // not block during the send. The done chan will be closed when the sending is
 // complete if you need this information.
 func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, done chan<- struct{}) error {
-	chatMsg := pb.ChatMessage{
-		Message:   message,
-		Subject:   subject,
-		Timestamp: ptypes.TimestampNow(),
-		Flag:      pb.ChatMessage_MESSAGE,
-	}
-
-	payload, err := ptypes.MarshalAny(&chatMsg)
-	if err != nil {
-		return err
-	}
-
-	msg := newMessageWithID()
-	msg.MessageType = pb.Message_CHAT
-	msg.Payload = payload
-
-	chatModel, err := models.NewChatMessageFromProto(to, msg)
-	if err != nil {
-		return err
-	}
-	chatModel.Outgoing = true
-
-	log.Debugf("Sending CHAT message to %s. MessageID: %s", to, msg.MessageID)
 	return n.repo.DB().Update(func(tx *gorm.DB) error {
+		chatMsg := pb.ChatMessage{
+			Message:   message,
+			Subject:   subject,
+			Timestamp: ptypes.TimestampNow(),
+		}
+
+		payload, err := ptypes.MarshalAny(&chatMsg)
+		if err != nil {
+			return err
+		}
+		msg, err := prepMessage(tx, to, pb.Message_CHAT_MESSAGE)
+		if err != nil {
+			return err
+		}
+		msg.Payload = payload
+
+		chatModel, err := models.NewChatMessageFromProto(to, msg)
+		if err != nil {
+			return err
+		}
+		chatModel.Outgoing = true
 		if err := tx.Save(chatModel).Error; err != nil {
 			return err
 		}
 
+		log.Debugf("Sending CHAT message to %s. MessageID: %s", to, msg.MessageID)
 		if err := n.messenger.ReliablySendMessage(tx, to, msg, done); err != nil {
 			return err
 		}
@@ -59,7 +57,6 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 // means it's not guaranteed to make it to the remote peer.
 func (n *OpenBazaarNode) SendTypingMessage(to peer.ID, subject string) error {
 	chatMsg := pb.ChatMessage{
-		Flag:    pb.ChatMessage_TYPING,
 		Subject: subject,
 	}
 
@@ -68,16 +65,20 @@ func (n *OpenBazaarNode) SendTypingMessage(to peer.ID, subject string) error {
 		return err
 	}
 
-	msg := newMessageWithID()
-	msg.MessageType = pb.Message_CHAT
-	msg.Payload = payload
+	return n.repo.DB().Update(func(tx *gorm.DB) error {
+		msg, err := prepMessage(tx, to, pb.Message_CHAT_TYPING)
+		if err != nil {
+			return err
+		}
+		msg.Payload = payload
 
-	// A Typing message is one of the rare messages that we don't care if it's
-	// sent reliably so we don't need to send it with the Messenger. A simple
-	// best effort direct message suffices.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancel()
-	return n.networkService.SendMessage(ctx, to, msg)
+		// A Typing message is one of the rare messages that we don't care if it's
+		// sent reliably so we don't need to send it with the Messenger. A simple
+		// best effort direct message suffices.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+		defer cancel()
+		return n.networkService.SendMessage(ctx, to, msg)
+	})
 }
 
 // MarkChatMessagesAsRead will mark chat messages for the given subject as read locally
@@ -112,7 +113,6 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, subject string) er
 		// transport. The READ message is just to show the message was
 		// read in the UI.
 		readMsg := &pb.ChatMessage{
-			Flag:    pb.ChatMessage_READ,
 			Subject: subject,
 			ReadID:  lastMessage.MessageID,
 		}
@@ -122,8 +122,10 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, subject string) er
 			return err
 		}
 
-		msg := newMessageWithID()
-		msg.MessageType = pb.Message_CHAT
+		msg, err := prepMessage(tx, peer, pb.Message_CHAT_READ)
+		if err != nil {
+			return err
+		}
 		msg.Payload = payload
 
 		log.Debugf("Sending READ message to %s. MessageID: %s", peer, msg.MessageID)
@@ -209,70 +211,71 @@ func (n *OpenBazaarNode) GetChatMessagesBySubject(subject string) ([]models.Chat
 
 // handleChatMessage handles incoming chat messages from the network.
 func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) error {
-	defer n.sendAckMessage(message.MessageID, from)
-
-	if n.isDuplicate(message) {
-		return nil
-	}
-
 	chatMsg := new(pb.ChatMessage)
 	if err := ptypes.UnmarshalAny(message.Payload, chatMsg); err != nil {
 		return err
 	}
 
-	switch chatMsg.Flag {
-	case pb.ChatMessage_MESSAGE:
-		log.Infof("Received CHAT message from %s. MessageID: %s", from, message.MessageID)
-		incomingMsg, err := models.NewChatMessageFromProto(from, message)
-		if err != nil {
-			return err
-		}
-		err = n.repo.DB().Update(func(tx *gorm.DB) error {
-			// Save the incoming message to the DB
-			if err := tx.Save(incomingMsg).Error; err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		n.eventBus.Emit(incomingMsg.ToChatNotification())
-		return nil
-	case pb.ChatMessage_READ:
-		log.Infof("Received READ message from %s. MessageID: %s", from, message.MessageID)
-		err := n.repo.DB().Update(func(tx *gorm.DB) error {
-			// Load the message with the provided ID
-			var message models.ChatMessage
-			if err := tx.Where("message_id", chatMsg.ReadID).First(&message).Error; err != nil {
-				return err
-			}
-
-			// Update all unread messages before the given message ID.
-			if err := tx.Model(&models.ChatMessage{}).Where("peer_id = ? AND read = ? AND subject = ? AND timestamp <= ?", from.Pretty(), false, chatMsg.Subject, message.Timestamp).UpdateColumn("read", true).Error; err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		n.eventBus.Emit(&events.ChatReadNotification{
-			Subject:   chatMsg.Subject,
-			PeerID:    from.String(),
-			MessageID: chatMsg.ReadID,
-		})
-		return nil
-	case pb.ChatMessage_TYPING:
-		n.eventBus.Emit(&events.ChatTypingNotification{
-			MessageID: message.MessageID,
-			PeerID:    from.Pretty(),
-			Subject:   chatMsg.Subject,
-		})
-		return nil
-
-	default:
-		return errors.New("unknown chat message flag")
-
+	log.Infof("Received CHAT message from %s. MessageID: %s", from, message.MessageID)
+	incomingMsg, err := models.NewChatMessageFromProto(from, message)
+	if err != nil {
+		return err
 	}
+	err = n.repo.DB().Update(func(tx *gorm.DB) error {
+		// Save the incoming message to the DB
+		if err := tx.Save(incomingMsg).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	n.eventBus.Emit(incomingMsg.ToChatNotification())
+	return nil
+}
+
+// handleReadMessage handles incoming read messages from the network.
+func (n *OpenBazaarNode) handleReadMessage(from peer.ID, message *pb.Message) error {
+	chatMsg := new(pb.ChatMessage)
+	if err := ptypes.UnmarshalAny(message.Payload, chatMsg); err != nil {
+		return err
+	}
+	log.Infof("Received READ message from %s. MessageID: %s", from, message.MessageID)
+	err := n.repo.DB().Update(func(tx *gorm.DB) error {
+		// Load the message with the provided ID
+		var message models.ChatMessage
+		if err := tx.Where("message_id", chatMsg.ReadID).First(&message).Error; err != nil {
+			return err
+		}
+
+		// Update all unread messages before the given message ID.
+		if err := tx.Model(&models.ChatMessage{}).Where("peer_id = ? AND read = ? AND subject = ? AND timestamp <= ?", from.Pretty(), false, chatMsg.Subject, message.Timestamp).UpdateColumn("read", true).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	n.eventBus.Emit(&events.ChatReadNotification{
+		Subject:   chatMsg.Subject,
+		PeerID:    from.String(),
+		MessageID: chatMsg.ReadID,
+	})
+	return nil
+}
+
+// handleTypingMessage handles incoming typing messages from the network.
+func (n *OpenBazaarNode) handleTypingMessage(from peer.ID, message *pb.Message) error {
+	chatMsg := new(pb.ChatMessage)
+	if err := ptypes.UnmarshalAny(message.Payload, chatMsg); err != nil {
+		return err
+	}
+	n.eventBus.Emit(&events.ChatTypingNotification{
+		MessageID: message.MessageID,
+		PeerID:    from.Pretty(),
+		Subject:   chatMsg.Subject,
+	})
+	return nil
 }

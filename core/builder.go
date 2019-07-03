@@ -2,14 +2,11 @@ package core
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
-	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
 	bitswap "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-datastore"
@@ -129,7 +126,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		shutdown:       make(chan struct{}),
 	}
 
-	obNode.registerHandlers()
+	service.RegisterHandler(obNode.handleMessages)
 	obNode.listenNetworkEvents()
 
 	return obNode, nil
@@ -161,13 +158,6 @@ func updateIPFSGlobalProtocolVars(testnetEnable bool) {
 	}
 }
 
-func (n *OpenBazaarNode) registerHandlers() {
-	n.networkService.RegisterHandler(pb.Message_CHAT, n.handleChatMessage)
-	n.networkService.RegisterHandler(pb.Message_ACK, n.handleAckMessage)
-	n.networkService.RegisterHandler(pb.Message_FOLLOW, n.handleFollowMessage)
-	n.networkService.RegisterHandler(pb.Message_UNFOLLOW, n.handleUnFollowMessage)
-}
-
 func (n *OpenBazaarNode) listenNetworkEvents() {
 	connected := func(_ inet.Network, conn inet.Conn) {
 		n.eventBus.Emit(&events.PeerConnected{Peer: conn.RemotePeer()})
@@ -182,14 +172,4 @@ func (n *OpenBazaarNode) listenNetworkEvents() {
 	}
 
 	n.ipfsNode.PeerHost.Network().Notify(notifier)
-}
-
-// newMessageWithID returns a new *pb.Message with a random
-// message ID.
-func newMessageWithID() *pb.Message {
-	messageID := make([]byte, 20)
-	rand.Read(messageID)
-	return &pb.Message{
-		MessageID: hex.EncodeToString(messageID),
-	}
 }

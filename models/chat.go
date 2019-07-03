@@ -20,7 +20,7 @@ type ChatMessage struct {
 }
 
 func NewChatMessageFromProto(peerID peer.ID, msg *pb.Message) (*ChatMessage, error) {
-	if msg.MessageType != pb.Message_CHAT {
+	if msg.MessageType != pb.Message_CHAT_MESSAGE {
 		return nil, errors.New("cannot convert non-CHAT message type")
 	}
 

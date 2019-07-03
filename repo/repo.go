@@ -329,6 +329,8 @@ func autoMigrateDatabase(db *gorm.DB) error {
 		&models.CachedIPNSEntry{},
 		&models.OutgoingMessage{},
 		&models.IncomingMessage{},
+		&models.Sequence{},
+		&models.ParkedMessage{},
 		&models.ChatMessage{},
 		&models.NotificationRecord{},
 		&models.FollowerStat{},
