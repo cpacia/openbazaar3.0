@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -47,7 +48,11 @@ func TestMessenger(t *testing.T) {
 	ch2 := make(chan struct{})
 	service1.RegisterHandler(pb.Message_ACK, func(p peer.ID, msg *pb.Message) error {
 		err := db1.Update(func(tx *gorm.DB) error {
-			return messenger1.ProcessACK(tx, msg)
+			ack := new(pb.AckMessage)
+			if err := ptypes.UnmarshalAny(msg.Payload, ack); err != nil {
+				return err
+			}
+			return messenger1.ProcessACK(tx, ack)
 		})
 		if err != nil {
 			t.Error(err)

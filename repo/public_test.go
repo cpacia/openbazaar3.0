@@ -78,7 +78,7 @@ func TestPublicData_Followers(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	l := &models.Followers{
+	l := models.Followers{
 		"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 		"Qmd9hFFuueFrSR7YwUuAfirXXJ7ANZAMc5sx4HFxn7mPkc",
 	}
@@ -92,11 +92,11 @@ func TestPublicData_Followers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if followers[0] != (*l)[0] {
-		t.Errorf("Incorrect peerID returned. Expected %s got %s", (*l)[0], followers[0])
+	if followers[0] != l[0] {
+		t.Errorf("Incorrect peerID returned. Expected %s got %s", l[0], followers[0])
 	}
-	if followers[1] != (*l)[1] {
-		t.Errorf("Incorrect peerID returned. Expected %s got %s", (*l)[1], followers[1])
+	if followers[1] != l[1] {
+		t.Errorf("Incorrect peerID returned. Expected %s got %s", l[1], followers[1])
 	}
 }
 
@@ -108,7 +108,7 @@ func TestPublicData_Following(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	l := &models.Following{
+	l := models.Following{
 		"Qmd9hFFuueFrSR7YwUuAfirXXJ7ANZAMc5sx4HFxn7mPkc",
 		"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 	}
@@ -122,11 +122,11 @@ func TestPublicData_Following(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if following[0] != (*l)[0] {
-		t.Errorf("Incorrect peerID returned. Expected %s got %s", (*l)[0], following[0])
+	if following[0] != l[0] {
+		t.Errorf("Incorrect peerID returned. Expected %s got %s", l[0], following[0])
 	}
-	if following[1] != (*l)[1] {
-		t.Errorf("Incorrect peerID returned. Expected %s got %s", (*l)[1], following[1])
+	if following[1] != l[1] {
+		t.Errorf("Incorrect peerID returned. Expected %s got %s", l[1], following[1])
 	}
 }
 
