@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core/coreapi"
+	"github.com/ipfs/go-merkledag"
 	nameopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"io/ioutil"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -53,6 +56,31 @@ func (n *OpenBazaarNode) cat(pth path.Path) ([]byte, error) {
 	}
 
 	return ioutil.ReadAll(r)
+}
+
+// pin fetches a file from IPFS given a path and pins it.
+func (n *OpenBazaarNode) pin(pth path.Path) error {
+	pinDone := make(chan struct{})
+	defer func() {
+		pinDone <- struct{}{}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), catTimeout)
+
+	api, err := coreapi.NewCoreAPI(n.ipfsNode)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		select {
+		case <-pinDone:
+			return
+		case <-n.shutdown:
+			cancel()
+		}
+	}()
+
+	return api.Pin().Add(ctx, pth)
 }
 
 // resolve an IPNS record. This is a multi-step process.
@@ -140,6 +168,44 @@ func (n *OpenBazaarNode) resolveOnce(p peer.ID, timeout time.Duration, quorum ui
 		return nil, err
 	}
 	return path.New(pth.String()), nil
+}
+
+// fetchGraph returns a list of CIDs in the public directory.
+func (n *OpenBazaarNode) fetchGraph() ([]cid.Cid, error) {
+	id, err := n.repo.PublicData().CurrentRoot(n.ipfsNode)
+	if err != nil {
+		return nil, err
+	}
+
+	dag := merkledag.NewDAGService(n.ipfsNode.Blocks)
+	var ret []cid.Cid
+	l := new(sync.Mutex)
+	m := make(map[string]bool)
+	ctx := context.Background()
+	m[id.String()] = true
+	for {
+		if len(m) == 0 {
+			break
+		}
+		for k := range m {
+			c, err := cid.Decode(k)
+			if err != nil {
+				return ret, err
+			}
+			ret = append(ret, c)
+			links, err := dag.GetLinks(ctx, c)
+			if err != nil {
+				return ret, err
+			}
+			l.Lock()
+			delete(m, k)
+			for _, link := range links {
+				m[link.Cid.String()] = true
+			}
+			l.Unlock()
+		}
+	}
+	return ret, nil
 }
 
 // getFromDatastore looks in two places in the database for a record. First is

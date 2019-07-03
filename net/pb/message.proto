@@ -17,6 +17,7 @@ message Message {
         CHAT                     = 2;
         FOLLOW                   = 3;
         UNFOLLOW                 = 4;
+        STORE                    = 5;
     }
 }
 
@@ -34,6 +35,10 @@ message ChatMessage {
         TYPING  = 1;
         READ    = 2;
     }
+}
+
+message StoreMessage {
+    repeated bytes cids = 1;
 }
 
 message AckMessage {

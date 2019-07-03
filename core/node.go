@@ -5,7 +5,9 @@ import (
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
+	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-ipfs/core"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
@@ -123,7 +125,30 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 			log.Errorf("Publish error: %s", err.Error())
 		}
 
-		// TODO: push block data to connected followers.
+		graph, err := n.fetchGraph()
+		if err != nil {
+			log.Errorf("Error fetching graph: %s", err.Error())
+			return
+		}
+
+		storeMsg := &pb.StoreMessage{}
+		for _, cid := range graph {
+			storeMsg.Cids = append(storeMsg.Cids, cid.Bytes())
+		}
+
+		any, err := ptypes.MarshalAny(storeMsg)
+		if err != nil {
+			log.Errorf("Error marshalling store message: %s", err.Error())
+			return
+		}
+
+		msg := newMessageWithID()
+		msg.MessageType = pb.Message_STORE
+		msg.Payload = any
+
+		for _, peer := range n.followerTracker.ConnectedFollowers() {
+			go n.networkService.SendMessage(context.Background(), peer, msg)
+		}
 	}()
 }
 

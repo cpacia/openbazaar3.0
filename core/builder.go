@@ -169,6 +169,7 @@ func (n *OpenBazaarNode) registerHandlers() {
 	n.networkService.RegisterHandler(pb.Message_ACK, n.handleAckMessage)
 	n.networkService.RegisterHandler(pb.Message_FOLLOW, n.handleFollowMessage)
 	n.networkService.RegisterHandler(pb.Message_UNFOLLOW, n.handleUnFollowMessage)
+	n.networkService.RegisterHandler(pb.Message_STORE, n.handleStoreMessage)
 }
 
 func (n *OpenBazaarNode) listenNetworkEvents() {

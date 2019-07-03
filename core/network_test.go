@@ -189,7 +189,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 	}
 
 	// Chat messages should be transferred on connection.
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		<-sub.Out()
 	}
 
@@ -201,5 +201,69 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 	if len(messages) != 3 {
 		t.Errorf("Incorrect number of messages. Expected %d, got %d", 3, len(messages))
 	}
+}
 
+func TestOpenBazaarNode_PublishToFollowers(t *testing.T) {
+	mocknet, err := NewMocknet(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer mocknet.TearDown()
+
+	// Start node - follower tracker
+	mocknet.Nodes()[0].followerTracker.Start()
+
+	storeSub, err := mocknet.Nodes()[1].SubscribeEvent(&events.MessageStore{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	followSub, err := mocknet.Nodes()[0].SubscribeEvent(&events.TrackerFollow{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set profile node 0
+	done1 := make(chan struct{})
+	if err := mocknet.Nodes()[0].SetProfile(&models.Profile{Name: "Peter Griffin"}, done1); err != nil {
+		t.Fatal(err)
+	}
+	<-done1
+
+	// Node 1 send follow
+	done2 := make(chan struct{})
+	if err := mocknet.Nodes()[1].FollowNode(mocknet.Nodes()[0].Identity(), done2); err != nil {
+		t.Fatal(err)
+	}
+	<-done2
+
+	<-followSub.Out()
+
+	// Run the follower tracker to load node 1 as a follower in node 0.
+	mocknet.Nodes()[0].followerTracker.tryConnectFollowers()
+
+	// Set profile again with a new publish.
+	done3 := make(chan struct{})
+	if err := mocknet.Nodes()[0].SetProfile(&models.Profile{Name: "Peter Griffin2"}, done3); err != nil {
+		t.Fatal(err)
+	}
+	<-done3
+
+	// Make sure 1 node is pinning the correct cids.
+	<-storeSub.Out()
+
+	graph, err := mocknet.Nodes()[0].fetchGraph()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cid := range graph {
+		has, err := mocknet.Nodes()[1].ipfsNode.Blockstore.Has(cid)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !has {
+			t.Error("Missing cid")
+		}
+	}
 }

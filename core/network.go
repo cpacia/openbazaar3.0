@@ -3,11 +3,14 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 )
@@ -42,6 +45,42 @@ func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) err
 		return err
 	}
 	n.eventBus.Emit(&events.MessageACK{MessageID: ack.AckedMessageID})
+	return nil
+}
+
+func (n *OpenBazaarNode) handleStoreMessage(from peer.ID, message *pb.Message) error {
+	if message.MessageType != pb.Message_STORE {
+		return errors.New("message is not type STORE")
+	}
+	following, err := n.repo.PublicData().GetFollowing()
+	if err != nil {
+		return err
+	}
+	if !following.IsFollowing(from) {
+		return errors.New("STORE message from peer that is not followed")
+	}
+
+	store := new(pb.StoreMessage)
+	if err := ptypes.UnmarshalAny(message.Payload, store); err != nil {
+		return err
+	}
+
+	var cids []cid.Cid
+	for _, b := range store.Cids {
+		cid, err := cid.Cast(b)
+		if err != nil {
+			return fmt.Errorf("store handler cid cast error: %s", err)
+		}
+		cids = append(cids, cid)
+		if err := n.pin(path.Join(path.New("/ipfs"), cid.String())); err != nil {
+			return fmt.Errorf("store handler error pinning file: %s", err)
+		}
+	}
+	n.eventBus.Emit(&events.MessageStore{
+		Peer: from,
+		Cids: cids,
+	})
+	log.Infof("Received STORE message from %s", from)
 	return nil
 }
 

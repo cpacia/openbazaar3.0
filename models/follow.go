@@ -1,5 +1,7 @@
 package models
 
+import peer "github.com/libp2p/go-libp2p-peer"
+
 // Followers represents the nodes that are following this node.
 type Followers []string
 
@@ -14,6 +16,15 @@ type Following []string
 // Count returns the number of following.
 func (f *Following) Count() int {
 	return len(*f)
+}
+
+func (f *Following) IsFollowing(peer peer.ID) bool {
+	for _, following := range *f {
+		if peer.Pretty() == following {
+			return true
+		}
+	}
+	return false
 }
 
 // FollowSequence is a database model which holds the sequence

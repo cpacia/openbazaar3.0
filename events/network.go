@@ -1,6 +1,9 @@
 package events
 
-import peer "github.com/libp2p/go-libp2p-peer"
+import (
+	"github.com/ipfs/go-cid"
+	peer "github.com/libp2p/go-libp2p-peer"
+)
 
 // PeerConnected is an event that gets pushed to the bus
 // whenever a new peer connects.
@@ -18,4 +21,11 @@ type PeerDisconnected struct {
 // whenever a message ACK is received.
 type MessageACK struct {
 	MessageID string
+}
+
+// MessageStore is an event that gets pushed to the bus
+// whenever a STORE message is received.
+type MessageStore struct {
+	Peer peer.ID
+	Cids []cid.Cid
 }

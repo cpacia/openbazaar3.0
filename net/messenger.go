@@ -169,7 +169,7 @@ func (m *Messenger) retryAllMessages() {
 		return tx.Find(&messages).Error
 	})
 	if err != nil {
-		log.Error("Error loading outgoing messages from the database: %s", err)
+		log.Errorf("Error loading outgoing messages from the database: %s", err)
 		m.mtx.RUnlock()
 		return
 	}

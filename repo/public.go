@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/gogo/protobuf/proto"
+	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/coreapi"
@@ -17,6 +18,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -142,6 +144,11 @@ func (pd *PublicData) SetFollowing(following models.Following) error {
 	}
 
 	return ioutil.WriteFile(path.Join(pd.rootDir, FollowingFile), out, os.ModePerm)
+}
+
+// CurrentRoot returns the current root hash for this repo.
+func (pd *PublicData) CurrentRoot(nd *core.IpfsNode) (cid.Cid, error) {
+	return cid.Decode(strings.TrimPrefix(currentRootHash(nd), "/ipfs/"))
 }
 
 // Publish does the following:

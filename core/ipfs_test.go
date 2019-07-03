@@ -67,6 +67,60 @@ func Test_ipfsCat(t *testing.T) {
 	}
 }
 
+func Test_ipfsPin(t *testing.T) {
+	network, err := NewMocknet(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer network.TearDown()
+
+	api, err := coreapi.NewCoreAPI(network.Nodes()[0].ipfsNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var (
+		testFile     = []byte("test")
+		testFilePath = gpath.Join(network.Nodes()[0].repo.DataDir(), "test.bin")
+	)
+
+	if err := ioutil.WriteFile(testFilePath, testFile, os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+
+	stat, err := os.Lstat(testFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := files.NewSerialFile(testFilePath, false, stat)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	opts := []options.UnixfsAddOption{
+		options.Unixfs.Pin(true),
+	}
+	pth, err := api.Unixfs().Add(context.Background(), f, opts...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = network.Nodes()[1].pin(pth)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	has, err := network.Nodes()[1].ipfsNode.Blocks.Blockstore().Has(pth.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !has {
+		t.Error("Cid not stored in node")
+	}
+}
+
 func Test_ipfsResolve(t *testing.T) {
 	network, err := NewMocknet(2)
 	if err != nil {
@@ -131,5 +185,27 @@ func Test_ipfsCache(t *testing.T) {
 
 	if ret.String() != pth.String() {
 		t.Errorf("Database returned incorrect cached value. Expected %s, got %s", pth.String(), ret.String())
+	}
+}
+
+func Test_ipfsFetchGraph(t *testing.T) {
+	mocknet, err := NewMocknet(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer mocknet.TearDown()
+
+	if err := mocknet.Nodes()[0].repo.PublicData().Publish(context.Background(), mocknet.Nodes()[0].ipfsNode); err != nil {
+		t.Fatal(err)
+	}
+
+	graph, err := mocknet.Nodes()[0].fetchGraph()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(graph) != 3 {
+		t.Errorf("Expected %d elements in the graph. Got %d", 3, len(graph))
 	}
 }

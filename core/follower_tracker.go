@@ -48,6 +48,7 @@ type FollowerTracker struct {
 func NewFollowerTracker(repo *repo.Repo, bus events.Bus, net inet.Network) *FollowerTracker {
 	return &FollowerTracker{
 		connected: make(map[peer.ID]time.Time),
+		triedPeers: make(map[peer.ID]time.Time),
 		peerCh:    make(chan peer.ID),
 		followers: make(map[peer.ID]bool),
 		shutdown:  make(chan struct{}),
@@ -243,6 +244,7 @@ func (t *FollowerTracker) listenEvents() {
 func (t *FollowerTracker) tryConnectFollowers() {
 	// Loop through the network peers to see if we don't have
 	// any marked as connected.
+	t.mtx.Lock()
 	for _, peer := range t.net.Peers() {
 		if _, ok := t.followers[peer]; ok {
 			if _, aok := t.connected[peer]; !aok {
@@ -250,6 +252,7 @@ func (t *FollowerTracker) tryConnectFollowers() {
 			}
 		}
 	}
+	t.mtx.Unlock()
 	// If we already have enough connections then exit.
 	t.mtx.RLock()
 	if len(t.connected) >= FollowerConnections {
