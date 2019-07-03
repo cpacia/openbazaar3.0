@@ -112,21 +112,24 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	if err != nil {
 		return nil, err
 	}
+	bus := events.NewBus()
 	bm := net.NewBanManager(nil) // TODO: load ids from db
 	service := net.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
 	messenger := net.NewMessenger(service, obRepo.DB())
+	tracker := NewFollowerTracker(obRepo, bus, ipfsNode.PeerHost.Network())
 
 	// Construct our OpenBazaar node.repo object
 	obNode := &OpenBazaarNode{
-		ipfsNode:       ipfsNode,
-		repo:           obRepo,
-		masterPrivKey:  masterPrivKey,
-		ipnsQuorum:     cfg.IPNSQuorum,
-		messenger:      messenger,
-		networkService: service,
-		banManager:     bm,
-		eventBus:       events.NewBus(),
-		shutdown:       make(chan struct{}),
+		ipfsNode:        ipfsNode,
+		repo:            obRepo,
+		masterPrivKey:   masterPrivKey,
+		ipnsQuorum:      cfg.IPNSQuorum,
+		messenger:       messenger,
+		networkService:  service,
+		banManager:      bm,
+		eventBus:        bus,
+		followerTracker: tracker,
+		shutdown:        make(chan struct{}),
 	}
 
 	obNode.registerHandlers()

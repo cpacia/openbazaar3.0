@@ -17,6 +17,7 @@ type ChatMessage struct {
 	Read      bool      `gorm:"index" json:"read"`
 	Outgoing  bool      `json:"outgoing"`
 	Message   string    `json:"message"`
+	Sequence  int
 }
 
 func NewChatMessageFromProto(peerID peer.ID, msg *pb.Message) (*ChatMessage, error) {
@@ -35,6 +36,7 @@ func NewChatMessageFromProto(peerID peer.ID, msg *pb.Message) (*ChatMessage, err
 		Message:   chtMsg.Message,
 		Subject:   chtMsg.Subject,
 		Timestamp: time.Unix(chtMsg.Timestamp.Seconds, int64(chtMsg.Timestamp.Nanos)),
+		Sequence:  int(msg.Sequence),
 	}, nil
 }
 

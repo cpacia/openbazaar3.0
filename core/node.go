@@ -49,6 +49,10 @@ type OpenBazaarNode struct {
 	// eventBus allows a subscriber to receive event notifications from the node.
 	eventBus events.Bus
 
+	// followerTracker tries to maintain connections to a minimum number of our
+	// followers so that we can use them to push data for redundancy.
+	followerTracker *FollowerTracker
+
 	// shutdown is closed when the node is stopped. Any listening
 	// goroutines can use this to terminate.
 	shutdown chan struct{}
@@ -66,6 +70,8 @@ func (n *OpenBazaarNode) Start() {
 		}
 	}()
 	go n.messenger.Start()
+	go n.followerTracker.Start()
+	go n.syncMessages()
 }
 
 // Stop cleanly shutsdown the OpenBazaarNode and signals to any
@@ -116,6 +122,8 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 		if err := n.repo.PublicData().Publish(ctx, n.ipfsNode); err != nil {
 			log.Errorf("Publish error: %s", err.Error())
 		}
+
+		// TODO: push block data to connected followers.
 	}()
 }
 

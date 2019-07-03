@@ -15,3 +15,10 @@ type Following []string
 func (f *Following) Count() int {
 	return len(*f)
 }
+
+// FollowSequence is a database model which holds the sequence
+// number for our outgoing follow and unfollow notifications.
+type FollowSequence struct {
+	PeerID string `gorm:"primary_key"`
+	Num    int
+}

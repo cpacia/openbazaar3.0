@@ -292,3 +292,52 @@ func TestOpenBazaarNode_Get(t *testing.T) {
 		}
 	}
 }
+
+func TestOpenBazaarNode_ChatSequence(t *testing.T) {
+	node, err := MockNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer node.repo.DestroyRepo()
+
+	p, err := peer.IDB58Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var (
+		message = "hola"
+		subject = "newsubject"
+	)
+
+	done := make(chan struct{})
+	if err := node.SendChatMessage(p, message, subject, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := node.SendChatMessage(p, message, subject, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := node.SendChatMessage(p, message, subject, done); err != nil {
+		t.Fatal(err)
+	}
+	<-done
+
+	var messages []models.ChatMessage
+	err = node.repo.DB().View(func(tx *gorm.DB) error {
+		return tx.Find(&messages).Error
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(messages) != 3 {
+		t.Fatalf("Incorrect number of chat messages. Expected 3 got %d", len(messages))
+	}
+
+	for i, c := range messages {
+		if c.Sequence != i+1 {
+			t.Errorf("Incorrect sequence number. Expected %d, got %d", i+1, c.Sequence)
+		}
+	}
+}

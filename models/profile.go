@@ -9,8 +9,6 @@ type Profile struct {
 	About            string `json:"about"`
 	ShortDescription string `json:"shortDescription"`
 
-	OfflineMessagingAddress string `json:"offlineMessagingAddress"`
-
 	Nsfw      bool `json:"nsfw"`
 	Vendor    bool `json:"vendor"`
 	Moderator bool `json:"moderator"`

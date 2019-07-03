@@ -110,16 +110,20 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			return nil, err
 		}
 
+		bus := events.NewBus()
+		tracker := NewFollowerTracker(repo, bus, ipfsNode.PeerHost.Network())
+
 		node := &OpenBazaarNode{
-			ipfsNode:       ipfsNode,
-			repo:           repo,
-			networkService: service,
-			messenger:      messenger,
-			eventBus:       events.NewBus(),
-			banManager:     banManager,
-			ipnsQuorum:     1,
-			shutdown:       make(chan struct{}),
-			masterPrivKey:  masterPrivKey,
+			ipfsNode:        ipfsNode,
+			repo:            repo,
+			networkService:  service,
+			messenger:       messenger,
+			eventBus:        bus,
+			banManager:      banManager,
+			ipnsQuorum:      1,
+			shutdown:        make(chan struct{}),
+			masterPrivKey:   masterPrivKey,
+			followerTracker: tracker,
 		}
 
 		node.registerHandlers()

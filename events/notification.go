@@ -167,14 +167,14 @@ func (n *DisputeAcceptedNotification) Type() string { return "DisputeAcceptedNot
 
 type FollowNotification struct {
 	ID     string `json:"notificationId"`
-	PeerId string `json:"peerId"`
+	PeerID string `json:"peerID"`
 }
 
 func (n *FollowNotification) Type() string { return "FollowNotification" }
 
 type UnfollowNotification struct {
 	ID     string `json:"notificationId"`
-	PeerId string `json:"peerId"`
+	PeerID string `json:"peerID"`
 }
 
 func (n *UnfollowNotification) Type() string { return "UnfollowNotification" }

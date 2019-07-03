@@ -29,22 +29,29 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 		return err
 	}
 
-	msg := newMessageWithID()
-	msg.MessageType = pb.Message_CHAT
-	msg.Payload = payload
-
-	chatModel, err := models.NewChatMessageFromProto(to, msg)
-	if err != nil {
-		return err
-	}
-	chatModel.Outgoing = true
-
-	log.Debugf("Sending CHAT message to %s. MessageID: %s", to, msg.MessageID)
 	return n.repo.DB().Update(func(tx *gorm.DB) error {
+		var prev models.ChatMessage
+		if err := tx.Order("timestamp desc").Where("peer_id = ? AND outgoing = ?", to.Pretty(), true).Last(&prev).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			return err
+		}
+
+		msg := newMessageWithID()
+		msg.MessageType = pb.Message_CHAT
+		msg.Payload = payload
+		msg.Sequence = uint32(prev.Sequence + 1)
+
+		chatModel, err := models.NewChatMessageFromProto(to, msg)
+		if err != nil {
+			return err
+		}
+		chatModel.Outgoing = true
+		chatModel.Sequence = prev.Sequence + 1
+
 		if err := tx.Save(chatModel).Error; err != nil {
 			return err
 		}
 
+		log.Debugf("Sending CHAT message to %s. MessageID: %s", to, msg.MessageID)
 		if err := n.messenger.ReliablySendMessage(tx, to, msg, done); err != nil {
 			return err
 		}

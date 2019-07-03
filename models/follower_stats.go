@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 // FollowerStat tracks the update of our followers. We use this
 // to make decisions about which followers to push our data to.

@@ -31,6 +31,16 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 			}
 		}
 
+		var seq models.FollowSequence
+		if err := tx.Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			return err
+		}
+		seq.Num++
+		seq.PeerID = peerID.Pretty()
+		if err := tx.Save(&seq).Error; err != nil {
+			return err
+		}
+
 		following = append(following, peerID.Pretty())
 
 		if err := n.repo.PublicData().SetFollowing(following); err != nil {
@@ -43,6 +53,7 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 
 		msg := newMessageWithID()
 		msg.MessageType = pb.Message_FOLLOW
+		msg.Sequence = uint32(seq.Num)
 
 		log.Debugf("Sending FOLLOW message to %s. MessageID: %s", peerID, msg.MessageID)
 		if err := n.messenger.ReliablySendMessage(tx, peerID, msg, done); err != nil {
@@ -75,6 +86,16 @@ func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) erro
 			return errors.New("not following peer")
 		}
 
+		var seq models.FollowSequence
+		if err := tx.Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			return err
+		}
+		seq.PeerID = peerID.Pretty()
+		seq.Num++
+		if err := tx.Save(&seq).Error; err != nil {
+			return err
+		}
+
 		if err := n.repo.PublicData().SetFollowing(following); err != nil {
 			return err
 		}
@@ -85,6 +106,7 @@ func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) erro
 
 		msg := newMessageWithID()
 		msg.MessageType = pb.Message_UNFOLLOW
+		msg.Sequence = uint32(seq.Num)
 
 		log.Debugf("Sending UNFOLLOW message to %s. MessageID: %s", peerID, msg.MessageID)
 		if err := n.messenger.ReliablySendMessage(tx, peerID, msg, done); err != nil {
@@ -179,7 +201,7 @@ func (n *OpenBazaarNode) handleFollowMessage(from peer.ID, message *pb.Message) 
 		return err
 	}
 	n.eventBus.Emit(&events.FollowNotification{
-		PeerId: from.Pretty(),
+		PeerID: from.Pretty(),
 		ID:     message.MessageID,
 	})
 	return nil
@@ -216,7 +238,7 @@ func (n *OpenBazaarNode) handleUnFollowMessage(from peer.ID, message *pb.Message
 		return err
 	}
 	n.eventBus.Emit(&events.UnfollowNotification{
-		PeerId: from.Pretty(),
+		PeerID: from.Pretty(),
 		ID:     message.MessageID,
 	})
 	return nil

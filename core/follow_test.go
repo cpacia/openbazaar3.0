@@ -3,6 +3,7 @@ package core
 import (
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"testing"
 )
@@ -174,8 +175,8 @@ func Test_handleFollowAndUnfollow(t *testing.T) {
 		t.Fatalf("Event type assertion failed")
 	}
 
-	if notif.PeerId != mocknet.Nodes()[0].Identity().Pretty() {
-		t.Errorf("Received incorrect peer ID in follow notification. Expected %s, got %s", mocknet.Nodes()[0].Identity().Pretty(), notif.PeerId)
+	if notif.PeerID != mocknet.Nodes()[0].Identity().Pretty() {
+		t.Errorf("Received incorrect peer ID in follow notification. Expected %s, got %s", mocknet.Nodes()[0].Identity().Pretty(), notif.PeerID)
 	}
 
 	followers, err := mocknet.Nodes()[1].GetMyFollowers()
@@ -208,8 +209,8 @@ func Test_handleFollowAndUnfollow(t *testing.T) {
 		t.Fatalf("Event type assertion failed")
 	}
 
-	if notif2.PeerId != mocknet.Nodes()[0].Identity().Pretty() {
-		t.Errorf("Received incorrect peer ID in unfollow notification. Expected %s, got %s", mocknet.Nodes()[0].Identity().Pretty(), notif2.PeerId)
+	if notif2.PeerID != mocknet.Nodes()[0].Identity().Pretty() {
+		t.Errorf("Received incorrect peer ID in unfollow notification. Expected %s, got %s", mocknet.Nodes()[0].Identity().Pretty(), notif2.PeerID)
 	}
 
 	followers, err = mocknet.Nodes()[1].GetMyFollowers()
@@ -220,4 +221,59 @@ func Test_handleFollowAndUnfollow(t *testing.T) {
 	if followers.Count() != 0 {
 		t.Fatalf("Incorrect number of followers returned. Expected %d, got %d", 0, followers.Count())
 	}
+}
+
+func TestOpenBazaarNode_FollowSequence(t *testing.T) {
+	node, err := MockNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer node.repo.DestroyRepo()
+
+	p, err := peer.IDB58Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := node.SetProfile(&models.Profile{Name: "Ron Paul"}, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan struct{})
+	if err := node.FollowNode(p, done); err != nil {
+		t.Fatal(err)
+	}
+
+	<-done
+
+	var seq models.FollowSequence
+	err = node.repo.DB().View(func(tx *gorm.DB) error {
+		return tx.Where("peer_id = ?", p.Pretty()).First(&seq).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if seq.Num != 1 {
+		t.Errorf("Expected follow sequence number of 1, got %d", seq.Num)
+	}
+
+	done = make(chan struct{})
+	if err := node.UnfollowNode(p, done); err != nil {
+		t.Fatal(err)
+	}
+
+	<-done
+
+	err = node.repo.DB().View(func(tx *gorm.DB) error {
+		return tx.Where("peer_id = ?", p.Pretty()).First(&seq).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if seq.Num != 2 {
+		t.Errorf("Expected follow sequence number of 2, got %d", seq.Num)
+	}
+
 }
