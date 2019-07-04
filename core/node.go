@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"github.com/OpenBazaar/multiwallet"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
@@ -55,6 +56,12 @@ type OpenBazaarNode struct {
 	// followers so that we can use them to push data for redundancy.
 	followerTracker *FollowerTracker
 
+	// multiwallet is a map of cyptocurrency wallets.
+	multiwallet multiwallet.MultiWallet
+
+	// testnet is whether the this node is configured to use the test network.
+	testnet bool
+
 	// shutdown is closed when the node is stopped. Any listening
 	// goroutines can use this to terminate.
 	shutdown chan struct{}
@@ -84,6 +91,12 @@ func (n *OpenBazaarNode) Stop() {
 	n.repo.Close()
 	n.networkService.Close()
 	n.messenger.Stop()
+}
+
+// UsingTestnet returns whether or not this node is running on
+// the test network.
+func (n *OpenBazaarNode) UsingTestnet() bool {
+	return n.testnet
 }
 
 // DestroyNode shutsdown the node and deletes the entire data directory.

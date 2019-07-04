@@ -1,0 +1,131 @@
+syntax = "proto3";
+option go_package = "pb";
+
+import "countrycodes.proto";
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+message Listing {
+    string slug                             = 1;
+    ID vendorID                             = 2;
+    Metadata metadata                       = 3;
+    Item item                               = 4;
+    repeated ShippingOption shippingOptions = 5;
+    repeated Tax taxes                      = 6;
+    repeated Coupon coupons                 = 7;
+    repeated string moderators              = 8;
+    string termsAndConditions               = 9;
+    string refundPolicy                     = 10;
+
+    message Metadata {
+        uint32 version                     = 1;
+        ContractType contractType          = 2;
+        Format format                      = 3;
+        google.protobuf.Timestamp expiry   = 4;
+        repeated string acceptedCurrencies = 5;
+        string language                    = 6;
+        uint32 escrowTimeoutHours          = 7;
+        float priceModifier                = 8;
+        Currency pricingCurrency           = 9;
+
+        enum ContractType {
+            PHYSICAL_GOOD  = 0;
+            DIGITAL_GOOD   = 1;
+            SERVICE        = 2;
+            CROWD_FUND     = 3;
+            CRYPTOCURRENCY = 4;
+        }
+
+        enum Format {
+            FIXED_PRICE  = 0;
+            MARKET_PRICE = 2;
+        }
+    }
+
+    message Item {
+        string title               = 1;
+        string description         = 2;
+        string processingTime      = 3;
+        bool nsfw                  = 4;
+        repeated string tags       = 5;
+        repeated Image images      = 6;
+        repeated string categories = 7;
+        float grams                = 8;
+        string condition           = 9;
+        repeated Option options    = 10;
+        repeated Sku skus          = 11;
+        string price               = 12;
+
+        message Option {
+            string name                = 1;
+            string description         = 2;
+            repeated Variant variants  = 3;
+
+            message Variant {
+                string name = 1;
+                Image image = 2;
+            }
+        }
+
+        message Sku {
+            string option    = 1;
+            string variant   = 2;
+            string productID = 3;
+            int64 quantity   = 4;
+            string surcharge = 5;
+        }
+
+        message Image {
+            string filename = 1;
+            string original = 2;
+            string large    = 3;
+            string medium   = 4;
+            string small    = 5;
+            string tiny     = 6;
+        }
+    }
+
+    message ShippingOption {
+        string name                  = 1;
+        ShippingType type            = 2;
+        repeated CountryCode regions = 3;
+        repeated Service services    = 4;
+
+        enum ShippingType {
+            LOCAL_PICKUP = 0;
+            FIXED_PRICE  = 1;
+        }
+
+        message Service {
+            string name                = 1;
+            string estimatedDelivery   = 2;
+            string price               = 3;
+            string additionalItemPrice = 4;
+        }
+    }
+
+    message Tax {
+        string taxType                  = 1;
+        repeated CountryCode taxRegions = 2;
+        bool taxShipping                = 3;
+        float percentage                = 4;
+    }
+
+    message Coupon {
+        string title = 1;
+        oneof code {
+            string hash         = 2;
+            string discountCode = 3;
+        }
+        oneof discount {
+            float percentDiscount = 4;
+            string priceDiscount  = 5;
+        }
+    }
+}
+
+message SignedListing {
+    Listing listing     = 1;
+    string cid          = 2;
+    bytes signature     = 3;
+}

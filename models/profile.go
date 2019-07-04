@@ -2,9 +2,11 @@ package models
 
 import "time"
 
+// Profile is a user profile that is saved in the public data directory.
 type Profile struct {
 	PeerID           string `json:"peerID"`
 	Name             string `json:"name"`
+	Handle           string `json:"handle"`
 	Location         string `json:"location"`
 	About            string `json:"about"`
 	ShortDescription string `json:"shortDescription"`
@@ -28,6 +30,7 @@ type Profile struct {
 	LastModified time.Time `json:"lastModified"`
 }
 
+// ProfileContactInfo is the user contact info.
 type ProfileContactInfo struct {
 	Website     string          `json:"website"`
 	Email       string          `json:"email"`
@@ -35,12 +38,18 @@ type ProfileContactInfo struct {
 	Social      []SocialAccount `json:"social"`
 }
 
+// SocialAccount allows the user to list their social media accounts.
+// The proof field should be a URL to a tweet or post saying something
+// like: "My OpenBazaar ID is xxxxx".
+// The proof is not automatically validated. The user will have to
+// manually click the links.
 type SocialAccount struct {
 	Type     string `json:"type"`
 	Username string `json:"username"`
 	Proof    string `json:"proof"`
 }
 
+// ProfileColors allows the user to set their profile colors.
 type ProfileColors struct {
 	Primary       string `json:"primary"`
 	Secondary     string `json:"secondary"`
@@ -49,6 +58,8 @@ type ProfileColors struct {
 	HighlightText string `json:"highlightText"`
 }
 
+// ProfileStats holds stats about the user. This should
+// not be user editable.
 type ProfileStats struct {
 	FollowerCount  uint32  `json:"followerCount"`
 	FollowingCount uint32  `json:"followingCount"`
@@ -58,6 +69,7 @@ type ProfileStats struct {
 	AverageRating  float32 `json:"averageRating"`
 }
 
+// ProfileImage holds image hashes.
 type ProfileImage struct {
 	Tiny     string `json:"tiny"`
 	Small    string `json:"small"`
@@ -66,6 +78,10 @@ type ProfileImage struct {
 	Original string `json:"original"`
 }
 
+// ModeratorInfo is set only if the user is a moderator.
+// It contains information about their moderation terms.
+// This is included in the profile so we don't need to
+// do a separate IPNS query to get the moderator info.
 type ModeratorInfo struct {
 	Description        string       `json:"description"`
 	TermsAndConditions string       `json:"termsAndConditions"`
@@ -74,6 +90,7 @@ type ModeratorInfo struct {
 	Fee                ModeratorFee `json:"fee"`
 }
 
+// ModeratorFeeType denotes the type of fee structure.
 type ModeratorFeeType uint8
 
 const (
@@ -82,6 +99,7 @@ const (
 	FixedPlusPercentageFee
 )
 
+// ModeratorFee holds the moderator fee information.
 type ModeratorFee struct {
 	FixedFee   *CurrencyValue   `json:"fixedFee"`
 	Percentage float64          `json:"percentage"`

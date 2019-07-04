@@ -240,7 +240,7 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		err := n.repo.DB().Update(func(tx *gorm.DB) error {
 			// Load the message with the provided ID
 			var chmsg models.ChatMessage
-			if err := tx.Where("message_id", chatMsg.ReadID).Find(&chmsg).Error; err != nil {
+			if err := tx.Where("message_id = ?", chatMsg.ReadID).Find(&chmsg).Error; err != nil {
 				return err
 			}
 

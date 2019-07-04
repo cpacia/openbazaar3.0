@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -101,9 +102,15 @@ func (n *OpenBazaarNode) updateProfileStats(profile *models.Profile) error {
 		return err
 	}
 
+	listings, err := n.repo.PublicData().GetListingIndex()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
 	profile.Stats = &models.ProfileStats{
 		FollowerCount:  uint32(followers.Count()),
 		FollowingCount: uint32(following.Count()),
+		ListingCount:   uint32(listings.Count()),
 	}
 
 	return nil
@@ -113,63 +120,69 @@ func (n *OpenBazaarNode) updateProfileStats(profile *models.Profile) error {
 // within the desired limits.
 func validateProfile(profile *models.Profile) error {
 	if len(profile.Name) == 0 {
-		return errors.New("profile name not set")
+		return ErrMissingField("name")
 	}
 	if len(profile.Name) > WordMaxCharacters {
-		return fmt.Errorf("name character length is greater than the max of %d", WordMaxCharacters)
+		return ErrTooManyCharacters{"name", strconv.Itoa(WordMaxCharacters)}
 	}
 	if len(profile.Location) > WordMaxCharacters {
-		return fmt.Errorf("location character length is greater than the max of %d", WordMaxCharacters)
+		return ErrTooManyCharacters{"location", strconv.Itoa(WordMaxCharacters)}
 	}
 	if len(profile.About) > AboutMaxCharacters {
-		return fmt.Errorf("about character length is greater than the max of %d", AboutMaxCharacters)
+		return ErrTooManyCharacters{"about", strconv.Itoa(AboutMaxCharacters)}
 	}
-	if len(profile.ShortDescription) > ShortDescriptionLength {
-		return fmt.Errorf("short description character length is greater than the max of %d", ShortDescriptionLength)
+	if len(profile.ShortDescription) > models.ShortDescriptionLength {
+		return ErrTooManyCharacters{"shortdescription", strconv.Itoa(models.ShortDescriptionLength)}
 	}
 	if profile.ContactInfo != nil {
 		if len(profile.ContactInfo.Website) > URLMaxCharacters {
-			return fmt.Errorf("website character length is greater than the max of %d", URLMaxCharacters)
+			return ErrTooManyCharacters{"contactinfo.website", strconv.Itoa(URLMaxCharacters)}
 		}
 		if len(profile.ContactInfo.Email) > SentenceMaxCharacters {
-			return fmt.Errorf("email character length is greater than the max of %d", SentenceMaxCharacters)
+			return ErrTooManyCharacters{"contactinfo.email", strconv.Itoa(SentenceMaxCharacters)}
 		}
 		if len(profile.ContactInfo.PhoneNumber) > WordMaxCharacters {
-			return fmt.Errorf("phone number character length is greater than the max of %d", WordMaxCharacters)
+			return ErrTooManyCharacters{"contactinfo.phonenumber", strconv.Itoa(SentenceMaxCharacters)}
 		}
 		if len(profile.ContactInfo.Social) > MaxListItems {
-			return fmt.Errorf("number of social accounts is greater than the max of %d", MaxListItems)
+			return ErrTooManyItems{"contactinfo.social", strconv.Itoa(MaxListItems)}
 		}
 		for _, s := range profile.ContactInfo.Social {
 			if len(s.Username) > WordMaxCharacters {
-				return fmt.Errorf("social username character length is greater than the max of %d", WordMaxCharacters)
+				return ErrTooManyCharacters{"contactinfo.social.username", strconv.Itoa(WordMaxCharacters)}
 			}
 			if len(s.Type) > WordMaxCharacters {
-				return fmt.Errorf("social account type character length is greater than the max of %d", WordMaxCharacters)
+				return ErrTooManyCharacters{"contactinfo.social.type", strconv.Itoa(WordMaxCharacters)}
 			}
 			if len(s.Proof) > URLMaxCharacters {
-				return fmt.Errorf("social proof character length is greater than the max of %d", WordMaxCharacters)
+				return ErrTooManyCharacters{"contactinfo.social.proof", strconv.Itoa(URLMaxCharacters)}
 			}
 		}
 	}
 	if profile.ModeratorInfo != nil {
 		if len(profile.ModeratorInfo.Description) > AboutMaxCharacters {
-			return fmt.Errorf("moderator description character length is greater than the max of %d", AboutMaxCharacters)
+			return ErrTooManyCharacters{"moderatorinfo.description", strconv.Itoa(AboutMaxCharacters)}
 		}
 		if len(profile.ModeratorInfo.TermsAndConditions) > PolicyMaxCharacters {
-			return fmt.Errorf("moderator terms and conditions character length is greater than the max of %d", PolicyMaxCharacters)
+			return ErrTooManyCharacters{"moderatorinfo.termsandconditions", strconv.Itoa(PolicyMaxCharacters)}
 		}
 		if len(profile.ModeratorInfo.Languages) > MaxListItems {
-			return fmt.Errorf("moderator number of languages greater than the max of %d", MaxListItems)
+			return ErrTooManyItems{"moderatorinfo.languages", strconv.Itoa(MaxListItems)}
 		}
 		for _, l := range profile.ModeratorInfo.Languages {
 			if len(l) > WordMaxCharacters {
-				return fmt.Errorf("moderator language character length is greater than the max of %d", WordMaxCharacters)
+				return ErrTooManyCharacters{"moderatorinfo.languages", strconv.Itoa(WordMaxCharacters)}
 			}
 		}
 		if profile.ModeratorInfo.Fee.FixedFee != nil {
-			if len(profile.ModeratorInfo.Fee.FixedFee.CurrencyCode) > WordMaxCharacters {
-				return fmt.Errorf("moderator fee currency code character length is greater than the max of %d", WordMaxCharacters)
+			if len(profile.ModeratorInfo.Fee.FixedFee.Currency.Name) > WordMaxCharacters {
+				return ErrTooManyCharacters{"moderatorinfo.fee.fixedfee.currency.name", strconv.Itoa(WordMaxCharacters)}
+			}
+			if len(string(profile.ModeratorInfo.Fee.FixedFee.Currency.CurrencyType)) > WordMaxCharacters {
+				return ErrTooManyCharacters{"moderatorinfo.fee.fixedfee.currency.currencytype", strconv.Itoa(WordMaxCharacters)}
+			}
+			if len(profile.ModeratorInfo.Fee.FixedFee.Currency.Code.String()) > WordMaxCharacters {
+				return ErrTooManyCharacters{"moderatorinfo.fee.fixedfee.currency.code", strconv.Itoa(WordMaxCharacters)}
 			}
 		}
 	}

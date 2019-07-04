@@ -3,7 +3,9 @@ package repo
 import (
 	"context"
 	"encoding/json"
+	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
@@ -29,6 +31,8 @@ const (
 	FollowersFile = "followers.json"
 	// FollowingFile is the filename of the following file on disk.
 	FollowingFile = "following.json"
+	// ListingIndexFile is the filename of the listing index file on disk.
+	ListingIndexFile = "listings.json"
 )
 
 // PublicData represents the IPFS root directory that holds the node's
@@ -56,6 +60,11 @@ func NewPublicData(rootDir string) (*PublicData, error) {
 	return pd, nil
 }
 
+// Path returns the path to the public directory.
+func (pd *PublicData) Path() string {
+	return pd.rootDir
+}
+
 // GetProfile loads the profile from disk and returns it.
 func (pd *PublicData) GetProfile() (*models.Profile, error) {
 	pd.mtx.RLock()
@@ -75,8 +84,8 @@ func (pd *PublicData) GetProfile() (*models.Profile, error) {
 
 // SetProfile saves the profile to disk.
 func (pd *PublicData) SetProfile(profile *models.Profile) error {
-	pd.mtx.RLock()
-	defer pd.mtx.RUnlock()
+	pd.mtx.Lock()
+	defer pd.mtx.Unlock()
 
 	out, err := json.MarshalIndent(profile, "", "    ")
 	if err != nil {
@@ -105,8 +114,8 @@ func (pd *PublicData) GetFollowers() (models.Followers, error) {
 
 // SetFollowers saves the followers list to disk.
 func (pd *PublicData) SetFollowers(followers models.Followers) error {
-	pd.mtx.RLock()
-	defer pd.mtx.RUnlock()
+	pd.mtx.Lock()
+	defer pd.mtx.Unlock()
 
 	out, err := json.MarshalIndent(followers, "", "    ")
 	if err != nil {
@@ -135,8 +144,8 @@ func (pd *PublicData) GetFollowing() (models.Following, error) {
 
 // SetFollowing saves the following list to disk.
 func (pd *PublicData) SetFollowing(following models.Following) error {
-	pd.mtx.RLock()
-	defer pd.mtx.RUnlock()
+	pd.mtx.Lock()
+	defer pd.mtx.Unlock()
 
 	out, err := json.MarshalIndent(following, "", "    ")
 	if err != nil {
@@ -144,6 +153,79 @@ func (pd *PublicData) SetFollowing(following models.Following) error {
 	}
 
 	return ioutil.WriteFile(path.Join(pd.rootDir, FollowingFile), out, os.ModePerm)
+}
+
+// GetListing loads the listing from disk and returns it.
+func (pd *PublicData) GetListing(slug string) (*pb.Listing, error) {
+	pd.mtx.RLock()
+	defer pd.mtx.RUnlock()
+
+	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, "listings", slug+".json"))
+	if err != nil {
+		return nil, err
+	}
+
+	var sl pb.SignedListing
+	err = jsonpb.UnmarshalString(string(raw), &sl)
+	if err != nil {
+		return nil, err
+	}
+	return sl.Listing, nil
+}
+
+// SetListing saves the listing to disk.
+func (pd *PublicData) SetListing(listing *pb.SignedListing) error {
+	pd.mtx.Lock()
+	defer pd.mtx.Unlock()
+
+	m := jsonpb.Marshaler{
+		EmitDefaults: false,
+		Indent:       "    ",
+	}
+	out, err := m.MarshalToString(listing)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(path.Join(pd.rootDir, "listings", listing.Listing.Slug+".json"), []byte(out), os.ModePerm)
+}
+
+// DeleteListing deletes a listing from disk given the slug.
+func (pd *PublicData) DeleteListing(slug string) error {
+	pd.mtx.Lock()
+	defer pd.mtx.Unlock()
+
+	return os.Remove(path.Join(pd.rootDir, "listings", slug+".json"))
+}
+
+// GetListingIndex loads the listing index from disk and returns it.
+func (pd *PublicData) GetListingIndex() (models.ListingIndex, error) {
+	pd.mtx.RLock()
+	defer pd.mtx.RUnlock()
+
+	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, ListingIndexFile))
+	if err != nil {
+		return nil, err
+	}
+	var index models.ListingIndex
+	err = json.Unmarshal(raw, &index)
+	if err != nil {
+		return nil, err
+	}
+	return index, nil
+}
+
+// SetListingIndex saves the listing index to disk.
+func (pd *PublicData) SetListingIndex(index models.ListingIndex) error {
+	pd.mtx.Lock()
+	defer pd.mtx.Unlock()
+
+	out, err := json.MarshalIndent(index, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(path.Join(pd.rootDir, ListingIndexFile), out, os.ModePerm)
 }
 
 // CurrentRoot returns the current root hash for this repo.

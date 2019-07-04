@@ -251,7 +251,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Short description at max len",
 			profile: &models.Profile{
 				Name:             "Ron Swanson",
-				ShortDescription: strings.Repeat("r", ShortDescriptionLength),
+				ShortDescription: strings.Repeat("r", models.ShortDescriptionLength),
 				PublicKey:        strings.Repeat("s", 66),
 			},
 			valid: true,
@@ -260,7 +260,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Short description > max len",
 			profile: &models.Profile{
 				Name:             "Ron Swanson",
-				ShortDescription: strings.Repeat("r", ShortDescriptionLength+1),
+				ShortDescription: strings.Repeat("r", models.ShortDescriptionLength+1),
 				PublicKey:        strings.Repeat("s", 66),
 			},
 			valid: false,
@@ -559,7 +559,11 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 				ModeratorInfo: &models.ModeratorInfo{
 					Fee: models.ModeratorFee{
 						FixedFee: &models.CurrencyValue{
-							CurrencyCode: strings.Repeat("s", WordMaxCharacters),
+							Currency: &models.Currency{
+								Name:         strings.Repeat("s", WordMaxCharacters),
+								Code:         models.CurrencyCode(strings.Repeat("s", WordMaxCharacters)),
+								CurrencyType: models.CurrencyType(strings.Repeat("s", WordMaxCharacters)),
+							},
 						},
 					},
 				},
@@ -574,7 +578,11 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 				ModeratorInfo: &models.ModeratorInfo{
 					Fee: models.ModeratorFee{
 						FixedFee: &models.CurrencyValue{
-							CurrencyCode: strings.Repeat("s", WordMaxCharacters+1),
+							Currency: &models.Currency{
+								Name:         strings.Repeat("s", WordMaxCharacters+1),
+								Code:         models.CurrencyCode(strings.Repeat("s", WordMaxCharacters+1)),
+								CurrencyType: models.CurrencyType(strings.Repeat("s", WordMaxCharacters+1)),
+							},
 						},
 					},
 				},

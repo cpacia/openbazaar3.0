@@ -7,12 +7,14 @@ import (
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core/coreapi"
+	"github.com/ipfs/go-ipfs/core/coreunix"
 	"github.com/ipfs/go-merkledag"
 	nameopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -56,6 +58,33 @@ func (n *OpenBazaarNode) cat(pth path.Path) ([]byte, error) {
 	}
 
 	return ioutil.ReadAll(r)
+}
+
+// add imports the given file into ipfs and returns the cid.
+func (n *OpenBazaarNode) add(filePath string) (cid.Cid, error) {
+	defer n.ipfsNode.Blockstore.PinLock().Unlock()
+
+	stat, err := os.Lstat(filePath)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	f, err := files.NewSerialFile(filePath, false, stat)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	defer f.Close()
+
+	fileAdder, err := coreunix.NewAdder(n.ipfsNode.Context(), n.ipfsNode.Pinning, n.ipfsNode.Blockstore, n.ipfsNode.DAG)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	node, err := fileAdder.AddAllAndPin(f)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return node.Cid(), nil
 }
 
 // pin fetches a file from IPFS given a path and pins it.

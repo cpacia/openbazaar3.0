@@ -129,6 +129,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		banManager:      bm,
 		eventBus:        bus,
 		followerTracker: tracker,
+		testnet:         cfg.Testnet,
 		shutdown:        make(chan struct{}),
 	}
 
