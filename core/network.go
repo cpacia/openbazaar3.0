@@ -55,9 +55,9 @@ func (n *OpenBazaarNode) handleStoreMessage(from peer.ID, message *pb.Message) e
 	}
 	var (
 		following models.Following
-		err error
+		err       error
 	)
-	err = n.repo.DB().View(func(tx database.Tx)error {
+	err = n.repo.DB().View(func(tx database.Tx) error {
 		following, err = tx.GetFollowing()
 		return err
 	})

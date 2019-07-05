@@ -23,42 +23,42 @@ const (
 	ListingIndexFile = "listings.json"
 )
 
-// PublicData represents the IPFS root directory that holds the node's
+// FlatFileDB represents the IPFS root directory that holds the node's
 // public data. This includes things like the profile and listings.
 // This object will maintain consistency by updating all pieces whenever
 // changes are made. For example, updating a listing will also update
 // the listing index.
-type PublicData struct {
+type FlatFileDB struct {
 	rootDir string
 
 	mtx sync.RWMutex
 }
 
-// NewPublicData returns a new public data directory. If one does not
+// NewFlatFileDB returns a new public data directory. If one does not
 // already exist at the given location, it will be initialized.
-func NewPublicData(rootDir string) (*PublicData, error) {
-	pd := &PublicData{rootDir, sync.RWMutex{}}
+func NewFlatFileDB(rootDir string) (*FlatFileDB, error) {
+	fdb := &FlatFileDB{rootDir, sync.RWMutex{}}
 
 	if _, err := os.Stat(rootDir); os.IsNotExist(err) {
-		if err := pd.initializeDirectory(); err != nil {
+		if err := fdb.initializeDirectory(); err != nil {
 			return nil, err
 		}
 	}
 
-	return pd, nil
+	return fdb, nil
 }
 
 // Path returns the path to the public directory.
-func (pd *PublicData) Path() string {
-	return pd.rootDir
+func (fdb *FlatFileDB) Path() string {
+	return fdb.rootDir
 }
 
 // GetProfile loads the profile from disk and returns it.
-func (pd *PublicData) GetProfile() (*models.Profile, error) {
-	pd.mtx.RLock()
-	defer pd.mtx.RUnlock()
+func (fdb *FlatFileDB) GetProfile() (*models.Profile, error) {
+	fdb.mtx.RLock()
+	defer fdb.mtx.RUnlock()
 
-	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, ProfileFile))
+	raw, err := ioutil.ReadFile(path.Join(fdb.rootDir, ProfileFile))
 	if err != nil {
 		return nil, err
 	}
@@ -71,24 +71,24 @@ func (pd *PublicData) GetProfile() (*models.Profile, error) {
 }
 
 // SetProfile saves the profile to disk.
-func (pd *PublicData) SetProfile(profile *models.Profile) error {
-	pd.mtx.Lock()
-	defer pd.mtx.Unlock()
+func (fdb *FlatFileDB) SetProfile(profile *models.Profile) error {
+	fdb.mtx.Lock()
+	defer fdb.mtx.Unlock()
 
 	out, err := json.MarshalIndent(profile, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(pd.rootDir, ProfileFile), out, os.ModePerm)
+	return ioutil.WriteFile(path.Join(fdb.rootDir, ProfileFile), out, os.ModePerm)
 }
 
 // GetFollowers loads the follower list from disk and returns it.
-func (pd *PublicData) GetFollowers() (models.Followers, error) {
-	pd.mtx.RLock()
-	defer pd.mtx.RUnlock()
+func (fdb *FlatFileDB) GetFollowers() (models.Followers, error) {
+	fdb.mtx.RLock()
+	defer fdb.mtx.RUnlock()
 
-	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, FollowersFile))
+	raw, err := ioutil.ReadFile(path.Join(fdb.rootDir, FollowersFile))
 	if err != nil {
 		return nil, err
 	}
@@ -101,24 +101,24 @@ func (pd *PublicData) GetFollowers() (models.Followers, error) {
 }
 
 // SetFollowers saves the followers list to disk.
-func (pd *PublicData) SetFollowers(followers models.Followers) error {
-	pd.mtx.Lock()
-	defer pd.mtx.Unlock()
+func (fdb *FlatFileDB) SetFollowers(followers models.Followers) error {
+	fdb.mtx.Lock()
+	defer fdb.mtx.Unlock()
 
 	out, err := json.MarshalIndent(followers, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(pd.rootDir, FollowersFile), out, os.ModePerm)
+	return ioutil.WriteFile(path.Join(fdb.rootDir, FollowersFile), out, os.ModePerm)
 }
 
 // GetFollowing loads the following list from disk and returns it.
-func (pd *PublicData) GetFollowing() (models.Following, error) {
-	pd.mtx.RLock()
-	defer pd.mtx.RUnlock()
+func (fdb *FlatFileDB) GetFollowing() (models.Following, error) {
+	fdb.mtx.RLock()
+	defer fdb.mtx.RUnlock()
 
-	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, FollowingFile))
+	raw, err := ioutil.ReadFile(path.Join(fdb.rootDir, FollowingFile))
 	if err != nil {
 		return nil, err
 	}
@@ -131,24 +131,24 @@ func (pd *PublicData) GetFollowing() (models.Following, error) {
 }
 
 // SetFollowing saves the following list to disk.
-func (pd *PublicData) SetFollowing(following models.Following) error {
-	pd.mtx.Lock()
-	defer pd.mtx.Unlock()
+func (fdb *FlatFileDB) SetFollowing(following models.Following) error {
+	fdb.mtx.Lock()
+	defer fdb.mtx.Unlock()
 
 	out, err := json.MarshalIndent(following, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(pd.rootDir, FollowingFile), out, os.ModePerm)
+	return ioutil.WriteFile(path.Join(fdb.rootDir, FollowingFile), out, os.ModePerm)
 }
 
 // GetListing loads the listing from disk and returns it.
-func (pd *PublicData) GetListing(slug string) (*pb.Listing, error) {
-	pd.mtx.RLock()
-	defer pd.mtx.RUnlock()
+func (fdb *FlatFileDB) GetListing(slug string) (*pb.Listing, error) {
+	fdb.mtx.RLock()
+	defer fdb.mtx.RUnlock()
 
-	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, "listings", slug+".json"))
+	raw, err := ioutil.ReadFile(path.Join(fdb.rootDir, "listings", slug+".json"))
 	if err != nil {
 		return nil, err
 	}
@@ -162,11 +162,11 @@ func (pd *PublicData) GetListing(slug string) (*pb.Listing, error) {
 }
 
 // getSignedListing loads the full signed listing from disk and returns it.
-func (pd *PublicData) getSignedListing(slug string) (*pb.SignedListing, error) {
-	pd.mtx.RLock()
-	defer pd.mtx.RUnlock()
+func (fdb *FlatFileDB) getSignedListing(slug string) (*pb.SignedListing, error) {
+	fdb.mtx.RLock()
+	defer fdb.mtx.RUnlock()
 
-	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, "listings", slug+".json"))
+	raw, err := ioutil.ReadFile(path.Join(fdb.rootDir, "listings", slug+".json"))
 	if err != nil {
 		return nil, err
 	}
@@ -180,9 +180,9 @@ func (pd *PublicData) getSignedListing(slug string) (*pb.SignedListing, error) {
 }
 
 // SetListing saves the listing to disk.
-func (pd *PublicData) SetListing(listing *pb.SignedListing) error {
-	pd.mtx.Lock()
-	defer pd.mtx.Unlock()
+func (fdb *FlatFileDB) SetListing(listing *pb.SignedListing) error {
+	fdb.mtx.Lock()
+	defer fdb.mtx.Unlock()
 
 	m := jsonpb.Marshaler{
 		EmitDefaults: false,
@@ -193,23 +193,23 @@ func (pd *PublicData) SetListing(listing *pb.SignedListing) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(pd.rootDir, "listings", listing.Listing.Slug+".json"), []byte(out), os.ModePerm)
+	return ioutil.WriteFile(path.Join(fdb.rootDir, "listings", listing.Listing.Slug+".json"), []byte(out), os.ModePerm)
 }
 
 // DeleteListing deletes a listing from disk given the slug.
-func (pd *PublicData) DeleteListing(slug string) error {
-	pd.mtx.Lock()
-	defer pd.mtx.Unlock()
+func (fdb *FlatFileDB) DeleteListing(slug string) error {
+	fdb.mtx.Lock()
+	defer fdb.mtx.Unlock()
 
-	return os.Remove(path.Join(pd.rootDir, "listings", slug+".json"))
+	return os.Remove(path.Join(fdb.rootDir, "listings", slug+".json"))
 }
 
 // GetListingIndex loads the listing index from disk and returns it.
-func (pd *PublicData) GetListingIndex() (models.ListingIndex, error) {
-	pd.mtx.RLock()
-	defer pd.mtx.RUnlock()
+func (fdb *FlatFileDB) GetListingIndex() (models.ListingIndex, error) {
+	fdb.mtx.RLock()
+	defer fdb.mtx.RUnlock()
 
-	raw, err := ioutil.ReadFile(path.Join(pd.rootDir, ListingIndexFile))
+	raw, err := ioutil.ReadFile(path.Join(fdb.rootDir, ListingIndexFile))
 	if err != nil {
 		return nil, err
 	}
@@ -222,39 +222,39 @@ func (pd *PublicData) GetListingIndex() (models.ListingIndex, error) {
 }
 
 // SetListingIndex saves the listing index to disk.
-func (pd *PublicData) SetListingIndex(index models.ListingIndex) error {
-	pd.mtx.Lock()
-	defer pd.mtx.Unlock()
+func (fdb *FlatFileDB) SetListingIndex(index models.ListingIndex) error {
+	fdb.mtx.Lock()
+	defer fdb.mtx.Unlock()
 
 	out, err := json.MarshalIndent(index, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(pd.rootDir, ListingIndexFile), out, os.ModePerm)
+	return ioutil.WriteFile(path.Join(fdb.rootDir, ListingIndexFile), out, os.ModePerm)
 }
 
 // dataPathJoin is a helper function which joins the pathArgs to the service's
 // dataPath and returns the result
-func (pd *PublicData) dataPathJoin(pathArgs ...string) string {
-	allPathArgs := append([]string{pd.rootDir}, pathArgs...)
+func (fdb *FlatFileDB) dataPathJoin(pathArgs ...string) string {
+	allPathArgs := append([]string{fdb.rootDir}, pathArgs...)
 	return filepath.Join(allPathArgs...)
 }
 
-func (pd *PublicData) initializeDirectory() error {
+func (fdb *FlatFileDB) initializeDirectory() error {
 	directories := []string{
-		pd.rootDir,
-		pd.dataPathJoin("listings"),
-		pd.dataPathJoin("ratings"),
-		pd.dataPathJoin("images"),
-		pd.dataPathJoin("images", "tiny"),
-		pd.dataPathJoin("images", "small"),
-		pd.dataPathJoin("images", "medium"),
-		pd.dataPathJoin("images", "large"),
-		pd.dataPathJoin("images", "original"),
-		pd.dataPathJoin("posts"),
-		pd.dataPathJoin("channel"),
-		pd.dataPathJoin("files"),
+		fdb.rootDir,
+		fdb.dataPathJoin("listings"),
+		fdb.dataPathJoin("ratings"),
+		fdb.dataPathJoin("images"),
+		fdb.dataPathJoin("images", "tiny"),
+		fdb.dataPathJoin("images", "small"),
+		fdb.dataPathJoin("images", "medium"),
+		fdb.dataPathJoin("images", "large"),
+		fdb.dataPathJoin("images", "original"),
+		fdb.dataPathJoin("posts"),
+		fdb.dataPathJoin("channel"),
+		fdb.dataPathJoin("files"),
 	}
 
 	for _, dir := range directories {

@@ -18,9 +18,9 @@ const (
 // FFSqliteDB is an implementation of the Database interface using
 // flat file store for the public data and a sqlite database.
 type FFSqliteDB struct {
-	db  *gorm.DB
-	pd  *PublicData
-	mtx sync.RWMutex
+	db   *gorm.DB
+	ffdb *FlatFileDB
+	mtx  sync.RWMutex
 }
 
 // NewFFSqliteDB instantiates a new db which satisfies the Database interface.
@@ -29,11 +29,11 @@ func NewFFSqliteDB(dataDir string) (database.Database, error) {
 	if err != nil {
 		return nil, err
 	}
-	pd, err := NewPublicData(path.Join(dataDir, "public"))
+	ffdb, err := NewFlatFileDB(path.Join(dataDir, "public"))
 	if err != nil {
 		return nil, err
 	}
-	return &FFSqliteDB{db: db, pd: pd, mtx: sync.RWMutex{}}, nil
+	return &FFSqliteDB{db: db, ffdb: ffdb, mtx: sync.RWMutex{}}, nil
 }
 
 // NewFFSqliteDB instantiates a new db which satisfies the Database interface.
@@ -43,11 +43,11 @@ func NewFFMemoryDB(dataDir string) (database.Database, error) {
 	if err != nil {
 		return nil, err
 	}
-	pd, err := NewPublicData(path.Join(dataDir, "public"))
+	ffdb, err := NewFlatFileDB(path.Join(dataDir, "public"))
 	if err != nil {
 		return nil, err
 	}
-	return &FFSqliteDB{db: db, pd: pd, mtx: sync.RWMutex{}}, nil
+	return &FFSqliteDB{db: db, ffdb: ffdb, mtx: sync.RWMutex{}}, nil
 }
 
 // View invokes the passed function in the context of a managed
@@ -60,7 +60,7 @@ func (fdb *FFSqliteDB) View(fn func(tx database.Tx) error) error {
 	fdb.mtx.RLock()
 	defer fdb.mtx.RUnlock()
 
-	tx := readTx(fdb.db, fdb.pd)
+	tx := readTx(fdb.db, fdb.ffdb)
 	if err := fn(tx); err != nil {
 		tx.Rollback()
 		return err
@@ -80,7 +80,7 @@ func (fdb *FFSqliteDB) Update(fn func(tx database.Tx) error) error {
 	fdb.mtx.Lock()
 	defer fdb.mtx.Unlock()
 
-	tx := writeTx(fdb.db, fdb.pd)
+	tx := writeTx(fdb.db, fdb.ffdb)
 	if err := fn(tx); err != nil {
 		tx.Rollback()
 		return err
@@ -90,7 +90,7 @@ func (fdb *FFSqliteDB) Update(fn func(tx database.Tx) error) error {
 
 // PublicDataPath returns the path to the public data directory.
 func (fdb *FFSqliteDB) PublicDataPath() string {
-	return fdb.pd.Path()
+	return fdb.ffdb.Path()
 }
 
 // Close cleanly shuts down the database and syncs all data.  It will
@@ -105,7 +105,7 @@ func (fdb *FFSqliteDB) Close() error {
 
 type tx struct {
 	dbtx *gorm.DB
-	pd   *PublicData
+	ffdb *FlatFileDB
 
 	rollbackCache []interface{}
 	commitCache   []interface{}
@@ -116,13 +116,13 @@ type tx struct {
 
 type deleteListing string
 
-func writeTx(db *gorm.DB, pd *PublicData) database.Tx {
+func writeTx(db *gorm.DB, ffdb *FlatFileDB) database.Tx {
 	dbtx := db.Begin()
-	return &tx{dbtx: dbtx, pd: pd, isForWrites: true}
+	return &tx{dbtx: dbtx, ffdb: ffdb, isForWrites: true}
 }
 
-func readTx(db *gorm.DB, pd *PublicData) database.Tx {
-	return &tx{dbtx: db, pd: pd, isForWrites: false}
+func readTx(db *gorm.DB, ffdb *FlatFileDB) database.Tx {
+	return &tx{dbtx: db, ffdb: ffdb, isForWrites: false}
 }
 
 func (t *tx) Commit() error {
@@ -178,17 +178,17 @@ func (t *tx) DB() *gorm.DB {
 }
 
 func (t *tx) GetProfile() (*models.Profile, error) {
-	for x := len(t.commitCache)-1; x>=0; x-- {
+	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		profile, ok := t.commitCache[x].(*models.Profile)
 		if ok {
 			return profile, nil
 		}
 	}
-	return t.pd.GetProfile()
+	return t.ffdb.GetProfile()
 }
 
 func (t *tx) SetProfile(profile *models.Profile) error {
-	current, err := t.pd.GetProfile()
+	current, err := t.ffdb.GetProfile()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -198,17 +198,17 @@ func (t *tx) SetProfile(profile *models.Profile) error {
 }
 
 func (t *tx) GetFollowers() (models.Followers, error) {
-	for x := len(t.commitCache)-1; x>=0; x-- {
+	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		followers, ok := t.commitCache[x].(models.Followers)
 		if ok {
 			return followers, nil
 		}
 	}
-	return t.pd.GetFollowers()
+	return t.ffdb.GetFollowers()
 }
 
 func (t *tx) SetFollowers(followers models.Followers) error {
-	current, err := t.pd.GetFollowers()
+	current, err := t.ffdb.GetFollowers()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -218,17 +218,17 @@ func (t *tx) SetFollowers(followers models.Followers) error {
 }
 
 func (t *tx) GetFollowing() (models.Following, error) {
-	for x := len(t.commitCache)-1; x>=0; x-- {
+	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		following, ok := t.commitCache[x].(models.Following)
 		if ok {
 			return following, nil
 		}
 	}
-	return t.pd.GetFollowing()
+	return t.ffdb.GetFollowing()
 }
 
 func (t *tx) SetFollowing(following models.Following) error {
-	current, err := t.pd.GetFollowing()
+	current, err := t.ffdb.GetFollowing()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -238,17 +238,17 @@ func (t *tx) SetFollowing(following models.Following) error {
 }
 
 func (t *tx) GetListing(slug string) (*pb.Listing, error) {
-	for x := len(t.commitCache)-1; x>=0; x-- {
+	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		listing, ok := t.commitCache[x].(*pb.SignedListing)
 		if ok && listing.Listing.Slug == slug {
 			return listing.Listing, nil
 		}
 	}
-	return t.pd.GetListing(slug)
+	return t.ffdb.GetListing(slug)
 }
 
 func (t *tx) SetListing(listing *pb.SignedListing) error {
-	current, err := t.pd.getSignedListing(listing.Listing.Slug)
+	current, err := t.ffdb.getSignedListing(listing.Listing.Slug)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -258,7 +258,7 @@ func (t *tx) SetListing(listing *pb.SignedListing) error {
 }
 
 func (t *tx) DeleteListing(slug string) error {
-	current, err := t.pd.getSignedListing(slug)
+	current, err := t.ffdb.getSignedListing(slug)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -268,17 +268,17 @@ func (t *tx) DeleteListing(slug string) error {
 }
 
 func (t *tx) GetListingIndex() (models.ListingIndex, error) {
-	for x := len(t.commitCache)-1; x>=0; x-- {
+	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		index, ok := t.commitCache[x].(models.ListingIndex)
 		if ok {
 			return index, nil
 		}
 	}
-	return t.pd.GetListingIndex()
+	return t.ffdb.GetListingIndex()
 }
 
 func (t *tx) SetListingIndex(index models.ListingIndex) error {
-	current, err := t.pd.GetListingIndex()
+	current, err := t.ffdb.GetListingIndex()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -290,27 +290,27 @@ func (t *tx) SetListingIndex(index models.ListingIndex) error {
 func (t *tx) setInterfaceType(i interface{}) error {
 	switch i.(type) {
 	case *models.Profile:
-		if err := t.pd.SetProfile(i.(*models.Profile)); err != nil {
+		if err := t.ffdb.SetProfile(i.(*models.Profile)); err != nil {
 			return err
 		}
 	case models.Followers:
-		if err := t.pd.SetFollowers(i.(models.Followers)); err != nil {
+		if err := t.ffdb.SetFollowers(i.(models.Followers)); err != nil {
 			return err
 		}
 	case models.Following:
-		if err := t.pd.SetFollowing(i.(models.Following)); err != nil {
+		if err := t.ffdb.SetFollowing(i.(models.Following)); err != nil {
 			return err
 		}
 	case *pb.SignedListing:
-		if err := t.pd.SetListing(i.(*pb.SignedListing)); err != nil {
+		if err := t.ffdb.SetListing(i.(*pb.SignedListing)); err != nil {
 			return err
 		}
 	case models.ListingIndex:
-		if err := t.pd.SetListingIndex(i.(models.ListingIndex)); err != nil {
+		if err := t.ffdb.SetListingIndex(i.(models.ListingIndex)); err != nil {
 			return err
 		}
 	case deleteListing:
-		if err := t.pd.DeleteListing(i.(string)); err != nil {
+		if err := t.ffdb.DeleteListing(i.(string)); err != nil {
 			return err
 		}
 	}

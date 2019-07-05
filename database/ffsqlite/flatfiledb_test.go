@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-func TestNewPublicData(t *testing.T) {
+func TestNewFlatFIleDB(t *testing.T) {
 	dir := path.Join(os.TempDir(), "openbazaar", "public_test")
-	_, err := NewPublicData(dir)
+	_, err := NewFlatFileDB(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,23 +36,23 @@ func TestNewPublicData(t *testing.T) {
 	}
 }
 
-func TestPublicData_Profile(t *testing.T) {
+func TestFlatFileDB_Profile(t *testing.T) {
 	dir := path.Join(os.TempDir(), "openbazaar", "profile_test")
-	pd, err := NewPublicData(dir)
+	fdb, err := NewFlatFileDB(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 
 	name := "Ron Swanson"
-	err = pd.SetProfile(&models.Profile{
+	err = fdb.SetProfile(&models.Profile{
 		Name: name,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	pro, err := pd.GetProfile()
+	pro, err := fdb.GetProfile()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,9 +62,9 @@ func TestPublicData_Profile(t *testing.T) {
 	}
 }
 
-func TestPublicData_Followers(t *testing.T) {
+func TestFlatFileDB_Followers(t *testing.T) {
 	dir := path.Join(os.TempDir(), "openbazaar", "followers_test")
-	pd, err := NewPublicData(dir)
+	fdb, err := NewFlatFileDB(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,12 +74,12 @@ func TestPublicData_Followers(t *testing.T) {
 		"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 		"Qmd9hFFuueFrSR7YwUuAfirXXJ7ANZAMc5sx4HFxn7mPkc",
 	}
-	err = pd.SetFollowers(l)
+	err = fdb.SetFollowers(l)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	followers, err := pd.GetFollowers()
+	followers, err := fdb.GetFollowers()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,9 +92,9 @@ func TestPublicData_Followers(t *testing.T) {
 	}
 }
 
-func TestPublicData_Following(t *testing.T) {
+func TestFlatFileDB_Following(t *testing.T) {
 	dir := path.Join(os.TempDir(), "openbazaar", "following_test")
-	pd, err := NewPublicData(dir)
+	fdb, err := NewFlatFileDB(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,12 +104,12 @@ func TestPublicData_Following(t *testing.T) {
 		"Qmd9hFFuueFrSR7YwUuAfirXXJ7ANZAMc5sx4HFxn7mPkc",
 		"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 	}
-	err = pd.SetFollowing(l)
+	err = fdb.SetFollowing(l)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	following, err := pd.GetFollowing()
+	following, err := fdb.GetFollowing()
 	if err != nil {
 		t.Fatal(err)
 	}

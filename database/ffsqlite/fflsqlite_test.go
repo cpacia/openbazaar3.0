@@ -34,7 +34,7 @@ func TestFFSqliteDB_UpdateAndView(t *testing.T) {
 	}
 
 	var messages []models.OutgoingMessage
-	err = db.View(func(tx database.Tx)error {
+	err = db.View(func(tx database.Tx) error {
 		if err := tx.DB().Find(&messages).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
@@ -61,7 +61,7 @@ func TestFFSqliteDB_UpdateAndView(t *testing.T) {
 	}
 
 	var messages2 []models.OutgoingMessage
-	err = db.View(func(tx database.Tx)error {
+	err = db.View(func(tx database.Tx) error {
 		if err := tx.DB().Find(&messages2).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}

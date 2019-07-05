@@ -37,7 +37,7 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 
 	// TODO: add accepted currencies if moderator
 
-	err = n.repo.DB().Update(func(tx database.Tx)error {
+	err = n.repo.DB().Update(func(tx database.Tx) error {
 		if err := n.updateProfileStats(tx, profile); err != nil {
 			return err
 		}
@@ -57,9 +57,9 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 func (n *OpenBazaarNode) GetMyProfile() (*models.Profile, error) {
 	var (
 		profile *models.Profile
-		err error
+		err     error
 	)
-	err = n.repo.DB().View(func(tx database.Tx)error {
+	err = n.repo.DB().View(func(tx database.Tx) error {
 		profile, err = tx.GetProfile()
 		return err
 	})

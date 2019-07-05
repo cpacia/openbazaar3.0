@@ -93,7 +93,7 @@ func Test_updateProfileStats(t *testing.T) {
 	defer node.DestroyNode()
 
 	var (
-		name = "Ron Paul"
+		name    = "Ron Paul"
 		profile = &models.Profile{Name: name}
 	)
 	err = node.repo.DB().Update(func(tx database.Tx) error {
@@ -137,7 +137,7 @@ func Test_updateAndSaveProfile(t *testing.T) {
 	defer node.DestroyNode()
 
 	var (
-		name = "Ron Paul"
+		name    = "Ron Paul"
 		profile = &models.Profile{Name: name}
 	)
 	if err := node.SetProfile(profile, nil); err != nil {

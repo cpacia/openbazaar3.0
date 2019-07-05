@@ -235,9 +235,9 @@ func (n *OpenBazaarNode) DeleteListing(slug string, done chan struct{}) error {
 func (n *OpenBazaarNode) GetMyListings() (models.ListingIndex, error) {
 	var (
 		index models.ListingIndex
-		err error
+		err   error
 	)
-	err = n.repo.DB().View(func(tx database.Tx)error {
+	err = n.repo.DB().View(func(tx database.Tx) error {
 		index, err = tx.GetListingIndex()
 		return err
 	})
@@ -267,9 +267,9 @@ func (n *OpenBazaarNode) GetListings(peerID peer.ID, useCache bool) (models.List
 func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.Listing, error) {
 	var (
 		listing *pb.Listing
-		err error
+		err     error
 	)
-	err = n.repo.DB().View(func(tx database.Tx)error {
+	err = n.repo.DB().View(func(tx database.Tx) error {
 		listing, err = tx.GetListing(slug)
 		return err
 	})
@@ -280,9 +280,9 @@ func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.Listing, error) {
 func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.Listing, error) {
 	var (
 		listing *pb.Listing
-		err error
+		err     error
 	)
-	err = n.repo.DB().View(func(tx database.Tx)error {
+	err = n.repo.DB().View(func(tx database.Tx) error {
 		index, err := tx.GetListingIndex()
 		if err != nil {
 			return err
