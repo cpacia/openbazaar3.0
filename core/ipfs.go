@@ -3,15 +3,18 @@ package core
 import (
 	"context"
 	"errors"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core/coreapi"
 	"github.com/ipfs/go-ipfs/core/coreunix"
+	"github.com/ipfs/go-ipfs/namesys"
+	ipnspb "github.com/ipfs/go-ipns/pb"
 	"github.com/ipfs/go-merkledag"
 	nameopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"io/ioutil"
 	"os"
@@ -125,7 +128,7 @@ func (n *OpenBazaarNode) pin(pth path.Path) error {
 func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 	if usecache {
 		var pth path.Path
-		err := n.repo.DB().View(func(tx *gorm.DB) error {
+		err := n.repo.DB().View(func(tx database.Tx) error {
 			var err error
 			pth, err = getFromDatastore(tx, p)
 			return err
@@ -138,7 +141,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 					return
 				}
 				if n.ipfsNode.Identity != p {
-					err = n.repo.DB().Update(func(tx *gorm.DB) error {
+					err = n.repo.DB().Update(func(tx database.Tx) error {
 						return putToDatastoreCache(tx, p, pth)
 					})
 					if err != nil {
@@ -154,7 +157,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 	if err != nil {
 		// Resolving fail. See if we have it in the db.
 		var pth path.Path
-		err := n.repo.DB().View(func(tx *gorm.DB) error {
+		err := n.repo.DB().View(func(tx database.Tx) error {
 			var err error
 			pth, err = getFromDatastore(tx, p)
 			return err
@@ -166,7 +169,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 	}
 	// Resolving succeeded. Update the cache.
 	if n.ipfsNode.Identity != p {
-		err = n.repo.DB().Update(func(tx *gorm.DB) error {
+		err = n.repo.DB().Update(func(tx database.Tx) error {
 			return putToDatastoreCache(tx, p, pth)
 		})
 		if err != nil {
@@ -199,13 +202,12 @@ func (n *OpenBazaarNode) resolveOnce(p peer.ID, timeout time.Duration, quorum ui
 	return path.New(pth.String()), nil
 }
 
-// fetchGraph returns a list of CIDs in the public directory.
+// fetchGraph returns a list of CIDs in the root directory.
 func (n *OpenBazaarNode) fetchGraph() ([]cid.Cid, error) {
-	id, err := n.repo.PublicData().CurrentRoot(n.ipfsNode)
+	id, err := n.ipnsRecordValue()
 	if err != nil {
 		return nil, err
 	}
-
 	dag := merkledag.NewDAGService(n.ipfsNode.Blocks)
 	var ret []cid.Cid
 	l := new(sync.Mutex)
@@ -237,23 +239,45 @@ func (n *OpenBazaarNode) fetchGraph() ([]cid.Cid, error) {
 	return ret, nil
 }
 
+// ipfsRecordValue returns the current value of our ipns record.
+func (n *OpenBazaarNode) ipnsRecordValue() (cid.Cid, error) {
+	ipnskey := namesys.IpnsDsKey(n.Identity())
+	ival, err := n.ipfsNode.Repo.Datastore().Get(ipnskey)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	ourIpnsRecord := new(ipnspb.IpnsEntry)
+	err = proto.Unmarshal(ival, ourIpnsRecord)
+	if err != nil {
+		// If this cannot be unmarhsaled due to an error we should
+		// delete the key so that it doesn't cause other processes to
+		// fail. The publisher will re-create a new one.
+		if err := n.ipfsNode.Repo.Datastore().Delete(ipnskey); err != nil {
+			log.Errorf("Error deleting bad ipns record: %s", err)
+		}
+		return cid.Cid{}, err
+	}
+	return cid.Decode(strings.TrimPrefix(string(ourIpnsRecord.Value), "/ipfs/"))
+}
+
 // getFromDatastore looks in two places in the database for a record. First is
 // under the /ipfs/<peerID> key which is sometimes used by the DHT. The value
 // returned by this location is a serialized protobuf record. The second is
 // under /ipfs/persistentcache/<peerID> which returns only the value (the path)
 // inside the protobuf record.
-func getFromDatastore(tx *gorm.DB, p peer.ID) (path.Path, error) {
+func getFromDatastore(tx database.Tx, p peer.ID) (path.Path, error) {
 	var entry models.CachedIPNSEntry
-	if err := tx.Where("peer_id = ?", p.String()).First(&entry).Error; err != nil {
+	if err := tx.DB().Where("peer_id = ?", p.String()).First(&entry).Error; err != nil {
 		return nil, err
 	}
 	return path.New(string("/ipfs/" + entry.CID)), nil
 }
 
-func putToDatastoreCache(tx *gorm.DB, p peer.ID, pth path.Path) error {
+func putToDatastoreCache(tx database.Tx, p peer.ID, pth path.Path) error {
 	entry := &models.CachedIPNSEntry{
 		PeerID: p.String(),
 		CID:    strings.TrimPrefix(pth.String(), "/ipfs/"),
 	}
-	return tx.Save(entry).Error
+	return tx.DB().Save(entry).Error
 }

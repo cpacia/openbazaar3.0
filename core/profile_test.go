@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"strings"
 	"testing"
@@ -91,17 +92,22 @@ func Test_updateProfileStats(t *testing.T) {
 
 	defer node.DestroyNode()
 
-	if err := node.repo.PublicData().SetFollowers(models.Followers{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
-		t.Fatal(err)
-	}
+	var (
+		name = "Ron Paul"
+		profile = &models.Profile{Name: name}
+	)
+	err = node.repo.DB().Update(func(tx database.Tx) error {
+		if err := tx.SetFollowers(models.Followers{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
+			return err
+		}
 
-	if err := node.repo.PublicData().SetFollowing(models.Following{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
-		t.Fatal(err)
-	}
+		if err := tx.SetFollowing(models.Following{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
+			return err
+		}
 
-	name := "Ron Paul"
-	profile := &models.Profile{Name: name}
-	if err := node.updateProfileStats(profile); err != nil {
+		return node.updateProfileStats(tx, profile)
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -130,24 +136,25 @@ func Test_updateAndSaveProfile(t *testing.T) {
 
 	defer node.DestroyNode()
 
-	if err := node.repo.PublicData().SetFollowers(models.Followers{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := node.repo.PublicData().SetFollowing(models.Following{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
-		t.Fatal(err)
-	}
-
-	name := "Ron Paul"
-	profile := &models.Profile{
-		Name:      name,
-		PublicKey: strings.Repeat("s", 66),
-	}
+	var (
+		name = "Ron Paul"
+		profile = &models.Profile{Name: name}
+	)
 	if err := node.SetProfile(profile, nil); err != nil {
 		t.Fatal(err)
 	}
+	err = node.repo.DB().Update(func(tx database.Tx) error {
+		if err := tx.SetFollowers(models.Followers{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
+			return err
+		}
 
-	if err := node.updateAndSaveProfile(); err != nil {
+		if err := tx.SetFollowing(models.Following{"QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"}); err != nil {
+			return err
+		}
+
+		return node.updateAndSaveProfile(tx)
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 

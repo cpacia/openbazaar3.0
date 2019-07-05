@@ -5,23 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/models"
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/namesys"
 	"github.com/ipfs/go-ipfs/plugin/loader"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
-	"github.com/jinzhu/gorm"
 	"github.com/op/go-logging"
 	"github.com/tyler-smith/go-bip39"
 	"io/ioutil"
 	"os"
 	"path"
 	"sync"
-)
-
-const (
-	dbName = "openbazaar.db"
 )
 
 var log = logging.MustGetLogger("REPO")
@@ -39,9 +36,8 @@ func init() {
 // - The OpenBazaar database
 // - A wallet directory which holds wallet plugin data
 type Repo struct {
-	db         *SqliteDB
-	publicData *PublicData
-	dataDir    string
+	db      database.Database
+	dataDir string
 }
 
 // NewRepo returns a new Repo for the given data directory. It will
@@ -57,13 +53,8 @@ func NewRepoWithCustomMnemonicSeed(dataDir, mnemonic string) (*Repo, error) {
 	return newRepo(dataDir, mnemonic, false)
 }
 
-// PublicData returns the public database associated with this repo.
-func (r *Repo) PublicData() *PublicData {
-	return r.publicData
-}
-
 // DB returns the database implementation.
-func (r *Repo) DB() Database {
+func (r *Repo) DB() database.Database {
 	return r.db
 }
 
@@ -84,12 +75,10 @@ func (r *Repo) DestroyRepo() error {
 }
 
 func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
-	pd, err := NewPublicData(path.Join(dataDir, "public"))
-	if err != nil {
-		return nil, err
-	}
-
-	var dbIdentity, dbSeed, dbMnemonic *models.Key
+	var (
+		dbIdentity, dbSeed, dbMnemonic *models.Key
+		err                            error
+	)
 	if !fsrepo.IsInitialized(dataDir) {
 		if err := checkWriteable(dataDir); err != nil {
 			return nil, err
@@ -135,28 +124,44 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 			return nil, err
 		}
 	}
-	dbPath := dataDir
+
+	var db database.Database
 	if inMemoryDB {
-		dbPath = ":memory:"
+		db, err = ffsqlite.NewFFMemoryDB(dataDir)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		db, err = ffsqlite.NewFFSqliteDB(dataDir)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	sdb, err := NewSqliteDB(dbPath)
+	if err := autoMigrateDatabase(db); err != nil {
+		return nil, err
+	}
+
+	err = db.Update(func(tx database.Tx) error {
+		if dbIdentity != nil {
+			if err := tx.DB().Create(&dbIdentity).Error; err != nil {
+				return err
+			}
+		}
+		if dbSeed != nil {
+			if err := tx.DB().Create(&dbSeed).Error; err != nil {
+				return err
+			}
+		}
+		if dbMnemonic != nil {
+			if err := tx.DB().Create(&dbMnemonic).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-
-	if err := autoMigrateDatabase(sdb.db); err != nil {
-		return nil, err
-	}
-
-	if dbIdentity != nil {
-		sdb.db.Create(&dbIdentity)
-	}
-	if dbSeed != nil {
-		sdb.db.Create(&dbSeed)
-	}
-	if dbMnemonic != nil {
-		sdb.db.Create(&dbMnemonic)
 	}
 
 	if err := CheckAndSetUlimit(); err != nil {
@@ -164,9 +169,8 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 	}
 
 	return &Repo{
-		publicData: pd,
-		dataDir:    dataDir,
-		db:         sdb,
+		dataDir: dataDir,
+		db:      db,
 	}, nil
 }
 
@@ -323,7 +327,7 @@ func cleanIdentityFromConfig(dataDir string) error {
 	return ioutil.WriteFile(configPath, out, os.ModePerm)
 }
 
-func autoMigrateDatabase(db *gorm.DB) error {
+func autoMigrateDatabase(db database.Database) error {
 	dbModels := []interface{}{
 		&models.Key{},
 		&models.CachedIPNSEntry{},
@@ -336,10 +340,12 @@ func autoMigrateDatabase(db *gorm.DB) error {
 		&models.Coupon{},
 	}
 
-	for _, m := range dbModels {
-		if err := db.AutoMigrate(m).Error; err != nil {
-			return err
+	return db.Update(func(tx database.Tx) error {
+		for _, m := range dbModels {
+			if err := tx.DB().AutoMigrate(m).Error; err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }

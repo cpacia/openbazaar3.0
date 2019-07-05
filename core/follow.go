@@ -3,11 +3,11 @@ package core
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
-	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -19,8 +19,8 @@ import (
 // remote peer. A publish is not done here if you want the data to show
 // on the network immediately you must manually trigger a publish.
 func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error {
-	return n.repo.DB().Update(func(tx *gorm.DB) error {
-		following, err := n.repo.PublicData().GetFollowing()
+	return n.repo.DB().Update(func(tx database.Tx) error {
+		following, err := tx.GetFollowing()
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -32,22 +32,22 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 		}
 
 		var seq models.FollowSequence
-		if err := tx.Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.DB().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 		seq.Num++
 		seq.PeerID = peerID.Pretty()
-		if err := tx.Save(&seq).Error; err != nil {
+		if err := tx.DB().Save(&seq).Error; err != nil {
 			return err
 		}
 
 		following = append(following, peerID.Pretty())
 
-		if err := n.repo.PublicData().SetFollowing(following); err != nil {
+		if err := tx.SetFollowing(following); err != nil {
 			return err
 		}
 
-		if err := n.updateAndSaveProfile(); err != nil {
+		if err := n.updateAndSaveProfile(tx); err != nil {
 			return err
 		}
 
@@ -68,8 +68,8 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 // remote peer. A publish is not done here if you want the data to show
 // on the network immediately you must manually trigger a publish.
 func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) error {
-	return n.repo.DB().Update(func(tx *gorm.DB) error {
-		following, err := n.repo.PublicData().GetFollowing()
+	return n.repo.DB().Update(func(tx database.Tx) error {
+		following, err := tx.GetFollowing()
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -87,20 +87,20 @@ func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) erro
 		}
 
 		var seq models.FollowSequence
-		if err := tx.Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.DB().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 		seq.PeerID = peerID.Pretty()
 		seq.Num++
-		if err := tx.Save(&seq).Error; err != nil {
+		if err := tx.DB().Save(&seq).Error; err != nil {
 			return err
 		}
 
-		if err := n.repo.PublicData().SetFollowing(following); err != nil {
+		if err := tx.SetFollowing(following); err != nil {
 			return err
 		}
 
-		if err := n.updateAndSaveProfile(); err != nil {
+		if err := n.updateAndSaveProfile(tx); err != nil {
 			return err
 		}
 
@@ -118,12 +118,34 @@ func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) erro
 
 // GetMyFollowers returns the followers list for this node.
 func (n *OpenBazaarNode) GetMyFollowers() (models.Followers, error) {
-	return n.repo.PublicData().GetFollowers()
+	var (
+		followers models.Followers
+		err       error
+	)
+	err = n.repo.DB().View(func(tx database.Tx) error {
+		followers, err = tx.GetFollowers()
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return followers, nil
 }
 
 // GetMyFollowing returns the following list for this node.
 func (n *OpenBazaarNode) GetMyFollowing() (models.Following, error) {
-	return n.repo.PublicData().GetFollowing()
+	var (
+		following models.Following
+		err       error
+	)
+	err = n.repo.DB().View(func(tx database.Tx) error {
+		following, err = tx.GetFollowing()
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return following, nil
 }
 
 // GetFollowers returns the followers of the node with the given peer ID.
@@ -134,7 +156,7 @@ func (n *OpenBazaarNode) GetFollowers(peerID peer.ID, useCache bool) (models.Fol
 	if err != nil {
 		return nil, err
 	}
-	followersBytes, err := n.cat(path.Join(pth, repo.FollowersFile))
+	followersBytes, err := n.cat(path.Join(pth, ffsqlite.FollowersFile))
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +180,7 @@ func (n *OpenBazaarNode) GetFollowing(peerID peer.ID, useCache bool) (models.Fol
 	if err != nil {
 		return nil, err
 	}
-	followersBytes, err := n.cat(path.Join(pth, repo.FollowingFile))
+	followersBytes, err := n.cat(path.Join(pth, ffsqlite.FollowingFile))
 	if err != nil {
 		return nil, err
 	}
@@ -182,24 +204,31 @@ func (n *OpenBazaarNode) handleFollowMessage(from peer.ID, message *pb.Message) 
 		return nil
 	}
 
-	log.Infof("Received FOLLOW message from %s", from)
+	var ErrAlreadyFollowing = errors.New("peer already following us")
 
-	followers, err := n.repo.PublicData().GetFollowers()
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	for _, follower := range followers {
-		if follower == from.Pretty() {
-			log.Debugf("Received FOLLOW message from peer %s which already follows us", from)
-			return nil
+	err := n.repo.DB().Update(func(tx database.Tx) error {
+		followers, err := tx.GetFollowers()
+		if err != nil && !os.IsNotExist(err) {
+			return err
 		}
-	}
-	followers = append(followers, from.Pretty())
 
-	if err := n.repo.PublicData().SetFollowers(followers); err != nil {
+		for _, follower := range followers {
+			if follower == from.Pretty() {
+				return ErrAlreadyFollowing
+			}
+		}
+		followers = append(followers, from.Pretty())
+
+		return tx.SetFollowers(followers)
+	})
+	if err != nil && err != ErrAlreadyFollowing {
 		return err
+	} else if err == ErrAlreadyFollowing {
+		log.Debugf("Received FOLLOW message from peer %s which already follows us", from)
+		return nil
 	}
+
+	log.Infof("Received FOLLOW message from %s", from)
 	n.eventBus.Emit(&events.FollowNotification{
 		PeerID: from.Pretty(),
 		ID:     message.MessageID,
@@ -217,26 +246,35 @@ func (n *OpenBazaarNode) handleUnFollowMessage(from peer.ID, message *pb.Message
 
 	log.Infof("Received UNFOLLOW message from %s", from)
 
-	followers, err := n.repo.PublicData().GetFollowers()
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
+	var ErrNotFollowing = errors.New("peer not following us")
 
-	exists := false
-	for i, pid := range followers {
-		if pid == from.Pretty() {
-			exists = true
-			followers = append(followers[:i], followers[i+1:]...)
-			break
+	err := n.repo.DB().Update(func(tx database.Tx) error {
+		followers, err := tx.GetFollowers()
+		if err != nil && !os.IsNotExist(err) {
+			return err
 		}
-	}
-	if !exists {
-		return fmt.Errorf("received UNFOLLOW message from peer %s that was not following us", from)
+
+		exists := false
+		for i, pid := range followers {
+			if pid == from.Pretty() {
+				exists = true
+				followers = append(followers[:i], followers[i+1:]...)
+				break
+			}
+		}
+		if !exists {
+			return ErrNotFollowing
+		}
+
+		return tx.SetFollowers(followers)
+	})
+	if err != nil && err != ErrNotFollowing {
+		return err
+	} else if err == ErrNotFollowing {
+		log.Debugf("Received UNFOLLOW message from peer %s that was not following us", from)
+		return nil
 	}
 
-	if err := n.repo.PublicData().SetFollowers(followers); err != nil {
-		return err
-	}
 	n.eventBus.Emit(&events.UnfollowNotification{
 		PeerID: from.Pretty(),
 		ID:     message.MessageID,

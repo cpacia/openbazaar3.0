@@ -4,12 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
-	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"sync"
 	"time"
@@ -27,14 +26,14 @@ const (
 // until the recipient receives it.
 type Messenger struct {
 	ns        *NetworkService
-	db        repo.Database
+	db        database.Database
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	mtx       sync.RWMutex
 }
 
 // NewMessenger returns a Messenger and starts the retry service.
-func NewMessenger(ns *NetworkService, db repo.Database) *Messenger {
+func NewMessenger(ns *NetworkService, db database.Database) *Messenger {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &Messenger{ns, db, ctx, cancel, sync.RWMutex{}}
 	return m
@@ -47,7 +46,7 @@ func (m *Messenger) Stop() {
 
 // ReliablySendMessage persists the message to the database before sending, then continually retries
 // the send until it finally goes through.
-func (m *Messenger) ReliablySendMessage(tx *gorm.DB, peer peer.ID, message *pb.Message, done chan<- struct{}) error {
+func (m *Messenger) ReliablySendMessage(tx database.Tx, peer peer.ID, message *pb.Message, done chan<- struct{}) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -59,7 +58,7 @@ func (m *Messenger) ReliablySendMessage(tx *gorm.DB, peer peer.ID, message *pb.M
 	// Before we do anything save the message to the database. This way
 	// we can retry sending the message until we know for sure that it
 	// has been delivered.
-	err = tx.Save(&models.OutgoingMessage{
+	err = tx.DB().Save(&models.OutgoingMessage{
 		ID:                message.MessageID,
 		Recipient:         peer.Pretty(),
 		SerializedMessage: ser,
@@ -78,12 +77,12 @@ func (m *Messenger) ReliablySendMessage(tx *gorm.DB, peer peer.ID, message *pb.M
 
 // ProcessACK deletes the message from the database after it has been
 // ACKed so we no longer try sending.
-func (m *Messenger) ProcessACK(tx *gorm.DB, ack *pb.AckMessage) error {
+func (m *Messenger) ProcessACK(tx database.Tx, ack *pb.AckMessage) error {
 	log.Debugf("Received ACK for message ID %s", ack.AckedMessageID)
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	return tx.Where("id = ?", ack.AckedMessageID).Delete(&models.OutgoingMessage{}).Error
+	return tx.DB().Where("id = ?", ack.AckedMessageID).Delete(&models.OutgoingMessage{}).Error
 }
 
 // SendACK sends an ACK for the message with the given ID to the provided
@@ -165,8 +164,8 @@ func (m *Messenger) trySendMessage(peer peer.ID, message *pb.Message, done chan<
 func (m *Messenger) retryAllMessages() {
 	m.mtx.RLock()
 	var messages []models.OutgoingMessage
-	err := m.db.View(func(tx *gorm.DB) error {
-		return tx.Find(&messages).Error
+	err := m.db.View(func(tx database.Tx) error {
+		return tx.DB().Find(&messages).Error
 	})
 	if err != nil {
 		log.Errorf("Error loading outgoing messages from the database: %s", err)
@@ -188,8 +187,8 @@ func (m *Messenger) retryAllMessages() {
 		}
 		go m.trySendMessage(pid, pmes, nil)
 
-		err = m.db.Update(func(tx *gorm.DB) error {
-			return tx.Model(&message).Update("last_attempt", time.Now()).Error
+		err = m.db.Update(func(tx database.Tx) error {
+			return tx.DB().Model(&message).Update("last_attempt", time.Now()).Error
 		})
 		if err != nil {
 			log.Error("Error updating last attempt for outgoing message: %s", err)

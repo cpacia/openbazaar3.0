@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
@@ -19,8 +20,8 @@ import (
 // check for duplicate messages later. Then it sends the ACK message to
 // the remote peer.
 func (n *OpenBazaarNode) sendAckMessage(messageID string, to peer.ID) {
-	err := n.repo.DB().Update(func(tx *gorm.DB) error {
-		return tx.Save(&models.IncomingMessage{ID: messageID}).Error
+	err := n.repo.DB().Update(func(tx database.Tx) error {
+		return tx.DB().Save(&models.IncomingMessage{ID: messageID}).Error
 	})
 	if err != nil {
 		log.Errorf("Error saving incoming message ID to database: %s", err)
@@ -38,7 +39,7 @@ func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) err
 	if err := ptypes.UnmarshalAny(message.Payload, ack); err != nil {
 		return err
 	}
-	err := n.repo.DB().Update(func(tx *gorm.DB) error {
+	err := n.repo.DB().Update(func(tx database.Tx) error {
 		return n.messenger.ProcessACK(tx, ack)
 	})
 	if err != nil {
@@ -52,7 +53,14 @@ func (n *OpenBazaarNode) handleStoreMessage(from peer.ID, message *pb.Message) e
 	if message.MessageType != pb.Message_STORE {
 		return errors.New("message is not type STORE")
 	}
-	following, err := n.repo.PublicData().GetFollowing()
+	var (
+		following models.Following
+		err error
+	)
+	err = n.repo.DB().View(func(tx database.Tx)error {
+		following, err = tx.GetFollowing()
+		return err
+	})
 	if err != nil {
 		return err
 	}
@@ -86,8 +94,8 @@ func (n *OpenBazaarNode) handleStoreMessage(from peer.ID, message *pb.Message) e
 
 // isDuplicate checks if the message ID exists in the incoming messages database.
 func (n *OpenBazaarNode) isDuplicate(message *pb.Message) bool {
-	err := n.repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Where("id = ?", message.MessageID).First(&models.IncomingMessage{}).Error
+	err := n.repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Where("id = ?", message.MessageID).First(&models.IncomingMessage{}).Error
 	})
 	return err == nil
 }
@@ -109,8 +117,8 @@ func (n *OpenBazaarNode) syncMessages() {
 				continue
 			}
 			var messages []models.OutgoingMessage
-			err = n.repo.DB().View(func(tx *gorm.DB) error {
-				return tx.Where("recipient = ?", notif.Peer.Pretty()).Find(&messages).Error
+			err = n.repo.DB().View(func(tx database.Tx) error {
+				return tx.DB().Where("recipient = ?", notif.Peer.Pretty()).Find(&messages).Error
 			})
 			if err != nil && !gorm.IsRecordNotFoundError(err) {
 				log.Error("syncMessages outgoing messages lookup error: %s", err)

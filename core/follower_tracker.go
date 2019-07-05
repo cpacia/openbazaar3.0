@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/repo"
@@ -67,7 +68,14 @@ func NewFollowerTracker(repo *repo.Repo, bus events.Bus, net inet.Network) *Foll
 // It also will receive notifications of connected and disconnected peers
 // and act on that information accordingly.
 func (t *FollowerTracker) Start() {
-	followers, err := t.repo.PublicData().GetFollowers()
+	var (
+		followers models.Followers
+		err       error
+	)
+	err = t.repo.DB().View(func(tx database.Tx) error {
+		followers, err = tx.GetFollowers()
+		return err
+	})
 	if err != nil && !os.IsNotExist(err) {
 		log.Error("Error loading followers: %s", err)
 	}
@@ -95,15 +103,15 @@ func (t *FollowerTracker) Close() {
 	for pid, connectedTime := range t.connected {
 		connectedDuration := time.Now().Sub(connectedTime)
 
-		err := t.repo.DB().Update(func(tx *gorm.DB) error {
+		err := t.repo.DB().Update(func(tx database.Tx) error {
 			var stat models.FollowerStat
-			if err := tx.Where("peer_id = ?", pid.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			if err := tx.DB().Where("peer_id = ?", pid.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 				return err
 			}
 			stat.PeerID = pid.Pretty()
 			stat.LastConnection = time.Now()
 			stat.ConnectedDuration += connectedDuration
-			return tx.Save(&stat).Error
+			return tx.DB().Save(&stat).Error
 		})
 		if err != nil {
 			log.Error(err)
@@ -180,15 +188,15 @@ func (t *FollowerTracker) listenEvents() {
 				}
 				connectedDuration := time.Now().Sub(connectedTime)
 
-				err := t.repo.DB().Update(func(tx *gorm.DB) error {
+				err := t.repo.DB().Update(func(tx database.Tx) error {
 					var stat models.FollowerStat
-					if err := tx.Where("peer_id = ?", notif.Peer.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+					if err := tx.DB().Where("peer_id = ?", notif.Peer.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 						return err
 					}
 					stat.PeerID = notif.Peer.Pretty()
 					stat.LastConnection = time.Now()
 					stat.ConnectedDuration += connectedDuration
-					return tx.Save(&stat).Error
+					return tx.DB().Save(&stat).Error
 				})
 				if err != nil {
 					log.Error(err)
@@ -263,8 +271,8 @@ func (t *FollowerTracker) tryConnectFollowers() {
 
 	// First try connecting to known good followers.
 	var stats []models.FollowerStat
-	err := t.repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Order("connected_duration asc").Order("last_connection asc").Find(&stats).Error
+	err := t.repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Order("connected_duration asc").Order("last_connection asc").Find(&stats).Error
 	})
 	if err != nil {
 		log.Error(err)
@@ -280,7 +288,14 @@ func (t *FollowerTracker) tryConnectFollowers() {
 	}
 
 	// Then move on to the rest of the followers.
-	followers, err := t.repo.PublicData().GetFollowers()
+	var followers models.Followers
+	err = t.repo.DB().View(func(tx database.Tx) error {
+		followers, err = tx.GetFollowers()
+		return err
+	})
+	if err != nil {
+		log.Error(err)
+	}
 	if err != nil && !os.IsNotExist(err) {
 		log.Error(err)
 	}

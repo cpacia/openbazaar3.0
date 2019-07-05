@@ -4,15 +4,15 @@ import (
 	"context"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
-	repo2 "github.com/cpacia/openbazaar3.0/repo"
+	repo "github.com/cpacia/openbazaar3.0/repo"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/bootstrap"
 	coremock "github.com/ipfs/go-ipfs/core/mock"
 	"github.com/ipfs/go-ipfs/namesys"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -22,7 +22,7 @@ import (
 // in-memory database, mock IPFS node, and mock network
 // service.
 func MockNode() (*OpenBazaarNode, error) {
-	repo, err := repo2.MockRepo()
+	r, err := repo.MockRepo()
 	if err != nil {
 		return nil, err
 	}
@@ -35,11 +35,11 @@ func MockNode() (*OpenBazaarNode, error) {
 	banManager := net.NewBanManager(nil)
 	service := net.NewNetworkService(ipfsNode.PeerHost, banManager, true)
 
-	messenger := net.NewMessenger(service, repo.DB())
+	messenger := net.NewMessenger(service, r.DB())
 
 	var dbSeed models.Key
-	err = repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Where("name = ?", "seed").First(&dbSeed).Error
+	err = r.DB().View(func(tx database.Tx) error {
+		return tx.DB().Where("name = ?", "seed").First(&dbSeed).Error
 	})
 
 	masterPrivKey, err := hdkeychain.NewMaster(dbSeed.Value, &chaincfg.MainNetParams)
@@ -48,11 +48,11 @@ func MockNode() (*OpenBazaarNode, error) {
 	}
 
 	bus := events.NewBus()
-	tracker := NewFollowerTracker(repo, bus, ipfsNode.PeerHost.Network())
+	tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost.Network())
 
 	node := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
-		repo:            repo,
+		repo:            r,
 		networkService:  service,
 		messenger:       messenger,
 		eventBus:        bus,
@@ -94,7 +94,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 
 		ipfsNode.Namesys = namesys.NewNameSystem(ipfsNode.Routing, ipfsNode.Repo.Datastore(), 0)
 
-		repo, err := repo2.MockRepo()
+		r, err := repo.MockRepo()
 		if err != nil {
 			return nil, err
 		}
@@ -102,11 +102,11 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		banManager := net.NewBanManager(nil)
 		service := net.NewNetworkService(ipfsNode.PeerHost, banManager, true)
 
-		messenger := net.NewMessenger(service, repo.DB())
+		messenger := net.NewMessenger(service, r.DB())
 
 		var dbSeed models.Key
-		err = repo.DB().View(func(tx *gorm.DB) error {
-			return tx.Where("name = ?", "seed").First(&dbSeed).Error
+		err = r.DB().View(func(tx database.Tx) error {
+			return tx.DB().Where("name = ?", "seed").First(&dbSeed).Error
 		})
 
 		masterPrivKey, err := hdkeychain.NewMaster(dbSeed.Value, &chaincfg.MainNetParams)
@@ -115,11 +115,11 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		}
 
 		bus := events.NewBus()
-		tracker := NewFollowerTracker(repo, bus, ipfsNode.PeerHost.Network())
+		tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost.Network())
 
 		node := &OpenBazaarNode{
 			ipfsNode:        ipfsNode,
-			repo:            repo,
+			repo:            r,
 			networkService:  service,
 			messenger:       messenger,
 			eventBus:        bus,

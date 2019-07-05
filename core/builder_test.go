@@ -2,11 +2,11 @@ package core
 
 import (
 	"context"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/repo"
 	bitswap "github.com/ipfs/go-bitswap/network"
-	"github.com/jinzhu/gorm"
 	"os"
 	"path"
 	"testing"
@@ -35,8 +35,8 @@ func TestNewNode(t *testing.T) {
 
 	// Load our identity key from the db and set it in the config.
 	var dbIdentityKey models.Key
-	err = node.repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Where("name = ?", "identity").First(&dbIdentityKey).Error
+	err = node.repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Where("name = ?", "identity").First(&dbIdentityKey).Error
 	})
 
 	id, err := repo.IdentityFromKey(dbIdentityKey.Value)

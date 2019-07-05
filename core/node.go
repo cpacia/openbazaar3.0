@@ -9,7 +9,12 @@ import (
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/golang/protobuf/ptypes"
+	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/ipfs/go-ipfs/core/coreapi"
+	fpath "github.com/ipfs/go-path"
+	"github.com/ipfs/interface-go-ipfs-core/options"
+	ipath "github.com/ipfs/interface-go-ipfs-core/path"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
 	"os/signal"
@@ -134,10 +139,58 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 				close(done)
 			}
 		}()
-		if err := n.repo.PublicData().Publish(ctx, n.ipfsNode); err != nil {
-			log.Errorf("Publish error: %s", err.Error())
+
+		api, err := coreapi.NewCoreAPI(n.ipfsNode)
+		if err != nil {
+			log.Errorf("Error building core API: %s", err.Error())
+			return
 		}
 
+		currentRoot, err := n.ipnsRecordValue()
+
+		// First uppin old root hash
+		if err == nil {
+			rp, err := api.ResolvePath(context.Background(), ipath.IpfsPath(currentRoot))
+			if err != nil {
+				log.Errorf("Error resolving path: %s", err.Error())
+				return
+			}
+
+			if err := api.Pin().Rm(context.Background(), rp, options.Pin.RmRecursive(true)); err != nil {
+				log.Errorf("Error unpinning root: %s", err.Error())
+				return
+			}
+		}
+
+		// Add the directory to IPFS
+		stat, err := os.Lstat(n.repo.DB().PublicDataPath())
+		if err != nil {
+			log.Errorf("Error calling Lstat: %s", err.Error())
+			return
+		}
+
+		f, err := files.NewSerialFile(n.repo.DB().PublicDataPath(), false, stat)
+		if err != nil {
+			log.Errorf("Error serializing file: %s", err.Error())
+			return
+		}
+
+		opts := []options.UnixfsAddOption{
+			options.Unixfs.Pin(true),
+		}
+		pth, err := api.Unixfs().Add(context.Background(), files.ToDir(f), opts...)
+		if err != nil {
+			log.Errorf("Error adding root: %s", err.Error())
+			return
+		}
+
+		// Publish
+		if err := n.ipfsNode.Namesys.Publish(ctx, n.ipfsNode.PrivateKey, fpath.FromString(pth.Root().String())); err != nil {
+			log.Errorf("Error namesys publish: %s", err.Error())
+			return
+		}
+
+		// Send the new graph to our connected followers.
 		graph, err := n.fetchGraph()
 		if err != nil {
 			log.Errorf("Error fetching graph: %s", err.Error())
@@ -158,7 +211,6 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 		msg := newMessageWithID()
 		msg.MessageType = pb.Message_STORE
 		msg.Payload = any
-
 		for _, peer := range n.followerTracker.ConnectedFollowers() {
 			go n.networkService.SendMessage(context.Background(), peer, msg)
 		}

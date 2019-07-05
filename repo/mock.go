@@ -1,24 +1,26 @@
 package repo
 
 import (
-	"github.com/jinzhu/gorm"
+	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"math/rand"
 	"os"
 	"path"
 	"strconv"
-	"sync"
 )
 
-// MockDB returns an in-memory sqlitdb.
-func MockDB() (Database, error) {
-	db, err := gorm.Open("sqlite3", ":memory:")
+// MockDB returns an in-memory sqlite db.
+func MockDB() (database.Database, error) {
+	n := rand.Intn(1000000)
+	dataDir := path.Join(os.TempDir(), "openbazaar-test", strconv.Itoa(n))
+	db, err := ffsqlite.NewFFMemoryDB(dataDir)
 	if err != nil {
 		return nil, err
 	}
 	if err := autoMigrateDatabase(db); err != nil {
 		return nil, err
 	}
-	return &SqliteDB{db, sync.RWMutex{}}, nil
+	return db, nil
 }
 
 // MockRepo returns a repo which uses a tmp data directory

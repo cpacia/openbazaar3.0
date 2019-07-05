@@ -2,12 +2,12 @@ package core
 
 import (
 	"context"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/jinzhu/gorm"
 	"testing"
 	"time"
 )
@@ -32,8 +32,8 @@ func Test_SendAndReceiveAcks(t *testing.T) {
 	<-sub.Out()
 
 	var chatMessages []models.ChatMessage
-	err = network.Nodes()[1].repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Model(&models.ChatMessage{}).Find(&chatMessages).Error
+	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Model(&models.ChatMessage{}).Find(&chatMessages).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -51,8 +51,8 @@ func Test_SendAndReceiveAcks(t *testing.T) {
 	network.Nodes()[1].sendAckMessage(chatMessages[0].MessageID, network.Nodes()[0].Identity())
 
 	var incomingMessages []models.IncomingMessage
-	err = network.Nodes()[1].repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Model(&models.IncomingMessage{}).Find(&incomingMessages).Error
+	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Model(&models.IncomingMessage{}).Find(&incomingMessages).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -124,13 +124,13 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 	m2.Payload = payload
 	m3.Payload = payload
 
-	err = mocknet.Nodes()[0].repo.DB().Update(func(tx *gorm.DB) error {
+	err = mocknet.Nodes()[0].repo.DB().Update(func(tx database.Tx) error {
 		ser, err := proto.Marshal(m1)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		err = tx.Save(&models.OutgoingMessage{
+		err = tx.DB().Save(&models.OutgoingMessage{
 			ID:                m1.MessageID,
 			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
 			SerializedMessage: ser,
@@ -146,7 +146,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 			return err
 		}
 
-		err = tx.Save(&models.OutgoingMessage{
+		err = tx.DB().Save(&models.OutgoingMessage{
 			ID:                m2.MessageID,
 			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
 			SerializedMessage: ser,
@@ -162,7 +162,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 			return err
 		}
 
-		err = tx.Save(&models.OutgoingMessage{
+		err = tx.DB().Save(&models.OutgoingMessage{
 			ID:                m3.MessageID,
 			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
 			SerializedMessage: ser,

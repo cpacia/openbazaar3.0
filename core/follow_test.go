@@ -1,9 +1,9 @@
 package core
 
 import (
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"testing"
 )
@@ -28,7 +28,6 @@ func TestOpenBazaarNode_Follow(t *testing.T) {
 	if err := node.FollowNode(p, done); err != nil {
 		t.Fatal(err)
 	}
-
 	<-done
 
 	following, err := node.GetMyFollowing()
@@ -129,7 +128,10 @@ func TestOpenBazaarNode_GetFollowers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mocknet.Nodes()[0].repo.PublicData().SetFollowers(models.Followers{p.String()}); err != nil {
+	err = mocknet.Nodes()[0].repo.DB().Update(func(tx database.Tx) error {
+		return tx.SetFollowers(models.Followers{p.String()})
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -247,8 +249,8 @@ func TestOpenBazaarNode_FollowSequence(t *testing.T) {
 	<-done
 
 	var seq models.FollowSequence
-	err = node.repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Where("peer_id = ?", p.Pretty()).First(&seq).Error
+	err = node.repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Where("peer_id = ?", p.Pretty()).First(&seq).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -265,8 +267,8 @@ func TestOpenBazaarNode_FollowSequence(t *testing.T) {
 
 	<-done
 
-	err = node.repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Where("peer_id = ?", p.Pretty()).First(&seq).Error
+	err = node.repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Where("peer_id = ?", p.Pretty()).First(&seq).Error
 	})
 	if err != nil {
 		t.Fatal(err)

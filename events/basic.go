@@ -76,6 +76,9 @@ var _ Subscription = (*sub)(nil)
 // Subscribe creates new subscription. Failing to drain the channel will cause
 // publishers to get blocked.
 func (b *basicBus) Subscribe(evtTypes interface{}, opts ...SubscriptionOpt) (_ Subscription, err error) {
+	b.lk.Lock()
+	defer b.lk.Unlock()
+
 	settings := subSettings(subSettingsDefault)
 	for _, opt := range opts {
 		if err := opt(&settings); err != nil {

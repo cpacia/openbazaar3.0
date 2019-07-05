@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/OpenBazaar/jsonpb"
+	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
-	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/golang/protobuf/proto"
 	"github.com/gosimple/slug"
 	"github.com/ipfs/go-cid"
@@ -32,7 +33,7 @@ import (
 // to make sure it conforms to the requirements, update the listing
 // index and update the listing count in the profile.
 func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) error {
-	return n.repo.DB().Update(func(tx *gorm.DB) error {
+	err := n.repo.DB().Update(func(tx database.Tx) error {
 		// Set the escrow timeout.
 		if n.UsingTestnet() {
 			// Testnet should be set to one hour unless otherwise
@@ -119,7 +120,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 		}
 
 		// Delete the coupons for this slug and resave them.
-		if err := tx.Where("slug = ?", listing.Slug).Delete(&models.Coupon{}).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.DB().Where("slug = ?", listing.Slug).Delete(&models.Coupon{}).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 		var couponsToStore []models.Coupon
@@ -141,7 +142,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 			couponsToStore = append(couponsToStore, coupon)
 		}
 		if len(couponsToStore) > 0 {
-			if err := tx.Save(&couponsToStore).Error; err != nil {
+			if err := tx.DB().Save(&couponsToStore).Error; err != nil {
 				return err
 			}
 		}
@@ -157,15 +158,13 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 			return err
 		}
 
-		// FIXME: the following is NOT rolled back on error
-
 		// Save listing
-		if err := n.repo.PublicData().SetListing(sl); err != nil {
+		if err := tx.SetListing(sl); err != nil {
 			return err
 		}
 
 		// Update listing index
-		cid, err := n.add(path.Join(n.repo.PublicData().Path(), "listings", listing.Slug+".json"))
+		cid, err := n.add(path.Join(n.repo.DB().PublicDataPath(), "listings", listing.Slug+".json"))
 		if err != nil {
 			return err
 		}
@@ -175,61 +174,74 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 			return err
 		}
 
-		index, err := n.repo.PublicData().GetListingIndex()
+		index, err := tx.GetListingIndex()
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
 		index.UpdateListing(*lmd)
 
-		if err := n.repo.PublicData().SetListingIndex(index); err != nil {
+		if err := tx.SetListingIndex(index); err != nil {
 			return err
 		}
 
 		// Update profile counts
-		if err := n.updateAndSaveProfile(); err != nil {
+		if err := n.updateAndSaveProfile(tx); err != nil {
 			return err
 		}
-		n.Publish(done)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	n.Publish(done)
+	return nil
 }
 
 // DeleteListing deletes the listing from disk, updates the listing index and
 // profile counts, and publishes.
 func (n *OpenBazaarNode) DeleteListing(slug string, done chan struct{}) error {
-	return n.repo.DB().Update(func(tx *gorm.DB) error {
+	err := n.repo.DB().Update(func(tx database.Tx) error {
 
-		if err := tx.Where("slug = ?", slug).Delete(&models.Coupon{}).Error; err != nil {
+		if err := tx.DB().Where("slug = ?", slug).Delete(&models.Coupon{}).Error; err != nil {
 			return err
 		}
 
-		// FIXME: the follow is NOT rolled back on error
-
-		index, err := n.repo.PublicData().GetListingIndex()
+		index, err := tx.GetListingIndex()
 		if err != nil {
 			return err
 		}
 		index.DeleteListing(slug)
-		if err := n.repo.PublicData().SetListingIndex(index); err != nil {
+		if err := tx.SetListingIndex(index); err != nil {
 			return err
 		}
 
-		if err := n.repo.PublicData().DeleteListing(slug); err != nil {
+		if err := tx.DeleteListing(slug); err != nil {
 			return err
 		}
 
-		if err := n.updateAndSaveProfile(); err != nil {
+		if err := n.updateAndSaveProfile(tx); err != nil {
 			return err
 		}
-
-		n.Publish(done)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	n.Publish(done)
+	return nil
 }
 
 // Returns the listing index file for this node.
 func (n *OpenBazaarNode) GetMyListings() (models.ListingIndex, error) {
-	return n.repo.PublicData().GetListingIndex()
+	var (
+		index models.ListingIndex
+		err error
+	)
+	err = n.repo.DB().View(func(tx database.Tx)error {
+		index, err = tx.GetListingIndex()
+		return err
+	})
+	return index, err
 }
 
 // GetListings returns the listing index for node with the given peer ID.
@@ -240,7 +252,7 @@ func (n *OpenBazaarNode) GetListings(peerID peer.ID, useCache bool) (models.List
 	if err != nil {
 		return nil, err
 	}
-	indexBytes, err := n.cat(ipath.Join(pth, repo.ListingIndexFile))
+	indexBytes, err := n.cat(ipath.Join(pth, ffsqlite.ListingIndexFile))
 	if err != nil {
 		return nil, err
 	}
@@ -253,20 +265,36 @@ func (n *OpenBazaarNode) GetListings(peerID peer.ID, useCache bool) (models.List
 
 // GetMyListingBySlug returns our own listing given the slug.
 func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.Listing, error) {
-	return n.repo.PublicData().GetListing(slug)
+	var (
+		listing *pb.Listing
+		err error
+	)
+	err = n.repo.DB().View(func(tx database.Tx)error {
+		listing, err = tx.GetListing(slug)
+		return err
+	})
+	return listing, err
 }
 
 // GetMyListingByCID returns our own listing given the cid.
 func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.Listing, error) {
-	index, err := n.repo.PublicData().GetListingIndex()
-	if err != nil {
-		return nil, err
-	}
-	slug, err := index.GetListingSlug(cid)
-	if err != nil {
-		return nil, err
-	}
-	return n.repo.PublicData().GetListing(slug)
+	var (
+		listing *pb.Listing
+		err error
+	)
+	err = n.repo.DB().View(func(tx database.Tx)error {
+		index, err := tx.GetListingIndex()
+		if err != nil {
+			return err
+		}
+		slug, err := index.GetListingSlug(cid)
+		if err != nil {
+			return err
+		}
+		listing, err = tx.GetListing(slug)
+		return err
+	})
+	return listing, err
 }
 
 // GetListingBySlug returns a listing for node with the given peer ID.

@@ -3,13 +3,14 @@ package core
 import (
 	"bytes"
 	"context"
+	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/repo"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core/coreapi"
 	fpath "github.com/ipfs/go-path"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"io/ioutil"
 	"os"
@@ -167,7 +168,7 @@ func Test_ipfsCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	pth := path.New("/ipfs/Qmd9hFFuueFrSR7YwUuAfirXXJ7ANZAMc5sx4HFxn7mPkc")
-	err = db.Update(func(tx *gorm.DB) error {
+	err = db.Update(func(tx database.Tx) error {
 		return putToDatastoreCache(tx, p, pth)
 	})
 	if err != nil {
@@ -175,7 +176,7 @@ func Test_ipfsCache(t *testing.T) {
 	}
 
 	var ret path.Path
-	err = db.View(func(tx *gorm.DB) error {
+	err = db.View(func(tx database.Tx) error {
 		ret, err = getFromDatastore(tx, p)
 		return err
 	})
@@ -196,16 +197,18 @@ func Test_ipfsFetchGraph(t *testing.T) {
 
 	defer mocknet.TearDown()
 
-	if err := mocknet.Nodes()[0].repo.PublicData().Publish(context.Background(), mocknet.Nodes()[0].ipfsNode); err != nil {
+	done := make(chan struct{})
+	if err := mocknet.Nodes()[0].SetProfile(&models.Profile{Name: "Ron Paul"}, done); err != nil {
 		t.Fatal(err)
 	}
+	<-done
 
 	graph, err := mocknet.Nodes()[0].fetchGraph()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(graph) != 3 {
-		t.Errorf("Expected %d elements in the graph. Got %d", 3, len(graph))
+	if len(graph) != 4 {
+		t.Errorf("Expected %d elements in the graph. Got %d", 4, len(graph))
 	}
 }

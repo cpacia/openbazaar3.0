@@ -1,9 +1,9 @@
 package core
 
 import (
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"testing"
 )
@@ -58,8 +58,8 @@ func TestFollowerTracker_ConnectDisconnect(t *testing.T) {
 	}
 
 	var stat models.FollowerStat
-	err = node.repo.DB().View(func(tx *gorm.DB) error {
-		return tx.First(&stat).Error
+	err = node.repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().First(&stat).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +87,10 @@ func TestFollowerTracker_ConnectToFollowers(t *testing.T) {
 		followers = append(followers, node.Identity().Pretty())
 	}
 
-	if err := mocknet.Nodes()[0].repo.PublicData().SetFollowers(followers); err != nil {
+	err = mocknet.Nodes()[0].repo.DB().Update(func(tx database.Tx) error {
+		return tx.SetFollowers(followers)
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 

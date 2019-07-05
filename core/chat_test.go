@@ -1,9 +1,9 @@
 package core
 
 import (
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"testing"
 )
@@ -32,8 +32,8 @@ func TestOpenBazaarNode_SendChatMessage(t *testing.T) {
 	<-done
 
 	var messages []models.ChatMessage
-	err = node.repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Find(&messages).Error
+	err = node.repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Find(&messages).Error
 	})
 
 	if err != nil {
@@ -177,14 +177,14 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 		chatMessage1 models.ChatMessage
 		chatMessage2 models.ChatMessage
 	)
-	err = network.Nodes()[0].repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Where("message_id = ?", notif2.MessageID).First(&chatMessage1).Error
+	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Where("message_id = ?", notif2.MessageID).First(&chatMessage1).Error
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = network.Nodes()[1].repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Where("message_id = ?", notif.MessageID).First(&chatMessage2).Error
+	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Where("message_id = ?", notif.MessageID).First(&chatMessage2).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -327,8 +327,8 @@ func TestOpenBazaarNode_ChatSequence(t *testing.T) {
 	<-done
 
 	var messages []models.ChatMessage
-	err = node.repo.DB().View(func(tx *gorm.DB) error {
-		return tx.Find(&messages).Error
+	err = node.repo.DB().View(func(tx database.Tx) error {
+		return tx.DB().Find(&messages).Error
 	})
 
 	if err != nil {

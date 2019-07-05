@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/models"
-	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -34,13 +35,18 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 		return err
 	}
 
-	if err := n.updateProfileStats(profile); err != nil {
-		return err
-	}
-
 	// TODO: add accepted currencies if moderator
 
-	if err := n.repo.PublicData().SetProfile(profile); err != nil {
+	err = n.repo.DB().Update(func(tx database.Tx)error {
+		if err := n.updateProfileStats(tx, profile); err != nil {
+			return err
+		}
+		if err := tx.SetProfile(profile); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 	n.Publish(done)
@@ -49,7 +55,15 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 
 // GetMyProfile returns the profile for this node.
 func (n *OpenBazaarNode) GetMyProfile() (*models.Profile, error) {
-	return n.repo.PublicData().GetProfile()
+	var (
+		profile *models.Profile
+		err error
+	)
+	err = n.repo.DB().View(func(tx database.Tx)error {
+		profile, err = tx.GetProfile()
+		return err
+	})
+	return profile, err
 }
 
 // GetProfile returns the profile of the node with the given peer ID.
@@ -60,7 +74,7 @@ func (n *OpenBazaarNode) GetProfile(peerID peer.ID, useCache bool) (*models.Prof
 	if err != nil {
 		return nil, err
 	}
-	profileBytes, err := n.cat(path.Join(pth, repo.ProfileFile))
+	profileBytes, err := n.cat(path.Join(pth, ffsqlite.ProfileFile))
 	if err != nil {
 		return nil, err
 	}
@@ -76,33 +90,33 @@ func (n *OpenBazaarNode) GetProfile(peerID peer.ID, useCache bool) (*models.Prof
 
 // updateAndSaveProfile loads the profile from disk, updates
 // the profile stats, then saves it back to disk.
-func (n *OpenBazaarNode) updateAndSaveProfile() error {
-	profile, err := n.GetMyProfile()
+func (n *OpenBazaarNode) updateAndSaveProfile(tx database.Tx) error {
+	profile, err := tx.GetProfile()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	if profile == nil {
 		return nil
 	}
-	if err := n.updateProfileStats(profile); err != nil {
+	if err := n.updateProfileStats(tx, profile); err != nil {
 		return err
 	}
-	return n.repo.PublicData().SetProfile(profile)
+	return tx.SetProfile(profile)
 }
 
 // updateProfileStats updates all stats on the passed in profile
-func (n *OpenBazaarNode) updateProfileStats(profile *models.Profile) error {
-	followers, err := n.repo.PublicData().GetFollowers()
+func (n *OpenBazaarNode) updateProfileStats(tx database.Tx, profile *models.Profile) error {
+	followers, err := tx.GetFollowers()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	following, err := n.repo.PublicData().GetFollowing()
+	following, err := tx.GetFollowing()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	listings, err := n.repo.PublicData().GetListingIndex()
+	listings, err := tx.GetListingIndex()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
