@@ -310,7 +310,7 @@ func (t *tx) setInterfaceType(i interface{}) error {
 			return err
 		}
 	case deleteListing:
-		if err := t.ffdb.DeleteListing(i.(string)); err != nil {
+		if err := t.ffdb.DeleteListing(string(i.(deleteListing))); err != nil {
 			return err
 		}
 	}
