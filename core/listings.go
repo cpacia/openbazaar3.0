@@ -550,25 +550,36 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	if len(sl.Listing.Item.Skus) > maxCombos {
 		return errors.New("more skus than variant combinations")
 	}
-	comboMap := make(map[string]struct{})
+	comboMap := make(map[string]bool)
 	for _, sku := range sl.Listing.Item.Skus {
-		if maxCombos > 1 && (sku.Option == "" || sku.Variant == "") {
+		if maxCombos > 1 && len(sku.Selections) == 0 {
 			return errors.New("skus must specify a variant combo when options are used")
 		}
 		if len(sku.ProductID) > WordMaxCharacters {
 			return ErrTooManyCharacters{"item.sku.productID", strconv.Itoa(WordMaxCharacters)}
 		}
-		if _, ok := comboMap[sku.Option+sku.Variant]; ok {
-			return errors.New("duplicate sku option/variant combo")
+		formatted, err := json.Marshal(sku.Selections)
+		if err != nil {
+			return err
 		}
-		variantMap, ok := optionMap[sku.Option]
+		_, ok := comboMap[string(formatted)]
 		if !ok {
-			return fmt.Errorf("sku includes option name that does not exist: %s", sku.Option)
+			comboMap[string(formatted)] = true
+		} else {
+			return errors.New("duplicate sku")
 		}
-		if _, ok := variantMap[sku.Variant]; !ok {
-			return fmt.Errorf("sku includes variant name that does not exist: %s", sku.Variant)
+		if len(sku.Selections) != len(sl.Listing.Item.Options) {
+			return errors.New("incorrect number of variants in sku combination")
 		}
-		comboMap[sku.Option+sku.Variant] = struct{}{}
+		for _, selection := range sku.Selections {
+			variantMap, ok := optionMap[selection.Option]
+			if !ok {
+				return errors.New("sku option not listed in listing")
+			}
+			if _, ok := variantMap[selection.Variant]; !ok {
+				return errors.New("sku variant not listed in option")
+			}
+		}
 	}
 	if len(sl.Listing.Item.Price) > SentenceMaxCharacters {
 		return ErrTooManyCharacters{"item.price", strconv.Itoa(SentenceMaxCharacters)}
