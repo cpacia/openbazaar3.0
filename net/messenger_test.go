@@ -2,6 +2,7 @@ package net
 
 import (
 	"context"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
@@ -47,7 +48,7 @@ func TestMessenger(t *testing.T) {
 
 	ch2 := make(chan struct{})
 	service1.RegisterHandler(pb.Message_ACK, func(p peer.ID, msg *pb.Message) error {
-		err := db1.Update(func(tx *gorm.DB) error {
+		err := db1.Update(func(tx database.Tx) error {
 			ack := new(pb.AckMessage)
 			if err := ptypes.UnmarshalAny(msg.Payload, ack); err != nil {
 				return err
@@ -63,14 +64,14 @@ func TestMessenger(t *testing.T) {
 	})
 
 	done := make(chan struct{})
-	db1.Update(func(tx *gorm.DB) error {
+	db1.Update(func(tx database.Tx) error {
 		messenger1.ReliablySendMessage(tx, service2.host.ID(), &pb.Message{MessageID: "abc", MessageType: pb.Message_PING}, done)
 		return nil
 	})
 
 	var messages []models.OutgoingMessage
-	err = messenger1.db.View(func(tx *gorm.DB) error {
-		return tx.Find(&messages).Error
+	err = messenger1.db.View(func(tx database.Tx) error {
+		return tx.DB().Find(&messages).Error
 	})
 	if err != nil {
 		t.Error(err)
@@ -87,8 +88,8 @@ func TestMessenger(t *testing.T) {
 	<-ch2
 
 	var messages2 []models.OutgoingMessage
-	err = messenger1.db.View(func(tx *gorm.DB) error {
-		return tx.Find(&messages2).Error
+	err = messenger1.db.View(func(tx database.Tx) error {
+		return tx.DB().Find(&messages2).Error
 	})
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		t.Error(err)
@@ -117,7 +118,7 @@ func TestMessenger_retryAllMessages(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	messenger := &Messenger{service1, db1, ctx, cancel, sync.RWMutex{}}
 
-	err = db1.Update(func(tx *gorm.DB) error {
+	err = db1.Update(func(tx database.Tx) error {
 		ping := &pb.Message{
 			MessageType: pb.Message_PING,
 			MessageID:   "abc",
@@ -126,7 +127,7 @@ func TestMessenger_retryAllMessages(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		return tx.Save(&models.OutgoingMessage{
+		return tx.DB().Save(&models.OutgoingMessage{
 			ID:                "abc",
 			Recipient:         service2.host.ID().Pretty(),
 			SerializedMessage: ser,

@@ -3,9 +3,9 @@ package repo
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	config "github.com/ipfs/go-ipfs-config"
-	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"os"
 	"path"
@@ -74,10 +74,6 @@ func TestNewRepo(t *testing.T) {
 	if r.DB() == nil {
 		t.Error("Failed to initialize the database")
 	}
-
-	if r.PublicData() == nil {
-		t.Error("Failed to initialize the public data")
-	}
 }
 
 func TestNewRepoWithCustomMnemonicSeed(t *testing.T) {
@@ -92,8 +88,8 @@ func TestNewRepoWithCustomMnemonicSeed(t *testing.T) {
 	defer r.DestroyRepo()
 
 	var dbSeed models.Key
-	err = r.db.View(func(tx *gorm.DB) error {
-		return tx.Where("name = ?", "mnemonic").First(&dbSeed).Error
+	err = r.db.View(func(tx database.Tx) error {
+		return tx.DB().Where("name = ?", "mnemonic").First(&dbSeed).Error
 	})
 	if err != nil {
 		t.Fatal(err)
