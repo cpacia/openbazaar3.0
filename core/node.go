@@ -7,6 +7,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
+	"github.com/cpacia/openbazaar3.0/wallet"
 	"github.com/golang/protobuf/ptypes"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core"
@@ -61,7 +62,7 @@ type OpenBazaarNode struct {
 	followerTracker *FollowerTracker
 
 	// multiwallet is a map of cyptocurrency wallets.
-	//multiwallet multiwallet.MultiWallet
+	multiwallet wallet.Multiwallet
 
 	// testnet is whether the this node is configured to use the test network.
 	testnet bool

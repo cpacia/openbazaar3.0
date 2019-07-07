@@ -1,11 +1,12 @@
 package core
 
 import (
+	"github.com/cpacia/openbazaar3.0/models/factory"
 	"testing"
 )
 
 func TestOpenBazaarNode_SaveListing(t *testing.T) {
-	/*node, err := MockNode()
+	node, err := MockNode()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -15,5 +16,5 @@ func TestOpenBazaarNode_SaveListing(t *testing.T) {
 	done := make(chan struct{})
 	if err := node.SaveListing(listing, done); err != nil {
 		t.Fatal(err)
-	}*/
+	}
 }

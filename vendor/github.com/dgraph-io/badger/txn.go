@@ -25,9 +25,10 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/dgraph-io/badger/v2/y"
-	farm "github.com/dgryski/go-farm"
+	"github.com/dgryski/go-farm"
 	"github.com/pkg/errors"
 )
 
@@ -346,6 +347,11 @@ func (txn *Txn) modify(e *Entry) error {
 func (txn *Txn) Set(key, val []byte) error {
 	return txn.SetEntry(NewEntry(key, val))
 }
+
+func (txn *Txn) SetWithTTL(key, val []byte, t time.Duration) error {
+	return txn.SetEntry(NewEntry(key, val))
+}
+
 
 // SetEntry takes an Entry struct and adds the key-value pair in the struct,
 // along with other metadata to the database.

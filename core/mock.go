@@ -10,6 +10,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/bootstrap"
 	coremock "github.com/ipfs/go-ipfs/core/mock"
@@ -54,6 +55,9 @@ func MockNode() (*OpenBazaarNode, error) {
 	w := wallet.NewMockWallet()
 	w.SetEventBus(bus)
 
+	mw := make(wallet.Multiwallet)
+	mw[iwallet.CtTestnetMock] = w
+
 	node := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
 		repo:            r,
@@ -64,6 +68,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		ipnsQuorum:      1,
 		shutdown:        make(chan struct{}),
 		masterPrivKey:   masterPrivKey,
+		multiwallet:     mw,
 		followerTracker: tracker,
 	}
 
@@ -76,6 +81,7 @@ func MockNode() (*OpenBazaarNode, error) {
 type Mocknet struct {
 	nodes   []*OpenBazaarNode
 	ipfsNet mocknet.Mocknet
+	wn      *wallet.MockWalletNetwork
 }
 
 // NewMocknet returns a new MockNet without the
@@ -85,6 +91,8 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 
 	// create network
 	mn := mocknet.New(ctx)
+
+	wn := wallet.NewMockWalletNetwork(numNodes)
 
 	var nodes []*OpenBazaarNode
 	for i := 0; i < numNodes; i++ {
@@ -121,6 +129,12 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		bus := events.NewBus()
 		tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost.Network())
 
+		w := wn.Wallets()[i]
+		w.SetEventBus(bus)
+
+		mw := make(wallet.Multiwallet)
+		mw[iwallet.CtTestnetMock] = w
+
 		node := &OpenBazaarNode{
 			ipfsNode:        ipfsNode,
 			repo:            r,
@@ -131,6 +145,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			ipnsQuorum:      1,
 			shutdown:        make(chan struct{}),
 			masterPrivKey:   masterPrivKey,
+			multiwallet:     mw,
 			followerTracker: tracker,
 		}
 
@@ -156,7 +171,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		}
 	}
 
-	return &Mocknet{nodes, mn}, nil
+	return &Mocknet{nodes, mn, wn}, nil
 }
 
 // Nodes returns the OpenBazaar nodes in this network.
@@ -176,6 +191,11 @@ func (mn *Mocknet) StartAll() {
 	}
 }
 
+// WalletNetwork returns the mock wallet network.
+func (mn *Mocknet) WalletNetwork() *wallet.MockWalletNetwork {
+	return mn.wn
+}
+
 // TearDown shutsdown the network and destroys the data directories.
 func (mn *Mocknet) TearDown() error {
 	for _, n := range mn.nodes {
@@ -186,3 +206,4 @@ func (mn *Mocknet) TearDown() error {
 	}
 	return nil
 }
+
