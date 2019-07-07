@@ -4,41 +4,10 @@ bazil.org/fuse/fs
 bazil.org/fuse/fuseutil
 # github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7
 github.com/AndreasBriese/bbloom
-# github.com/OpenBazaar/golang-socketio v0.0.0-20181127201421-909b73d947ae
-github.com/OpenBazaar/golang-socketio
-github.com/OpenBazaar/golang-socketio/protocol
-github.com/OpenBazaar/golang-socketio/transport
 # github.com/OpenBazaar/jsonpb v0.0.0-20171123000858-37d32ddf4eef
 github.com/OpenBazaar/jsonpb
-# github.com/OpenBazaar/multiwallet v0.0.0-20190415131846-aa9603d8e06c
-github.com/OpenBazaar/multiwallet
-github.com/OpenBazaar/multiwallet/bitcoin
-github.com/OpenBazaar/multiwallet/bitcoincash
-github.com/OpenBazaar/multiwallet/client/blockbook
-github.com/OpenBazaar/multiwallet/config
-github.com/OpenBazaar/multiwallet/litecoin
-github.com/OpenBazaar/multiwallet/service
-github.com/OpenBazaar/multiwallet/zcash
-github.com/OpenBazaar/multiwallet/cache
-github.com/OpenBazaar/multiwallet/client
-github.com/OpenBazaar/multiwallet/keys
-github.com/OpenBazaar/multiwallet/model
-github.com/OpenBazaar/multiwallet/util
-github.com/OpenBazaar/multiwallet/client/errors
-github.com/OpenBazaar/multiwallet/client/transport
-github.com/OpenBazaar/multiwallet/datastore
-github.com/OpenBazaar/multiwallet/litecoin/address
-github.com/OpenBazaar/multiwallet/zcash/address
-github.com/OpenBazaar/multiwallet/litecoin/params
-# github.com/OpenBazaar/spvwallet v0.0.0-20190417151124-49419d61fdff
-github.com/OpenBazaar/spvwallet
-github.com/OpenBazaar/spvwallet/exchangerates
-# github.com/OpenBazaar/wallet-interface v0.0.0-20190706190207-05cabe8dd00c
-github.com/OpenBazaar/wallet-interface
 # github.com/Stebalien/go-bitfield v0.0.1
 github.com/Stebalien/go-bitfield
-# github.com/boltdb/bolt v1.3.1
-github.com/boltdb/bolt
 # github.com/bren2010/proquint v0.0.0-20160323162903-38337c27106d
 github.com/bren2010/proquint
 # github.com/btcsuite/btcd v0.0.0-20190629003639-c26ffa870fd8
@@ -46,54 +15,21 @@ github.com/btcsuite/btcd/chaincfg
 github.com/btcsuite/btcd/btcec
 github.com/btcsuite/btcd/chaincfg/chainhash
 github.com/btcsuite/btcd/wire
-github.com/btcsuite/btcd/blockchain
-github.com/btcsuite/btcd/txscript
-github.com/btcsuite/btcd/addrmgr
-github.com/btcsuite/btcd/connmgr
-github.com/btcsuite/btcd/peer
-github.com/btcsuite/btcd/database
-# github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f
-github.com/btcsuite/btclog
 # github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
 github.com/btcsuite/btcutil/hdkeychain
 github.com/btcsuite/btcutil
 github.com/btcsuite/btcutil/base58
 github.com/btcsuite/btcutil/bech32
-github.com/btcsuite/btcutil/coinset
-github.com/btcsuite/btcutil/txsort
-github.com/btcsuite/btcutil/bloom
-# github.com/btcsuite/btcwallet v0.0.0-20190628225330-4a9774585e57
-github.com/btcsuite/btcwallet/wallet/txauthor
-github.com/btcsuite/btcwallet/wallet/txrules
-github.com/btcsuite/btcwallet/internal/helpers
-github.com/btcsuite/btcwallet/wallet/internal/txsizes
-# github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd
-github.com/btcsuite/go-socks/socks
-# github.com/btcsuite/golangcrypto v0.0.0-20150304025918-53f62d9b43e8
-github.com/btcsuite/golangcrypto/ripemd160
-# github.com/btcsuite/goleveldb v1.0.0
-github.com/btcsuite/goleveldb/leveldb/errors
-github.com/btcsuite/goleveldb/leveldb/storage
-github.com/btcsuite/goleveldb/leveldb/util
 # github.com/cenkalti/backoff v2.1.1+incompatible
 github.com/cenkalti/backoff
-# github.com/cevaris/ordered_map v0.0.0-20190319150403-3adeae072e73
-github.com/cevaris/ordered_map
 # github.com/cheekybits/genny v1.0.0
 github.com/cheekybits/genny/generic
 # github.com/coreos/go-semver v0.3.0
 github.com/coreos/go-semver/semver
-# github.com/cpacia/BitcoinCash-Wallet v0.3.0
-github.com/cpacia/BitcoinCash-Wallet
-github.com/cpacia/BitcoinCash-Wallet/exchangerates
-# github.com/cpacia/bchutil v0.0.0-20181003130114-b126f6a35b6c
-github.com/cpacia/bchutil
-# github.com/cpacia/wallet-interface v0.0.0-20190707031038-462db36b5c65
+# github.com/cpacia/wallet-interface v0.0.0-20190707142616-73f128192ad4
 github.com/cpacia/wallet-interface
 # github.com/cskr/pubsub v1.0.2
 github.com/cskr/pubsub
-# github.com/davecgh/go-spew v1.1.1
-github.com/davecgh/go-spew/spew
 # github.com/davidlazar/go-crypto v0.0.0-20170701192655-dcfb0a7ac018
 github.com/davidlazar/go-crypto/salsa20
 # github.com/dgraph-io/badger v2.0.0-rc.2+incompatible => github.com/dgraph-io/badger/v2 v2.0.0-rc.2+incompatible
@@ -460,18 +396,6 @@ github.com/libp2p/go-testutil
 github.com/libp2p/go-ws-transport
 # github.com/libp2p/go-yamux v1.2.3
 github.com/libp2p/go-yamux
-# github.com/ltcsuite/ltcd v0.0.0-20190519120615-e27ee083f08f
-github.com/ltcsuite/ltcd/chaincfg
-github.com/ltcsuite/ltcd/btcec
-github.com/ltcsuite/ltcd/chaincfg/chainhash
-github.com/ltcsuite/ltcd/wire
-github.com/ltcsuite/ltcd/txscript
-# github.com/ltcsuite/ltcutil v0.0.0-20190507133322-23cdfa9fcc3d
-github.com/ltcsuite/ltcutil
-github.com/ltcsuite/ltcutil/base58
-github.com/ltcsuite/ltcutil/bech32
-# github.com/ltcsuite/ltcwallet v0.0.0-20190105125346-3fa612e326e5
-github.com/ltcsuite/ltcwallet/wallet/txrules
 # github.com/lucas-clemente/quic-go v0.11.1
 github.com/lucas-clemente/quic-go
 github.com/lucas-clemente/quic-go/internal/ackhandler
@@ -623,7 +547,6 @@ golang.org/x/crypto/ripemd160
 golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/salsa20
 golang.org/x/crypto/blowfish
-golang.org/x/crypto/scrypt
 golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/hkdf
@@ -636,9 +559,7 @@ golang.org/x/crypto/cryptobyte/asn1
 # golang.org/x/net v0.0.0-20190522135303-fa69b94a3b58
 golang.org/x/net/html
 golang.org/x/net/context
-golang.org/x/net/proxy
 golang.org/x/net/html/atom
-golang.org/x/net/internal/socks
 golang.org/x/net/ipv4
 golang.org/x/net/ipv6
 golang.org/x/net/bpf

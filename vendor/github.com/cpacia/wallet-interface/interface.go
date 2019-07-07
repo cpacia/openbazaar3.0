@@ -86,11 +86,27 @@ type Wallet interface {
 	// Balance should return the confirmed and unconfirmed balance for the wallet.
 	Balance() (unconfirmed Amount, confirmed Amount, err error)
 
+	// IsDust returns whether the amount passed in is considered dust by network. This
+	// method is called when building payout transactions from the multisig to the various
+	// participants. If the amount that is supposed to be sent to a given party is below
+	// the dust threshold, openbazaar-go will not pay that party to avoid building a transaction
+	// that never confirms.
+	IsDust(amount Amount) bool
+
 	// Transactions returns a slice of this wallet's transactions.
 	Transactions() ([]Transaction, error)
 
 	// GetTransaction returns a transaction given it's ID.
 	GetTransaction(id TransactionID) (Transaction, error)
+
+	// EstimateSpendFee should return the anticipated fee to transfer a given amount of coins
+	// out of the wallet at the provided fee level. Typically this involves building a
+	// transaction with enough inputs to cover the request amount and calculating the size
+	// of the transaction. It is OK, if a transaction comes in after this function is called
+	// that changes the estimated fee as it's only intended to be an estimate.
+	//
+	// All amounts should be in the coin's base unit (for example: satoshis).
+	EstimateSpendFee(amount Amount, feeLevel FeeLevel) (Amount, error)
 
 	// Spend is a request to send requested amount to the requested address. The
 	// fee level is provided by the user. It's up to the implementation to decide
@@ -129,6 +145,12 @@ type Escrow interface {
 	// Note a database transaction is used here. Same rules of Commit() and
 	// Rollback() apply.
 	WatchAddress(dbtx Tx, addr Address) error
+
+	// EstimateEscrowFee estimates the fee to release the funds from escrow.
+	// this assumes only one input. If there are more inputs OpenBazaar will
+	// will add 50% of the returned fee for each additional input. This is a
+	// crude fee calculating but it simplifies things quite a bit.
+	EstimateEscrowFee(threshold int, level FeeLevel) (Amount, error)
 
 	// CreateMultisigAddress creates a new threshold multisig address using the
 	// provided pubkeys and the threshold. The multisig address is returned along
@@ -178,7 +200,7 @@ type EscrowWithTimeout interface {
 	// release the funds:
 	//  - m of n signatures are provided (or)
 	//  - timeout has passed and a signature for timeoutKey is provided.
-	CreateMultisigWithTimeout(keys []*btcec.PublicKey, threshold int, timeout time.Duration, timeoutKey *btcec.PublicKey) (Address, []byte, error)
+	CreateMultisigWithTimeout(keys []btcec.PublicKey, threshold int, timeout time.Duration, timeoutKey btcec.PublicKey) (Address, []byte, error)
 }
 
 // WalletCrypter is an optional interface that the wallet may implement to allow

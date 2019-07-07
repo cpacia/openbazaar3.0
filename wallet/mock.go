@@ -227,6 +227,7 @@ func (w *MockWallet) Start() {
 				w.mtx.Lock()
 				txidBytes, err := hex.DecodeString(string(tx.ID))
 				if err != nil {
+					w.mtx.Unlock()
 					return
 				}
 				var (
@@ -271,6 +272,9 @@ func (w *MockWallet) Start() {
 					w.transactions[tx.ID] = tx
 					if w.bus != nil {
 						w.bus.Emit(&events.TransactionReceived{tx})
+					}
+					for _, sub := range w.txSubs {
+						sub <- tx
 					}
 				}
 				w.mtx.Unlock()
@@ -398,12 +402,13 @@ func (w *MockWallet) newAddress(orderID string) (iwallet.Address, error) {
 }
 
 // Balance should return the confirmed and unconfirmed balance for the wallet.
-func (w *MockWallet) Balance() (unconfirmed iwallet.Amount, confirmed iwallet.Amount, err error) {
+func (w *MockWallet) Balance() (iwallet.Amount, iwallet.Amount, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
 	// TODO: this is the lazy way of calculating this. It should probably
 	// recursively check if unconfirmed utxos are spends of confirmed parents.
+	confirmed, unconfirmed := iwallet.NewAmount(0), iwallet.NewAmount(0)
 	for _, utxo := range w.utxos {
 		if utxo.height > 0 {
 			confirmed = confirmed.Add(utxo.value)
@@ -411,7 +416,16 @@ func (w *MockWallet) Balance() (unconfirmed iwallet.Amount, confirmed iwallet.Am
 			unconfirmed = unconfirmed.Add(utxo.value)
 		}
 	}
-	return
+	return confirmed, unconfirmed, nil
+}
+
+// IsDust returns whether the amount passed in is considered dust by network. This
+// method is called when building payout transactions from the multisig to the various
+// participants. If the amount that is supposed to be sent to a given party is below
+// the dust threshold, openbazaar-go will not pay that party to avoid building a transaction
+// that never confirms.
+func (w *MockWallet) IsDust(amount iwallet.Amount) bool {
+	return amount.Cmp(iwallet.NewAmount(500)) < 0
 }
 
 // Transactions returns a slice of this wallet's transactions.
@@ -436,6 +450,26 @@ func (w *MockWallet) GetTransaction(id iwallet.TransactionID) (iwallet.Transacti
 		return tx, errors.New("not found")
 	}
 	return tx, nil
+}
+
+// EstimateSpendFee should return the anticipated fee to transfer a given amount of coins
+// out of the wallet at the provided fee level. Typically this involves building a
+// transaction with enough inputs to cover the request amount and calculating the size
+// of the transaction. It is OK, if a transaction comes in after this function is called
+// that changes the estimated fee as it's only intended to be an estimate.
+//
+// All amounts should be in the coin's base unit (for example: satoshis).
+func (w *MockWallet) EstimateSpendFee(amount iwallet.Amount, feeLevel iwallet.FeeLevel) (iwallet.Amount, error) {
+	var fee iwallet.Amount
+	switch feeLevel {
+	case iwallet.FlEconomic:
+		fee = iwallet.NewAmount(250)
+	case iwallet.FlNormal:
+		fee = iwallet.NewAmount(500)
+	case iwallet.FlPriority:
+		fee = iwallet.NewAmount(750)
+	}
+	return fee, nil
 }
 
 // Spend is a request to send requested amount to the requested address. The
@@ -463,7 +497,7 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 
 	// Keep adding utxos until the total in value is
 	// greater than amt + fee
-	totalWithFee := amt.Add(iwallet.NewAmount(fee))
+	totalWithFee := amt.Add(fee)
 	var (
 		totalUtxo iwallet.Amount
 		utxos     []mockUtxo
@@ -476,7 +510,7 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 			break
 		}
 	}
-	if totalUtxo.Cmp(totalUtxo) < 0 {
+	if totalUtxo.Cmp(totalWithFee) < 0 {
 		return iwallet.TransactionID(""), errors.New("insufficient funds")
 	}
 
@@ -663,6 +697,32 @@ func (w *MockWallet) WatchAddress(tx iwallet.Tx, addr iwallet.Address) error {
 	return nil
 }
 
+// EstimateEscrowFee estimates the fee to release the funds from escrow.
+// this assumes only one input. If there are more inputs OpenBazaar will
+// will add 50% of the returned fee for each additional input. This is a
+// crude fee calculating but it simplifies things quite a bit.
+func (w *MockWallet) EstimateEscrowFee(threshold int, feeLevel iwallet.FeeLevel) (iwallet.Amount, error) {
+	var (
+		fee                   iwallet.Amount
+		feePerAdditionalInput iwallet.Amount
+	)
+	switch feeLevel {
+	case iwallet.FlEconomic:
+		fee = iwallet.NewAmount(250)
+		feePerAdditionalInput = iwallet.NewAmount(100)
+	case iwallet.FlNormal:
+		fee = iwallet.NewAmount(500)
+		feePerAdditionalInput = iwallet.NewAmount(200)
+	case iwallet.FlPriority:
+		fee = iwallet.NewAmount(750)
+		feePerAdditionalInput = iwallet.NewAmount(300)
+	}
+	for i := 0; i < threshold; i++ {
+		fee = fee.Add(feePerAdditionalInput)
+	}
+	return fee, nil
+}
+
 // CreateMultisigAddress creates a new threshold multisig address using the
 // provided pubkeys and the threshold. The multisig address is returned along
 // with a byte slice. The byte slice will typically be the redeem script for
@@ -698,7 +758,7 @@ func (w *MockWallet) CreateMultisigAddress(keys []btcec.PublicKey, threshold int
 // release the funds:
 //  - m of n signatures are provided (or)
 //  - timeout has passed and a signature for timeoutKey is provided.
-func (w *MockWallet) CreateMultisigWithTimeout(keys []*btcec.PublicKey, threshold int, timeout time.Duration, timeoutKey *btcec.PublicKey) (iwallet.Address, []byte, error) {
+func (w *MockWallet) CreateMultisigWithTimeout(keys []btcec.PublicKey, threshold int, timeout time.Duration, timeoutKey btcec.PublicKey) (iwallet.Address, []byte, error) {
 	var redeemScript []byte
 	for _, key := range keys {
 		redeemScript = append(redeemScript, key.SerializeCompressed()...)

@@ -41,7 +41,8 @@ func NewAmount(i interface{}) Amount {
 }
 
 func (a Amount) String() string {
-	return a.String()
+	x := big.Int(a)
+	return x.String()
 }
 
 func (a Amount) Cmp(b Amount) int {

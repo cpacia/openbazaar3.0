@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
-	"github.com/OpenBazaar/wallet-interface"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/events"
-	"math/big"
+	iwallet "github.com/cpacia/wallet-interface"
 	"testing"
 	"time"
 )
@@ -17,55 +14,69 @@ import (
 func TestMockWallet_Spend(t *testing.T) {
 	w := NewMockWallet()
 
-	var (
-		testUtxoPrevHash = make([]byte, 32)
-	)
+	testUtxoPrevHash := make([]byte, 32)
 	rand.Read(testUtxoPrevHash)
 
-	addr := w.NewAddress(wallet.INTERNAL)
-
-	w.utxos[hex.EncodeToString(testUtxoPrevHash)+"0"] = mockUtxo{
-		OutpointHash:  testUtxoPrevHash,
-		OutpointIndex: 0,
-		Address:       addr,
-		Value:         *big.NewInt(10000),
-	}
-
-	spendAddr, err := btcutil.NewAddressScriptHash(testUtxoPrevHash, &chaincfg.TestNet3Params)
+	addr, err := w.CurrentAddress()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = w.Spend(*big.NewInt(20000), spendAddr, wallet.PRIOIRTY, "", false)
-	if err != wallet.ErrorInsuffientFunds {
-		t.Error("error is not insufficient funds")
+	w.utxos[hex.EncodeToString(append(testUtxoPrevHash, []byte{0x00, 0x00, 0x00, 0x00}...))] = mockUtxo{
+		outpoint: append(testUtxoPrevHash, []byte{0x00, 0x00, 0x00, 0x00}...),
+		address:  addr,
+		value:    iwallet.NewAmount(10000),
 	}
 
-	txid, err := w.Spend(*big.NewInt(9000), spendAddr, wallet.PRIOIRTY, "", false)
+	spendAddrBytes := make([]byte, 20)
+	rand.Read(spendAddrBytes)
+	spendAddr := *iwallet.NewAddress(hex.EncodeToString(spendAddrBytes), iwallet.CtTestnetMock)
+
+	dbtx, err := w.Begin()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	changeUtxo, ok := w.utxos[txid.String()+"1"]
+	_, err = w.Spend(dbtx, spendAddr, iwallet.NewAmount(20000), iwallet.FlNormal)
+	if err == nil {
+		t.Error("should have errored for insuffient funds")
+	}
+
+	dbtx, err = w.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txid, err := w.Spend(dbtx, spendAddr, iwallet.NewAmount(9000), iwallet.FlNormal)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := dbtx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	txidBytes, err := hex.DecodeString(string(txid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	outpoint := append(txidBytes, []byte{0x00, 0x00, 0x00, 0x01}...)
+	changeUtxo, ok := w.utxos[hex.EncodeToString(outpoint)]
 	if !ok {
 		t.Error("wallet missing change utxo")
 	}
 
-	if !bytes.Equal(changeUtxo.OutpointHash, txid[:]) {
-		t.Errorf("Incorrect change utxo hash returned. Expected %s, got %s", hex.EncodeToString(txid[:]), hex.EncodeToString(changeUtxo.OutpointHash))
+	if !bytes.Equal(changeUtxo.outpoint, outpoint) {
+		t.Errorf("Incorrect change utxo hash returned. Expected %s, got %s", hex.EncodeToString(outpoint), hex.EncodeToString(changeUtxo.outpoint))
 	}
 
-	if changeUtxo.OutpointIndex != 1 {
-		t.Errorf("Incorrect change utxo index. Expected 1, got %d", changeUtxo.OutpointIndex)
-	}
-
-	txn, ok := w.transactions[*txid]
+	txn, ok := w.transactions[txid]
 	if !ok {
 		t.Error("wallet missing transaction")
 	}
 
-	if txn.Txid != txid.String() {
-		t.Errorf("Incorrect txn txid. Expected %s, got %s", txid.String(), txn.Txid)
+	if txn.ID.String() != txid.String() {
+		t.Errorf("Incorrect txn txid. Expected %s, got %s", txid.String(), txn.ID.String())
 	}
 
 	txns, err := w.Transactions()
@@ -77,47 +88,136 @@ func TestMockWallet_Spend(t *testing.T) {
 		t.Errorf("Expected 1 txn, got %d", len(txns))
 	}
 
-	if txns[0].Txid != txid.String() {
-		t.Errorf("Incorrect txn txid. Expected %s, got %s", txid.String(), txn.Txid)
+	if txns[0].ID.String() != txid.String() {
+		t.Errorf("Incorrect txn txid. Expected %s, got %s", txid.String(), txn.ID.String())
 	}
 }
 
-func TestMockWallet_GenerateMultisigScript(t *testing.T) {
+func TestMockWallet_SweepWallet(t *testing.T) {
+	w := NewMockWallet()
+
+	testUtxoPrevHash := make([]byte, 32)
+	rand.Read(testUtxoPrevHash)
+
+	addr, err := w.CurrentAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w.utxos[hex.EncodeToString(append(testUtxoPrevHash, []byte{0x00, 0x00, 0x00, 0x00}...))] = mockUtxo{
+		outpoint: append(testUtxoPrevHash, []byte{0x00, 0x00, 0x00, 0x00}...),
+		address:  addr,
+		value:    iwallet.NewAmount(10000),
+	}
+	w.utxos[hex.EncodeToString(append(testUtxoPrevHash, []byte{0x00, 0x00, 0x00, 0x01}...))] = mockUtxo{
+		outpoint: append(testUtxoPrevHash, []byte{0x00, 0x00, 0x00, 0x01}...),
+		address:  addr,
+		value:    iwallet.NewAmount(10000),
+	}
+
+	spendAddrBytes := make([]byte, 20)
+	rand.Read(spendAddrBytes)
+	spendAddr := *iwallet.NewAddress(hex.EncodeToString(spendAddrBytes), iwallet.CtTestnetMock)
+
+	dbtx, err := w.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txid, err := w.SweepWallet(dbtx, spendAddr, iwallet.FlNormal)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := dbtx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(w.utxos) != 0 {
+		t.Error("Failed to spend all utxos")
+	}
+
+	txn, ok := w.transactions[txid]
+	if !ok {
+		t.Error("wallet missing transaction")
+	}
+
+	if txn.ID.String() != txid.String() {
+		t.Errorf("Incorrect txn txid. Expected %s, got %s", txid.String(), txn.ID.String())
+	}
+
+	txns, err := w.Transactions()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(txns) != 1 {
+		t.Errorf("Expected 1 txn, got %d", len(txns))
+	}
+
+	if txns[0].ID.String() != txid.String() {
+		t.Errorf("Incorrect txn txid. Expected %s, got %s", txid.String(), txn.ID.String())
+	}
+}
+
+func TestMockWallet_CreateMultisigAddress(t *testing.T) {
 	var (
 		w1 = NewMockWallet()
 		w2 = NewMockWallet()
 		w3 = NewMockWallet()
 	)
 
-	s1 := make([]byte, 32)
-	rand.Read(s1)
-	s2 := make([]byte, 32)
-	rand.Read(s2)
-	s3 := make([]byte, 32)
-	rand.Read(s3)
-
-	k1, err := hdkeychain.NewMaster(s1, &chaincfg.TestNet3Params)
+	k1, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		t.Fatal(err)
 	}
-	k2, err := hdkeychain.NewMaster(s1, &chaincfg.TestNet3Params)
+	k2, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		t.Fatal(err)
 	}
-	k3, err := hdkeychain.NewMaster(s1, &chaincfg.TestNet3Params)
+	k3, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	addr1, rs1, err := w1.GenerateMultisigScript([]hdkeychain.ExtendedKey{*k1, *k2, *k3}, 2, time.Second, nil)
+	addr1, rs1, err := w1.CreateMultisigAddress([]btcec.PublicKey{*k1.PubKey(), *k2.PubKey(), *k3.PubKey()}, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr2, rs2, err := w2.GenerateMultisigScript([]hdkeychain.ExtendedKey{*k1, *k2, *k3}, 2, time.Second, nil)
+	addr2, rs2, err := w2.CreateMultisigAddress([]btcec.PublicKey{*k1.PubKey(), *k2.PubKey(), *k3.PubKey()}, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr3, rs3, err := w3.GenerateMultisigScript([]hdkeychain.ExtendedKey{*k1, *k2, *k3}, 2, time.Second, nil)
+	addr3, rs3, err := w3.CreateMultisigAddress([]btcec.PublicKey{*k1.PubKey(), *k2.PubKey(), *k3.PubKey()}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if addr1.String() != addr2.String() {
+		t.Errorf("Addresses are not equal. %s, %s", addr1.String(), addr2.String())
+	}
+
+	if addr2.String() != addr3.String() {
+		t.Errorf("Addresses are not equal. %s, %s", addr2.String(), addr3.String())
+	}
+
+	if !bytes.Equal(rs1, rs2) {
+		t.Errorf("Redeem scripts are not equal. %v, %v", rs1, rs2)
+	}
+
+	if !bytes.Equal(rs2, rs3) {
+		t.Errorf("Redeem scripts are not equal. %v, %v", rs2, rs3)
+	}
+
+	addr1, rs1, err = w1.CreateMultisigWithTimeout([]btcec.PublicKey{*k1.PubKey(), *k2.PubKey(), *k3.PubKey()}, 2, time.Hour, *k1.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr2, rs2, err = w2.CreateMultisigWithTimeout([]btcec.PublicKey{*k1.PubKey(), *k2.PubKey(), *k3.PubKey()}, 2, time.Hour, *k1.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr3, rs3, err = w3.CreateMultisigWithTimeout([]btcec.PublicKey{*k1.PubKey(), *k2.PubKey(), *k3.PubKey()}, 2, time.Hour, *k1.PubKey())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,75 +239,71 @@ func TestMockWallet_GenerateMultisigScript(t *testing.T) {
 	}
 }
 
-func TestMockWallet_Multisign(t *testing.T) {
+func TestMockWallet_SignMultisigTransaction(t *testing.T) {
 	var (
 		w1 = NewMockWallet()
 		w2 = NewMockWallet()
 	)
 
-	s1 := make([]byte, 32)
-	rand.Read(s1)
-	s2 := make([]byte, 32)
-	rand.Read(s2)
-	s3 := make([]byte, 32)
-	rand.Read(s3)
-
-	k1, err := hdkeychain.NewMaster(s1, &chaincfg.TestNet3Params)
+	k1, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		t.Fatal(err)
 	}
-	k2, err := hdkeychain.NewMaster(s1, &chaincfg.TestNet3Params)
+	k2, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		t.Fatal(err)
 	}
-	k3, err := hdkeychain.NewMaster(s1, &chaincfg.TestNet3Params)
+	k3, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	addr, redeemScript, err := w1.GenerateMultisigScript([]hdkeychain.ExtendedKey{*k1, *k2, *k3}, 2, time.Second, nil)
+	addr, rs, err := w1.CreateMultisigAddress([]btcec.PublicKey{*k1.PubKey(), *k2.PubKey(), *k3.PubKey()}, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	outpointHash := make([]byte, 32)
-	rand.Read(outpointHash)
+	outAddrBytes := make([]byte, 20)
+	rand.Read(outAddrBytes)
 
-	ins := []wallet.TransactionInput{
-		{
-			LinkedAddress: addr,
-			Value:         10000,
-			OutpointIndex: 0,
-			OutpointHash:  outpointHash,
+	outpoint := make([]byte, 36)
+	rand.Read(outpoint)
+	txn := iwallet.Transaction{
+		From: []iwallet.SpendInfo{
+			{
+				ID:      outpoint,
+				Amount:  iwallet.NewAmount(10000),
+				Address: addr,
+			},
+		},
+		To: []iwallet.SpendInfo{
+			{
+				Address: *iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtTestnetMock),
+				Amount:  iwallet.NewAmount(9000),
+			},
 		},
 	}
 
-	spendAddrHash := make([]byte, 32)
-	rand.Read(spendAddrHash)
-	spendAddr, err := btcutil.NewAddressScriptHash(spendAddrHash, &chaincfg.TestNet3Params)
+	sig1, err := w1.SignMultisigTransaction(txn, k1, rs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig2, err := w2.SignMultisigTransaction(txn, k2, rs)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	outs := []wallet.TransactionOutput{
-		{
-			Address: spendAddr,
-			Value:   9750,
-			Index:   0,
-		},
-	}
-
-	sig1, err := w1.CreateMultisigSignature(ins, outs, k1, redeemScript, *big.NewInt(0))
-	if err != nil {
-		t.Fatal(err)
-	}
-	sig2, err := w2.CreateMultisigSignature(ins, outs, k2, redeemScript, *big.NewInt(0))
+	dbtx, err := w1.Begin()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = w1.Multisign(ins, outs, sig1, sig2, redeemScript, *big.NewInt(0), true)
+	err = w1.BuildAndSend(dbtx, txn, [][]iwallet.EscrowSignature{sig1, sig2}, rs)
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := dbtx.Commit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -217,56 +313,65 @@ func TestMockWallet_Multisign(t *testing.T) {
 	}
 	if len(txs) != 1 {
 		t.Error("Failed to record transaction")
-	}
-
-	if txs[0].WatchOnly != true {
-		t.Error("Transaction not marked watch only")
 	}
 }
 
-func TestMockWallet_SweepAddress(t *testing.T) {
+func TestMockWallet_1of2(t *testing.T) {
 	w1 := NewMockWallet()
 
-	s1 := make([]byte, 32)
-	rand.Read(s1)
-
-	k1, err := hdkeychain.NewMaster(s1, &chaincfg.TestNet3Params)
+	k1, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Fatal(err)
+	}
+	k2, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	redeemScript := make([]byte, 32)
-	rand.Read(redeemScript)
-
-	outpointHash := make([]byte, 32)
-	rand.Read(outpointHash)
-
-	inAddrHash := make([]byte, 32)
-	rand.Read(inAddrHash)
-	inAddr, err := btcutil.NewAddressScriptHash(inAddrHash, &chaincfg.TestNet3Params)
+	addr, rs, err := w1.CreateMultisigAddress([]btcec.PublicKey{*k1.PubKey(), *k2.PubKey()}, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ins := []wallet.TransactionInput{
-		{
-			LinkedAddress: inAddr,
-			Value:         10000,
-			OutpointIndex: 0,
-			OutpointHash:  outpointHash,
+	outAddrBytes := make([]byte, 20)
+	rand.Read(outAddrBytes)
+
+	outpoint := make([]byte, 36)
+	rand.Read(outpoint)
+	txn := iwallet.Transaction{
+		From: []iwallet.SpendInfo{
+			{
+				ID:      outpoint,
+				Amount:  iwallet.NewAmount(10000),
+				Address: addr,
+			},
+		},
+		To: []iwallet.SpendInfo{
+			{
+				Address: *iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtTestnetMock),
+				Amount:  iwallet.NewAmount(9000),
+			},
 		},
 	}
 
-	spendAddrHash := make([]byte, 32)
-	rand.Read(spendAddrHash)
-	scriptHashAddr, err := btcutil.NewAddressScriptHash(spendAddrHash, &chaincfg.TestNet3Params)
+	sig1, err := w1.SignMultisigTransaction(txn, k1, rs)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	spendAddr := btcutil.Address(scriptHashAddr)
+	dbtx, err := w1.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	_, err = w1.SweepAddress(ins, &spendAddr, k1, &redeemScript, wallet.PRIOIRTY)
+	err = w1.BuildAndSend(dbtx, txn, [][]iwallet.EscrowSignature{sig1}, rs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := dbtx.Commit(); err != nil {
+		t.Fatal(err)
+	}
 
 	txs, err := w1.Transactions()
 	if err != nil {
@@ -274,10 +379,6 @@ func TestMockWallet_SweepAddress(t *testing.T) {
 	}
 	if len(txs) != 1 {
 		t.Error("Failed to record transaction")
-	}
-
-	if txs[0].WatchOnly != true {
-		t.Error("Transaction not marked watch only")
 	}
 }
 
@@ -294,10 +395,13 @@ func TestMockWalletNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addr := network.Wallets()[0].NewAddress(wallet.EXTERNAL)
+	addr, err := network.Wallets()[0].NewAddress("")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Generate coins and send to wallet 0.
-	if err := network.GenerateToAddress(addr, *big.NewInt(10000)); err != nil {
+	if err := network.GenerateToAddress(addr, iwallet.NewAmount(100000)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -311,13 +415,17 @@ func TestMockWalletNetwork(t *testing.T) {
 		t.Error("Failed to record new txn")
 	}
 
-	confirmed, unconfirmed := network.Wallets()[0].Balance()
-	if confirmed.Cmp(big.NewInt(0)) != 0 {
+	confirmed, unconfirmed, err := network.Wallets()[0].Balance()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if confirmed.Cmp(iwallet.NewAmount(0)) != 0 {
 		t.Error("Confirmed balance is not zero")
 	}
 
-	if unconfirmed.Cmp(big.NewInt(10000)) != 0 {
-		t.Errorf("Incorrect unconfirmed balance. Expected %d, got %d", 10000, unconfirmed.Int64())
+	if unconfirmed.Cmp(iwallet.NewAmount(100000)) != 0 {
+		t.Errorf("Incorrect unconfirmed balance. Expected %d, got %v", 100000, confirmed)
 	}
 
 	if len(network.Wallets()[1].utxos) != 0 {
@@ -346,12 +454,15 @@ func TestMockWalletNetwork(t *testing.T) {
 
 	<-blockSub.Out()
 
-	confirmed, unconfirmed = network.Wallets()[0].Balance()
-	if confirmed.Cmp(big.NewInt(10000)) != 0 {
-		t.Errorf("Incorrect confirmed balance. Expected %d, got %d", 10000, confirmed.Int64())
+	confirmed, unconfirmed, err = network.Wallets()[0].Balance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if confirmed.Cmp(iwallet.NewAmount(100000)) != 0 {
+		t.Errorf("Incorrect confirmed balance. Expected %d, got %v", 100000, confirmed)
 	}
 
-	if unconfirmed.Cmp(big.NewInt(0)) != 0 {
+	if unconfirmed.Cmp(iwallet.NewAmount(0)) != 0 {
 		t.Error("Unconfirmed balance is not zero")
 	}
 
@@ -361,9 +472,21 @@ func TestMockWalletNetwork(t *testing.T) {
 	}
 
 	// Wallet 0 send coins to wallet 2.
-	addr2 := network.Wallets()[2].CurrentAddress(wallet.EXTERNAL)
+	addr2, err := network.Wallets()[2].CurrentAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if _, err := network.Wallets()[0].Spend(*big.NewInt(9000), addr2, wallet.PRIOIRTY, "", false); err != nil {
+	dbtx, err := network.Wallets()[0].Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := network.Wallets()[0].Spend(dbtx, addr2, iwallet.NewAmount(90000), iwallet.FlPriority); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := dbtx.Commit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -377,13 +500,17 @@ func TestMockWalletNetwork(t *testing.T) {
 		t.Error("Failed to record new txn")
 	}
 
-	confirmed, unconfirmed = network.Wallets()[2].Balance()
-	if confirmed.Cmp(big.NewInt(0)) != 0 {
+	confirmed, unconfirmed, err = network.Wallets()[2].Balance()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if confirmed.Cmp(iwallet.NewAmount(0)) != 0 {
 		t.Error("Confirmed balance is not zero")
 	}
 
-	if unconfirmed.Cmp(big.NewInt(9000)) != 0 {
-		t.Errorf("Incorrect unconfirmed balance. Expected %d, got %d", 9000, unconfirmed.Int64())
+	if unconfirmed.Cmp(iwallet.NewAmount(90000)) != 0 {
+		t.Errorf("Incorrect unconfirmed balance. Expected %d, got %v", 90000, unconfirmed)
 	}
 
 	if len(network.Wallets()[0].utxos) != 1 {
@@ -394,12 +521,16 @@ func TestMockWalletNetwork(t *testing.T) {
 		t.Error("Failed to record new txn")
 	}
 
-	confirmed, unconfirmed = network.Wallets()[0].Balance()
-	if confirmed.Cmp(big.NewInt(0)) != 0 {
+	confirmed, unconfirmed, err = network.Wallets()[0].Balance()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if confirmed.Cmp(iwallet.NewAmount(0)) != 0 {
 		t.Error("Confirmed balance is not zero")
 	}
 
-	if unconfirmed.Cmp(big.NewInt(750)) != 0 {
-		t.Errorf("Incorrect unconfirmed balance. Expected %d, got %d", 750, unconfirmed.Int64())
+	if unconfirmed.Cmp(iwallet.NewAmount(9250)) != 0 {
+		t.Errorf("Incorrect unconfirmed balance. Expected %d, got %v", 9250, unconfirmed)
 	}
 }
