@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"github.com/OpenBazaar/multiwallet"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
@@ -62,7 +61,7 @@ type OpenBazaarNode struct {
 	followerTracker *FollowerTracker
 
 	// multiwallet is a map of cyptocurrency wallets.
-	multiwallet multiwallet.MultiWallet
+	//multiwallet multiwallet.MultiWallet
 
 	// testnet is whether the this node is configured to use the test network.
 	testnet bool

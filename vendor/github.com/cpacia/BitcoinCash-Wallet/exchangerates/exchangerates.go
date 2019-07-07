@@ -1,34 +1,31 @@
-package bitcoincash
+package exchangerates
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/OpenBazaar/openbazaar-go/bitcoin/exchange"
 	"golang.org/x/net/proxy"
 	"net"
 	"net/http"
-	"reflect"
 	"strconv"
 	"sync"
 	"time"
 )
 
 type ExchangeRateProvider struct {
-	fetchUrl string
-	cache    map[string]float64
-	client   *http.Client
-	decoder  ExchangeRateDecoder
+	fetchUrl        string
+	cache           map[string]float64
+	client          *http.Client
+	decoder         ExchangeRateDecoder
+	bitcoinProvider *exchange.BitcoinPriceFetcher
 }
 
 type ExchangeRateDecoder interface {
-	decode(dat interface{}, cache map[string]float64) (err error)
+	decode(dat interface{}, cache map[string]float64, bp *exchange.BitcoinPriceFetcher) (err error)
 }
 
-type OpenBazaarDecoder struct{}
 type KrakenDecoder struct{}
-type BitfinexDecoder struct{}
-type BittrexDecoder struct{}
-type PoloniexDecoder struct{}
 
 type BitcoinCashPriceFetcher struct {
 	sync.Mutex
@@ -37,6 +34,7 @@ type BitcoinCashPriceFetcher struct {
 }
 
 func NewBitcoinCashPriceFetcher(dialer proxy.Dialer) *BitcoinCashPriceFetcher {
+	bp := exchange.NewBitcoinPriceFetcher(dialer)
 	b := BitcoinCashPriceFetcher{
 		cache: make(map[string]float64),
 	}
@@ -48,10 +46,9 @@ func NewBitcoinCashPriceFetcher(dialer proxy.Dialer) *BitcoinCashPriceFetcher {
 	client := &http.Client{Transport: tbTransport, Timeout: time.Minute}
 
 	b.providers = []*ExchangeRateProvider{
-		{"https://ticker.openbazaar.org/api", b.cache, client, OpenBazaarDecoder{}},
-		{"https://poloniex.com/public?command=returnTicker", b.cache, client, PoloniexDecoder{}},
-		{"https://api.kraken.com/0/public/Ticker?pair=BCHUSD", b.cache, client, KrakenDecoder{}},
+		{"https://api.kraken.com/0/public/Ticker?pair=BCHXBT", b.cache, client, KrakenDecoder{}, bp},
 	}
+	go b.run()
 	return &b
 }
 
@@ -76,20 +73,14 @@ func (b *BitcoinCashPriceFetcher) GetLatestRate(currencyCode string) (float64, e
 	return price, nil
 }
 
-func (b *BitcoinCashPriceFetcher) GetAllRates(cacheOK bool) (map[string]float64, error) {
-	if !cacheOK {
-		err := b.fetchCurrentRates()
-		if err != nil {
-			return nil, err
-		}
-	}
+func (b *BitcoinCashPriceFetcher) GetAllRates() (map[string]float64, error) {
 	b.Lock()
 	defer b.Unlock()
 	return b.cache, nil
 }
 
 func (b *BitcoinCashPriceFetcher) UnitsPerCoin() int {
-	return 100000000
+	return exchange.SatoshiPerBTC
 }
 
 func (b *BitcoinCashPriceFetcher) fetchCurrentRates() error {
@@ -105,7 +96,7 @@ func (b *BitcoinCashPriceFetcher) fetchCurrentRates() error {
 	return errors.New("All exchange rate API queries failed")
 }
 
-func (b *BitcoinCashPriceFetcher) Run() {
+func (b *BitcoinCashPriceFetcher) run() {
 	b.fetchCurrentRates()
 	ticker := time.NewTicker(time.Minute * 15)
 	for range ticker.C {
@@ -128,43 +119,14 @@ func (provider *ExchangeRateProvider) fetch() (err error) {
 	if err != nil {
 		return err
 	}
-	return provider.decoder.decode(dataMap, provider.cache)
+	return provider.decoder.decode(dataMap, provider.cache, provider.bitcoinProvider)
 }
 
-func (b OpenBazaarDecoder) decode(dat interface{}, cache map[string]float64) (err error) {
-	data, ok := dat.(map[string]interface{})
-	if !ok {
-		return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed")
+func (b KrakenDecoder) decode(dat interface{}, cache map[string]float64, bp *exchange.BitcoinPriceFetcher) (err error) {
+	rates, err := bp.GetAllRates()
+	if err != nil {
+		return err
 	}
-	bch, ok := data["BCH"]
-	if !ok {
-		return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed, missing 'BCH' field")
-	}
-	val, ok := bch.(map[string]interface{})
-	if !ok {
-		return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed")
-	}
-	bchRate, ok := val["last"].(float64)
-	if !ok {
-		return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed, missing 'last' (float) field")
-	}
-	for k, v := range data {
-		if k != "timestamp" {
-			val, ok := v.(map[string]interface{})
-			if !ok {
-				return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed")
-			}
-			price, ok := val["last"].(float64)
-			if !ok {
-				return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed, missing 'last' (float) field")
-			}
-			cache[k] = price * (1 / bchRate)
-		}
-	}
-	return nil
-}
-
-func (b KrakenDecoder) decode(dat interface{}, cache map[string]float64) (err error) {
 	obj, ok := dat.(map[string]interface{})
 	if !ok {
 		return errors.New("KrackenDecoder type assertion failure")
@@ -177,9 +139,9 @@ func (b KrakenDecoder) decode(dat interface{}, cache map[string]float64) (err er
 	if !ok {
 		return errors.New("KrackenDecoder type assertion failure")
 	}
-	pair, ok := resultMap["BCHUSD"]
+	pair, ok := resultMap["BCHXBT"]
 	if !ok {
-		return errors.New("KrakenDecoder: field `BCHUSD` not found")
+		return errors.New("KrakenDecoder: field `BCHXBT` not found")
 	}
 	pairMap, ok := pair.(map[string]interface{})
 	if !ok {
@@ -206,36 +168,8 @@ func (b KrakenDecoder) decode(dat interface{}, cache map[string]float64) (err er
 	if rate == 0 {
 		return errors.New("Bitcoin-BitcoinCash price data not available")
 	}
-	cache["USD"] = rate
-	return nil
-}
-
-func (b PoloniexDecoder) decode(dat interface{}, cache map[string]float64) (err error) {
-	data, ok := dat.(map[string]interface{})
-	if !ok {
-		return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed")
+	for k, v := range rates {
+		cache[k] = v * rate
 	}
-	var rate float64
-	v, ok := data["USDT_BCH"]
-	if !ok {
-		return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed")
-	}
-	val, ok := v.(map[string]interface{})
-	if !ok {
-		return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed")
-	}
-	s, ok := val["last"].(string)
-	if !ok {
-		return errors.New(reflect.TypeOf(b).Name() + ".decode: Type assertion failed, missing 'last' (string) field")
-	}
-	price, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return err
-	}
-	rate = price
-	if rate == 0 {
-		return errors.New("BitcoinCash price data not available")
-	}
-	cache["USD"] = rate
 	return nil
 }

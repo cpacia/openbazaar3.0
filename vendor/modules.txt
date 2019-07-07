@@ -10,7 +10,7 @@ github.com/OpenBazaar/golang-socketio/protocol
 github.com/OpenBazaar/golang-socketio/transport
 # github.com/OpenBazaar/jsonpb v0.0.0-20171123000858-37d32ddf4eef
 github.com/OpenBazaar/jsonpb
-# github.com/OpenBazaar/multiwallet v0.0.0-20190704133557-52b6b512b299
+# github.com/OpenBazaar/multiwallet v0.0.0-20190415131846-aa9603d8e06c
 github.com/OpenBazaar/multiwallet
 github.com/OpenBazaar/multiwallet/bitcoin
 github.com/OpenBazaar/multiwallet/bitcoincash
@@ -33,7 +33,7 @@ github.com/OpenBazaar/multiwallet/litecoin/params
 # github.com/OpenBazaar/spvwallet v0.0.0-20190417151124-49419d61fdff
 github.com/OpenBazaar/spvwallet
 github.com/OpenBazaar/spvwallet/exchangerates
-# github.com/OpenBazaar/wallet-interface v0.0.0-20190411204206-5b458c29c191
+# github.com/OpenBazaar/wallet-interface v0.0.0-20190706190207-05cabe8dd00c
 github.com/OpenBazaar/wallet-interface
 # github.com/Stebalien/go-bitfield v0.0.1
 github.com/Stebalien/go-bitfield
@@ -41,11 +41,11 @@ github.com/Stebalien/go-bitfield
 github.com/boltdb/bolt
 # github.com/bren2010/proquint v0.0.0-20160323162903-38337c27106d
 github.com/bren2010/proquint
-# github.com/btcsuite/btcd v0.0.0-20190523000118-16327141da8c
+# github.com/btcsuite/btcd v0.0.0-20190629003639-c26ffa870fd8
 github.com/btcsuite/btcd/chaincfg
+github.com/btcsuite/btcd/btcec
 github.com/btcsuite/btcd/chaincfg/chainhash
 github.com/btcsuite/btcd/wire
-github.com/btcsuite/btcd/btcec
 github.com/btcsuite/btcd/blockchain
 github.com/btcsuite/btcd/txscript
 github.com/btcsuite/btcd/addrmgr
@@ -58,9 +58,9 @@ github.com/btcsuite/btclog
 github.com/btcsuite/btcutil/hdkeychain
 github.com/btcsuite/btcutil
 github.com/btcsuite/btcutil/base58
+github.com/btcsuite/btcutil/bech32
 github.com/btcsuite/btcutil/coinset
 github.com/btcsuite/btcutil/txsort
-github.com/btcsuite/btcutil/bech32
 github.com/btcsuite/btcutil/bloom
 # github.com/btcsuite/btcwallet v0.0.0-20190628225330-4a9774585e57
 github.com/btcsuite/btcwallet/wallet/txauthor
@@ -83,8 +83,13 @@ github.com/cevaris/ordered_map
 github.com/cheekybits/genny/generic
 # github.com/coreos/go-semver v0.3.0
 github.com/coreos/go-semver/semver
+# github.com/cpacia/BitcoinCash-Wallet v0.3.0
+github.com/cpacia/BitcoinCash-Wallet
+github.com/cpacia/BitcoinCash-Wallet/exchangerates
 # github.com/cpacia/bchutil v0.0.0-20181003130114-b126f6a35b6c
 github.com/cpacia/bchutil
+# github.com/cpacia/wallet-interface v0.0.0-20190707031038-462db36b5c65
+github.com/cpacia/wallet-interface
 # github.com/cskr/pubsub v1.0.2
 github.com/cskr/pubsub
 # github.com/davecgh/go-spew v1.1.1
@@ -106,15 +111,15 @@ github.com/dustin/go-humanize
 # github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5
 github.com/facebookgo/atomicfile
 # github.com/gogo/protobuf v1.2.1
-github.com/gogo/protobuf/io
 github.com/gogo/protobuf/proto
+github.com/gogo/protobuf/io
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 # github.com/golang/protobuf v1.3.1
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
-github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/timestamp
+github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 # github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
 github.com/golang/snappy
@@ -297,9 +302,9 @@ github.com/ipfs/go-unixfs/hamt
 # github.com/ipfs/go-verifcid v0.0.1
 github.com/ipfs/go-verifcid
 # github.com/ipfs/interface-go-ipfs-core v0.0.8
+github.com/ipfs/interface-go-ipfs-core/options
 github.com/ipfs/interface-go-ipfs-core/options/namesys
 github.com/ipfs/interface-go-ipfs-core/path
-github.com/ipfs/interface-go-ipfs-core/options
 github.com/ipfs/interface-go-ipfs-core
 # github.com/jackpal/gateway v1.0.5
 github.com/jackpal/gateway

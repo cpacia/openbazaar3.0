@@ -2,63 +2,218 @@ package wallet
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"github.com/OpenBazaar/wallet-interface"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	btc "github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcec"
 	hd "github.com/btcsuite/btcutil/hdkeychain"
-	"math/big"
-	"strconv"
+	"github.com/cpacia/openbazaar3.0/events"
+	iwallet "github.com/cpacia/wallet-interface"
 	"sync"
 	"time"
 )
 
+// MockWalletNetwork is a network of mock wallets connected
+// together through channels. One mock wallet can send a
+// transaction to another one.
 type MockWalletNetwork struct {
-	wallets []MockWallet
+	wallets []*MockWallet
+
+	outgoing chan iwallet.Transaction
+	shutdown chan struct{}
+
+	height uint64
 }
 
+// NewMockWalletNetwork creates a network of numWallets mock wallets
+// and connects them all together.
+func NewMockWalletNetwork(numWallets int) *MockWalletNetwork {
+	var wallets []*MockWallet
+	outgoing := make(chan iwallet.Transaction)
+	for i := 0; i < numWallets; i++ {
+		w := NewMockWallet()
+		w.outgoing = outgoing
+		wallets = append(wallets, w)
+	}
+
+	return &MockWalletNetwork{
+		wallets:  wallets,
+		outgoing: outgoing,
+		shutdown: make(chan struct{}),
+	}
+}
+
+// Start will start the wallet network. This must be called
+// before sending any transactions between wallets.
+func (n *MockWalletNetwork) Start() {
+	for _, w := range n.wallets {
+		w.Start()
+	}
+	go func() {
+		for {
+			select {
+			case cb := <-n.outgoing:
+				for _, w := range n.wallets {
+					w.incoming <- cb
+				}
+			case <-n.shutdown:
+				return
+			}
+		}
+	}()
+}
+
+// Wallets returns a slice of wallets in this network.
+func (n *MockWalletNetwork) Wallets() []*MockWallet {
+	return n.wallets
+}
+
+// GenerateBlock will create a fake block and send it to the
+// wallets. All wallets will increment the confirmations on
+// their transactions if applicable.
 func (n *MockWalletNetwork) GenerateBlock() {
 	h := make([]byte, 32)
 	rand.Read(h)
 
-	ch, _ := chainhash.NewHash(h)
+	n.height++
+
 	for _, wallet := range n.wallets {
-		wallet.block <- *ch
+		wallet.block <- iwallet.BlockchainInfo{
+			Height:    n.height,
+			BestBlock: iwallet.BlockID(hex.EncodeToString(h)),
+		}
 	}
 }
 
-func (n *MockWalletNetwork) GenerateToAddress(addr btc.Address, amount big.Int) {
+// GenerateToAddress creates new coins out of thin air and sends them to the
+// requested address.
+func (n *MockWalletNetwork) GenerateToAddress(addr iwallet.Address, amount iwallet.Amount) error {
+	txidBytes := make([]byte, 32)
+	rand.Read(txidBytes)
 
+	prevHashBytes := make([]byte, 36)
+	rand.Read(prevHashBytes)
+
+	prevAddrBytes := make([]byte, 32)
+	rand.Read(prevAddrBytes)
+
+	txn := iwallet.Transaction{
+		ID: iwallet.TransactionID(hex.EncodeToString(txidBytes)),
+		From: []iwallet.SpendInfo{
+			{
+				ID:      prevHashBytes,
+				Amount:  amount,
+				Address: *iwallet.NewAddress(hex.EncodeToString(prevAddrBytes), iwallet.CtTestnetMock),
+			},
+		},
+		To: []iwallet.SpendInfo{
+			{
+				Address: addr,
+				Amount:  amount,
+				ID:      append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
+			},
+		},
+	}
+
+	for _, w := range n.wallets {
+		w.incoming <- txn
+	}
+	return nil
 }
 
+// MockWallet is a mock wallet that conforms to the wallet interface. It can
+// be hooked up to the MockWalletNetwork to allow transactions between mock
+// wallets.
 type MockWallet struct {
 	mtx sync.RWMutex
 
-	addrs        map[string]bool
-	watchedAddrs map[string]struct{}
-	transactions map[chainhash.Hash]wallet.Txn
-	utxos        map[string]mockUtxo
+	addrs        map[iwallet.Address]bool
+	watchedAddrs map[iwallet.Address]struct{}
+	transactions map[iwallet.TransactionID]iwallet.Transaction
 
-	listeners []func(wallet.TransactionCallback)
+	utxos map[string]mockUtxo
 
-	bestHeight int
-	bestHash   chainhash.Hash
+	blockchainInfo iwallet.BlockchainInfo
 
-	outgoing chan wallet.TransactionCallback
-	incoming chan wallet.TransactionCallback
-	block    chan chainhash.Hash
+	outgoing chan iwallet.Transaction
+	incoming chan iwallet.Transaction
+	block    chan iwallet.BlockchainInfo
+
+	txSubs    []chan iwallet.Transaction
+	blockSubs []chan iwallet.BlockchainInfo
+
+	bus events.Bus
 
 	done chan struct{}
 }
 
+// NewMockWallet creates and returns a new mock wallet.
+func NewMockWallet() *MockWallet {
+	mw := &MockWallet{
+		addrs:        make(map[iwallet.Address]bool),
+		watchedAddrs: make(map[iwallet.Address]struct{}),
+		transactions: make(map[iwallet.TransactionID]iwallet.Transaction),
+		utxos:        make(map[string]mockUtxo),
+		incoming:     make(chan iwallet.Transaction),
+		block:        make(chan iwallet.BlockchainInfo),
+		done:         make(chan struct{}),
+	}
+
+	for i := 0; i < 10; i++ {
+		b := make([]byte, 20)
+		rand.Read(b)
+		addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
+		mw.addrs[*addr] = false
+	}
+
+	return mw
+}
+
+// mockUtxo is used for internal accounting.
 type mockUtxo struct {
-	OutpointHash  []byte
-	OutpointIndex uint32
-	Address       btc.Address
-	Value         big.Int
-	Height        int
+	outpoint []byte
+	address  iwallet.Address
+	value    iwallet.Amount
+	height   uint64
+}
+
+// dbTx satisfies the iwallet.Tx interface.
+type dbTx struct {
+	isClosed bool
+
+	onCommit func() error
+}
+
+// Commit will commit the transaction.
+func (tx *dbTx) Commit() error {
+	if tx.isClosed {
+		panic("tx is closed")
+	}
+	if tx.onCommit != nil {
+		if err := tx.onCommit(); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	tx.isClosed = true
+	return nil
+}
+
+// Rollback will rollback the transaction.
+func (tx *dbTx) Rollback() error {
+	if tx.isClosed {
+		panic("tx is closed")
+	}
+	tx.onCommit = nil
+	tx.isClosed = true
+	return nil
+}
+
+// SetEventBus sets an event bus in the mock wallet. This is useful
+// for testing integration with the OpenBazaarNode.
+func (w *MockWallet) SetEventBus(bus events.Bus) {
+	w.bus = bus
 }
 
 // Start is called when the openbazaar-go daemon starts up. At this point in time
@@ -70,60 +225,72 @@ func (w *MockWallet) Start() {
 			select {
 			case tx := <-w.incoming:
 				w.mtx.Lock()
-				shouldCallback := false
-				var value int64
-				txid, _ := chainhash.NewHashFromStr(tx.Txid)
-				txidBytes, _ := hex.DecodeString(tx.Txid)
-				for _, in := range tx.Inputs {
-					if _, ok := w.utxos[hex.EncodeToString(in.OutpointHash)+strconv.Itoa(int(in.OutpointIndex))]; ok {
-						shouldCallback = true
-						value -= in.Value
-						delete(w.utxos, hex.EncodeToString(in.OutpointHash)+strconv.Itoa(int(in.OutpointIndex)))
-					}
+				txidBytes, err := hex.DecodeString(string(tx.ID))
+				if err != nil {
+					return
 				}
-				for i, out := range tx.Outputs {
-					if _, ok := w.addrs[out.Address.String()]; ok {
-						shouldCallback = true
-						value += out.Value
-						if _, ok := w.transactions[*txid]; !ok {
-							w.utxos[tx.Txid+strconv.Itoa(i)] = mockUtxo{
-								Value:         *big.NewInt(out.Value),
-								Address:       out.Address,
-								OutpointHash:  txidBytes,
-								OutpointIndex: uint32(i),
+				var (
+					relevant bool
+					watched  bool
+				)
+				for i, out := range tx.To {
+					if _, ok := w.addrs[out.Address]; ok {
+						idx := make([]byte, 4)
+						binary.BigEndian.PutUint32(idx, uint32(i))
+						outpoint := hex.EncodeToString(append(txidBytes, idx...))
+						if _, ok := w.utxos[outpoint]; !ok {
+							w.utxos[outpoint] = mockUtxo{
+								outpoint: append(txidBytes, idx...),
+								address:  out.Address,
+								value:    out.Amount,
 							}
 						}
+						tx.To[i].IsRelevant = true
+						w.addrs[out.Address] = true
+						relevant = true
+					}
+					if _, ok := w.watchedAddrs[out.Address]; ok {
+						watched = true
+						tx.To[i].IsWatched = true
 					}
 				}
-				if shouldCallback {
-					for _, listener := range w.listeners {
-						listener(tx)
+				for i, in := range tx.From {
+					if _, ok := w.addrs[in.Address]; ok {
+						if _, ok := w.utxos[hex.EncodeToString(in.ID)]; ok {
+							delete(w.utxos, hex.EncodeToString(in.ID))
+						}
+						relevant = true
+						tx.From[i].IsRelevant = true
 					}
-					txn := wallet.Txn{
-						Timestamp: time.Now(),
-						Txid:      txid.String(),
-						Value:     value,
-						WatchOnly: value == 0,
+					if _, ok := w.watchedAddrs[in.Address]; ok {
+						watched = true
+						tx.From[i].IsWatched = true
 					}
-					w.transactions[*txid] = txn
+				}
+				if relevant || watched {
+					w.transactions[tx.ID] = tx
+					if w.bus != nil {
+						w.bus.Emit(&events.TransactionReceived{tx})
+					}
 				}
 				w.mtx.Unlock()
-			case blockHash := <-w.block:
+			case blockInfo := <-w.block:
 				w.mtx.Lock()
-				w.bestHeight++
-				w.bestHash = blockHash
-
-				for id, utxo := range w.utxos {
-					if utxo.Height == 0 {
-						utxo.Height = w.bestHeight
-						w.utxos[id] = utxo
+				w.blockchainInfo = blockInfo
+				for txid, txn := range w.transactions {
+					if txn.Height == 0 {
+						txn.Height = blockInfo.Height
+						w.transactions[txid] = txn
 					}
 				}
-				for h, txn := range w.transactions {
-					if txn.Height == 0 {
-						txn.Height = int32(w.bestHeight)
-						w.transactions[h] = txn
+				for op, utxo := range w.utxos {
+					if utxo.height == 0 {
+						utxo.height = blockInfo.Height
+						w.utxos[op] = utxo
 					}
+				}
+				if w.bus != nil {
+					w.bus.Emit(&events.BlockReceived{CurrencyCode: "TMCK", BlockchainInfo: blockInfo})
 				}
 				w.mtx.Unlock()
 			case <-w.done:
@@ -133,524 +300,492 @@ func (w *MockWallet) Start() {
 	}()
 }
 
-// Close should cleanly disconnect from the wallet and finish writing
-// anything it needs to to disk.
-func (w *MockWallet) Close() {
-	close(w.done)
+// WalletExists should return whether the wallet exits or has been
+// initialized.
+func (w *MockWallet) WalletExists() bool {
+	return true
 }
 
-// CurrencyCode returns the currency code this wallet implements. For example, "BTC".
-// When running on testnet a `T` should be prepended. For example "TBTC".
-func (w *MockWallet) CurrencyCode() string {
-	return "TMCK"
-}
-
-// ExchangeRates returns an ExchangeRates implementation which will provide
-// fiat exchange rate data for this coin.
-func (w *MockWallet) ExchangeRates() wallet.ExchangeRates {
-
-}
-
-// AddWatchedAddress adds an address to the wallet to get notifications back when coins
-// are received or spent from it. These watch only addresses should be persisted between
-// sessions and upon each startup the wallet should be made to listen for transactions
-// involving them.
-func (w *MockWallet) AddWatchedAddress(addr btc.Address) error {
-	w.mtx.Lock()
-	defer w.mtx.Unlock()
-
-	w.watchedAddrs[addr.String()] = struct{}{}
+// CreateWallet should initialize the wallet. This will be called by
+// OpenBazaar if WalletExists() returns false.
+//
+// The xPriv may be used to create a bip44 keychain. The xPriv is
+// `cointype` level in the bip44 path. For example in the following
+// path the wallet should only derive the paths after `cointype` as
+// m and purpose' are kept private by OpenBazaar so this wallet cannot
+// derive keys from other wallets.
+//
+// m / purpose' / coin_type' / account' / change / address_index
+//
+// The birthday can be used determine where to sync state from if
+// appropriate.
+//
+// If the wallet does not implement WalletCrypter then pw will be
+// nil. Otherwise it should be used to encrypt the private keys.
+func (w *MockWallet) CreateWallet(xpriv hd.ExtendedKey, pw []byte, birthday time.Time) error {
 	return nil
 }
 
-// AddTransactionListener is how openbazaar-go registers to receive a callback whenever
-// a transaction is received that is relevant to this wallet or any of its watch only
-// addresses. An address is considered relevant if any inputs or outputs match an address
-// owned by this wallet, or being watched by the wallet via AddWatchedAddress method.
-func (w *MockWallet) AddTransactionListener(cb func(wallet.TransactionCallback)) {
-	w.mtx.Lock()
-	defer w.mtx.Unlock()
-
-	w.listeners = append(w.listeners, cb)
+// Open wallet will be called each time on OpenBazaar start. It
+// will also be called after CreateWallet().
+func (w *MockWallet) OpenWallet() error {
+	return nil
 }
 
-// IsDust returns whether the amount passed in is considered dust by network. This
-// method is called when building payout transactions from the multisig to the various
-// participants. If the amount that is supposed to be sent to a given party is below
-// the dust threshold, openbazaar-go will not pay that party to avoid building a transaction
-// that never confirms.
-func (w *MockWallet) IsDust(amount big.Int) bool {
-	return amount.Cmp(big.NewInt(100)) < 0
+// CloseWallet will be called when OpenBazaar shuts down.
+func (w *MockWallet) CloseWallet() error {
+	close(w.done)
+	return nil
 }
 
-// CurrentAddress returns an address suitable for receiving payments. `purpose` specifies
-// whether the address should be internal or external. External addresses are typically
-// requested when receiving funds from outside the wallet .Internal addresses are typically
-// change addresses. For utxo based coins we expect this function will return the same
-// address so long as that address is unused. Whenever the address receives a payment,
-// CurrentAddress should start returning a new, unused address.
-func (w *MockWallet) CurrentAddress(purpose wallet.KeyPurpose) btc.Address {
-	w.mtx.Lock()
-	defer w.mtx.Unlock()
-
-	for addrStr, used := range w.addrs {
-		if !used {
-			addr, _ := btc.DecodeAddress(addrStr, &chaincfg.TestNet3Params)
-			return addr
-		}
-	}
-	h := make([]byte, 20)
-	rand.Read(h)
-	addr, _ := btc.NewAddressPubKeyHash(h, &chaincfg.TestNet3Params)
-	w.addrs[addr.String()] = false
-	return addr
+// Begin returns a new database transaction. A transaction must only be used
+// once. After Commit() or Rollback() is called the transaction can be discarded.
+func (w *MockWallet) Begin() (iwallet.Tx, error) {
+	return &dbTx{}, nil
 }
 
-// NewAddress returns a new, never-before-returned address. It is critical that it returns
-// a never-before-returned address because this function is called when fetching an address
-// for a direct payment order. In this case we expect the address to be unique for each order
-// if it's not unique, it will cause problems as we can't determine which order the payment
-// was for.
-func (w *MockWallet) NewAddress(purpose wallet.KeyPurpose) btc.Address {
-	w.mtx.Lock()
-	defer w.mtx.Unlock()
-
-	h := make([]byte, 20)
-	rand.Read(h)
-	addr, _ := btc.NewAddressPubKeyHash(h, &chaincfg.TestNet3Params)
-	w.addrs[addr.String()] = false
-	return addr
-}
-
-// DecodeAddress parses the address string and return an address interface.
-func (w *MockWallet) DecodeAddress(addr string) (btc.Address, error) {
-	return btc.DecodeAddress(addr, &chaincfg.TestNet3Params)
-}
-
-// ScriptToAddress takes a raw output script (the full script, not just a hash160) and
-// returns the corresponding address. This should be considered deprecated as we
-// intend to remove it once most people have upgraded, but for now it needs to remain.
-func (w *MockWallet) ScriptToAddress(script []byte) (btc.Address, error) {
-	return nil, nil
-}
-
-// Balance returns the confirmed and unconfirmed aggregate balance for the wallet.
-// For utxo based wallets, if a spend of confirmed coins is made, the resulting "change"
-// should be also counted as confirmed even if the spending transaction is unconfirmed.
-// The reason for this that if the spend never confirms, no coins will be lost to the wallet.
-//
-// The returned balances should be in the coin's base unit (for example: satoshis)
-func (w *MockWallet) Balance() (confirmed, unconfirmed big.Int) {
+// BlockchainInfo returns the best hash and height of the chain.
+func (w *MockWallet) BlockchainInfo() (iwallet.BlockchainInfo, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
+	return w.blockchainInfo, nil
+}
+
+// CurrentAddress is called when requesting this wallet's receiving
+// address. It is customary that the wallet return the first unused
+// address and only return a different address after funds have been
+// received on the address. This, however, is just a wallet implementation
+// detail.
+func (w *MockWallet) CurrentAddress() (iwallet.Address, error) {
+	w.mtx.Lock()
+	defer w.mtx.Unlock()
+
+	for addr, used := range w.addrs {
+		if !used {
+			return addr, nil
+		}
+	}
+	b := make([]byte, 20)
+	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
+	w.addrs[*addr] = false
+	return *addr, nil
+}
+
+// NewAddress should return a new, never before used address. This is called
+// by OpenBazaar to get a fresh address for a direct payment order. It
+// associates this address with the order and assumes if a payment is received
+// by this address that it is for the order. Failure to return a never before
+// used address could put the order in a bad state.
+//
+// Wallets that only use a single address, like Ethereum, should save the
+// passed in order ID locally such as to associate payments with orders.
+func (w *MockWallet) NewAddress(orderID string) (iwallet.Address, error) {
+	w.mtx.Lock()
+	defer w.mtx.Unlock()
+
+	b := make([]byte, 20)
+	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
+	w.addrs[*addr] = false
+	return *addr, nil
+}
+
+func (w *MockWallet) newAddress(orderID string) (iwallet.Address, error) {
+	b := make([]byte, 20)
+	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
+	w.addrs[*addr] = false
+	return *addr, nil
+}
+
+// Balance should return the confirmed and unconfirmed balance for the wallet.
+func (w *MockWallet) Balance() (unconfirmed iwallet.Amount, confirmed iwallet.Amount, err error) {
+	w.mtx.RLock()
+	defer w.mtx.RUnlock()
+
+	// TODO: this is the lazy way of calculating this. It should probably
+	// recursively check if unconfirmed utxos are spends of confirmed parents.
 	for _, utxo := range w.utxos {
-		if utxo.Height == 0 {
-			unconfirmed.Add(&unconfirmed, &utxo.Value)
+		if utxo.height > 0 {
+			confirmed = confirmed.Add(utxo.value)
 		} else {
-			confirmed.Add(&confirmed, &utxo.Value)
+			unconfirmed = unconfirmed.Add(utxo.value)
 		}
 	}
 	return
 }
 
-// Transactions returns a list of transactions for this wallet.
-func (w *MockWallet) Transactions() ([]wallet.Txn, error) {
+// Transactions returns a slice of this wallet's transactions.
+func (w *MockWallet) Transactions() ([]iwallet.Transaction, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
-	var txns []wallet.Txn
-	for _, txn := range w.transactions {
-		txns = append(txns, txn)
+	txs := make([]iwallet.Transaction, 0, len(w.transactions))
+	for _, tx := range w.transactions {
+		txs = append(txs, tx)
 	}
-	return txns, nil
+	return txs, nil
 }
 
-// GetTransaction return info on a specific transaction given the txid.
-func (w *MockWallet) GetTransaction(txid chainhash.Hash) (wallet.Txn, error) {
+// GetTransaction returns a transaction given it's ID.
+func (w *MockWallet) GetTransaction(id iwallet.TransactionID) (iwallet.Transaction, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
-	txn, ok := w.transactions[txid]
+	tx, ok := w.transactions[id]
 	if !ok {
-		return wallet.Txn{}, errors.New("not found")
+		return tx, errors.New("not found")
 	}
-	return txn, nil
+	return tx, nil
 }
 
-// ChainTip returns the best block hash and height of the blockchain.
-func (w *MockWallet) ChainTip() (uint32, chainhash.Hash) {
+// Spend is a request to send requested amount to the requested address. The
+// fee level is provided by the user. It's up to the implementation to decide
+// how best to use the fee level.
+//
+// The database Tx MUST be respected. When this function is called the wallet
+// state changes should be prepped and held in memory. If Rollback() is called
+// the state changes should be discarded. Only when Commit() is called should
+// the state changes be applied and the transaction broadcasted to the network.
+func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount, feeLevel iwallet.FeeLevel) (iwallet.TransactionID, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
-	return uint32(w.bestHeight), w.bestHash
-}
-
-// ReSyncBlockchain is called in response to a user action to rescan transactions. API based
-// wallets should do another scan of their addresses to find anything missing. Full node, or SPV
-// wallets should rescan/re-download blocks starting at the fromTime.
-func (w *MockWallet) ReSyncBlockchain(fromTime time.Time) {}
-
-// GetConfirmations returns the number of confirmations and the height for a transaction.
-func (w *MockWallet) GetConfirmations(txid chainhash.Hash) (confirms, atHeight uint32, err error) {
-	w.mtx.RLock()
-	defer w.mtx.RUnlock()
-
-	txn, ok := w.transactions[txid]
-	if !ok {
-		return 0, 0, errors.New("not found")
+	// Select fee
+	var fee iwallet.Amount
+	switch feeLevel {
+	case iwallet.FlEconomic:
+		fee = iwallet.NewAmount(250)
+	case iwallet.FlNormal:
+		fee = iwallet.NewAmount(500)
+	case iwallet.FlPriority:
+		fee = iwallet.NewAmount(750)
 	}
-	return uint32(w.bestHeight) - uint32(txn.Height) + 1, uint32(txn.Height), nil
-}
 
-// ChildKey generate a child key using the given chaincode. Each openbazaar-go node
-// keeps a master key (an hd secp256k1 key) that it uses in multisig transactions.
-// Rather than use the key directly (which would result in an on chain privacy leak),
-// we create a random chaincode for each order (which is not made public) and a child
-// key is derived from the master key using the chaincode. The child key for each party
-// to the order (buyer, vendor, moderator) is what is used to create the multisig. This
-// function leaves it up the wallet implementation to decide how to derive the child key
-// so long as it's deterministic and uses the chaincode and the returned key is pseudorandom.
-func (w *MockWallet) ChildKey(keyBytes []byte, chaincode []byte, isPrivateKey bool) (*hd.ExtendedKey, error) {
-	parentFP := []byte{0x00, 0x00, 0x00, 0x00}
-	var id []byte
-	if isPrivateKey {
-		id = chaincfg.TestNet3Params.HDPrivateKeyID[:]
-	} else {
-		id = chaincfg.TestNet3Params.HDPublicKeyID[:]
-	}
-	hdKey := hd.NewExtendedKey(
-		id,
-		keyBytes,
-		chaincode,
-		parentFP,
-		0,
-		0,
-		isPrivateKey)
-	return hdKey.Child(0)
-}
+	// Keep adding utxos until the total in value is
+	// greater than amt + fee
+	totalWithFee := amt.Add(iwallet.NewAmount(fee))
+	var (
+		totalUtxo iwallet.Amount
+		utxos     []mockUtxo
+	)
+	for _, utxo := range w.utxos {
+		utxos = append(utxos, utxo)
+		totalUtxo = totalUtxo.Add(utxo.value)
 
-// HasKey returns whether or not the wallet has the key for the given address. This method
-// is called by openbazaar-go when validating payouts from multisigs. It makes sure the
-// transaction that the other party(s) signed does indeed pay to an address that we
-// control.
-func (w *MockWallet) HasKey(addr btc.Address) bool {
-	w.mtx.RLock()
-	defer w.mtx.RUnlock()
-
-	_, ok := w.addrs[addr.String()]
-	return ok
-}
-
-// GenerateMultisigScript should deterministically create a redeem script and address from the information provided.
-// This method should be strictly limited to taking the input data, combining it to produce the redeem script and
-// address and that's it. There is no need to interact with the network or make any transactions when this is called.
-//
-// Openbazaar-go will call this method in the following situations:
-// 1) When the buyer places an order he passes in the relevant keys for each party to get back the address where
-// the funds should be sent and the redeem script. The redeem script is saved in order (and openbazaar-go database).
-//
-// 2) The vendor calls this method when he receives and order so as to validate that the address they buyer is sending
-// funds to is indeed correctly constructed. If this method fails to return the same values for the vendor as it
-// did the buyer, the vendor will reject the order.
-//
-// 3) The moderator calls this function upon receiving a dispute so that he can validate the payment address for the
-// order and make sure neither party is trying to maliciously lie about the details of the dispute to get the moderator
-// to release the funds.
-//
-// Note that according to the order flow, this method is called by the buyer *before* the order is sent to the vendor,
-// and before the vendor validates the order. Only after the buyer hears back from the vendor does the buyer send
-// funds (either from an external wallet or via the `Spend` method) to the address specified in this method's return.
-//
-// `threshold` is the number of keys required to release the funds from the address. If `threshold` is two and len(keys)
-// is three, this is a two of three multisig. If `timeoutKey` is not nil, then the script should allow the funds to
-// be released with a signature from the `timeoutKey` after the `timeout` duration has passed.
-// For example:
-// OP_IF 2 <buyerPubkey> <vendorPubkey> <moderatorPubkey> 3 OP_ELSE <timeout> OP_CHECKSEQUENCEVERIFY <timeoutKey> OP_CHECKSIG OP_ENDIF
-//
-// If `timeoutKey` is nil then the a normal multisig without a timeout should be created.
-func (w *MockWallet) GenerateMultisigScript(keys []hd.ExtendedKey, threshold int, timeout time.Duration, timeoutKey *hd.ExtendedKey) (addr btc.Address, redeemScript []byte, err error) {
-	var mockReedemScript []byte
-	for _, key := range keys {
-		pub, err := key.ECPubKey()
-		if err != nil {
-			return nil, nil, err
+		if totalUtxo.Cmp(totalWithFee) >= 0 {
+			break
 		}
-		mockReedemScript = append(mockReedemScript, pub.SerializeCompressed()...)
+	}
+	if totalUtxo.Cmp(totalUtxo) < 0 {
+		return iwallet.TransactionID(""), errors.New("insufficient funds")
 	}
 
-	addr, err = btc.NewAddressScriptHash(mockReedemScript, &chaincfg.TestNet3Params)
-	if err != nil {
-		return nil, nil, err
+	txidBytes := make([]byte, 32)
+	rand.Read(txidBytes)
+
+	txn := iwallet.Transaction{
+		ID: iwallet.TransactionID(hex.EncodeToString(txidBytes)),
+		To: []iwallet.SpendInfo{
+			{
+				Address:    to,
+				Amount:     amt,
+				IsRelevant: false,
+				ID:         append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
+			},
+		},
 	}
-	return addr, redeemScript, err
+
+	// Maybe add change
+	var changeUtxo *mockUtxo
+	if totalUtxo.Cmp(totalWithFee) > 0 {
+		changeAddr, err := w.newAddress("")
+		if err != nil {
+			return txn.ID, err
+		}
+		change := iwallet.SpendInfo{
+			Address:    changeAddr,
+			Amount:     totalUtxo.Sub(amt.Add(fee)),
+			IsRelevant: true,
+			ID:         append(txidBytes, []byte{0x00, 0x00, 0x00, 0x01}...),
+		}
+		txn.To = append(txn.To, change)
+
+		changeUtxo = &mockUtxo{
+			outpoint: change.ID,
+			address:  change.Address,
+			value:    change.Amount,
+			height:   0,
+		}
+	}
+
+	var utxosToDelete []string
+	for _, utxo := range utxos {
+		in := iwallet.SpendInfo{
+			ID:         utxo.outpoint,
+			Address:    utxo.address,
+			Amount:     utxo.value,
+			IsRelevant: true,
+		}
+		txn.From = append(txn.From, in)
+		utxosToDelete = append(utxosToDelete, hex.EncodeToString(utxo.outpoint))
+	}
+
+	dbTx := tx.(*dbTx)
+	dbTx.onCommit = func() error {
+		w.mtx.Lock()
+		w.transactions[txn.ID] = txn
+		for _, utxo := range utxosToDelete {
+			delete(w.utxos, utxo)
+		}
+		if changeUtxo != nil {
+			w.utxos[hex.EncodeToString(changeUtxo.outpoint)] = *changeUtxo
+			w.addrs[changeUtxo.address] = true
+		}
+		if w.outgoing != nil {
+			w.outgoing <- txn
+		}
+		for _, sub := range w.txSubs {
+			sub <- txn
+		}
+		w.mtx.Unlock()
+		return nil
+	}
+
+	return txn.ID, nil
 }
 
-// CreateMultisigSignature should build a transaction using the given inputs and outputs and sign it with the
-// provided key. A list of signatures (one for each input) should be returned.
+// SweepWallet should sweep the full balance of the wallet to the requested
+// address. It is expected for most coins that the fee will be subtracted
+// from the amount sent rather than added to it.
+func (w *MockWallet) SweepWallet(tx iwallet.Tx, to iwallet.Address, feeLevel iwallet.FeeLevel) (iwallet.TransactionID, error) {
+	w.mtx.RLock()
+	defer w.mtx.RUnlock()
+
+	// Select fee
+	var fee iwallet.Amount
+	switch feeLevel {
+	case iwallet.FlEconomic:
+		fee = iwallet.NewAmount(250)
+	case iwallet.FlNormal:
+		fee = iwallet.NewAmount(500)
+	case iwallet.FlPriority:
+		fee = iwallet.NewAmount(750)
+	}
+
+	var (
+		totalUtxo iwallet.Amount
+		utxos     []mockUtxo
+	)
+	for _, utxo := range w.utxos {
+		utxos = append(utxos, utxo)
+		totalUtxo = totalUtxo.Add(utxo.value)
+	}
+
+	txidBytes := make([]byte, 32)
+	rand.Read(txidBytes)
+
+	txn := iwallet.Transaction{
+		ID: iwallet.TransactionID(hex.EncodeToString(txidBytes)),
+		To: []iwallet.SpendInfo{
+			{
+				Address:    to,
+				Amount:     totalUtxo.Sub(fee),
+				IsRelevant: false,
+				ID:         append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
+			},
+		},
+	}
+
+	var utxosToDelete []string
+	for _, utxo := range utxos {
+		in := iwallet.SpendInfo{
+			ID:         utxo.outpoint,
+			Address:    utxo.address,
+			Amount:     utxo.value,
+			IsRelevant: true,
+		}
+		txn.From = append(txn.From, in)
+		utxosToDelete = append(utxosToDelete, hex.EncodeToString(utxo.outpoint))
+	}
+
+	dbTx := tx.(*dbTx)
+	dbTx.onCommit = func() error {
+		w.mtx.Lock()
+		w.transactions[txn.ID] = txn
+		for _, utxo := range utxosToDelete {
+			delete(w.utxos, utxo)
+		}
+		if w.outgoing != nil {
+			w.outgoing <- txn
+		}
+		for _, sub := range w.txSubs {
+			sub <- txn
+		}
+		w.mtx.Unlock()
+		return nil
+	}
+
+	return txn.ID, nil
+}
+
+// SubscribeTransactions returns a chan over which the wallet is expected
+// to push both transactions relevant for this wallet as well as transactions
+// sending to or spending from a watched address.
+func (w *MockWallet) SubscribeTransactions() chan<- iwallet.Transaction {
+	ch := make(chan iwallet.Transaction)
+	w.txSubs = append(w.txSubs, ch)
+	return ch
+}
+
+// SubscribeBlocks returns a chan over which the wallet is expected
+// to push info about new blocks when they arrive.
+func (w *MockWallet) SubscribeBlocks() chan<- iwallet.BlockchainInfo {
+	ch := make(chan iwallet.BlockchainInfo)
+	w.blockSubs = append(w.blockSubs, ch)
+	return ch
+}
+
+// WatchAddress is used by the escrow system to tell the wallet to listen
+// on the escrow address. It's expected that payments into and spends from
+// this address will be pushed back to OpenBazaar.
 //
-// This method is called by openbazaar-go by each party whenever they decide to release the funds from escrow.
-// This method should not actually move any funds or make any transactions, only create necessary signatures to
-// do so. The caller will then take the signature and share it with the other parties. Once all parties have shared
-// their signatures, the person who wants to release the funds collects them and uses them as an input to the
-// `Multisign` method.
-func (w *MockWallet) CreateMultisigSignature(ins []wallet.TransactionInput, outs []wallet.TransactionOutput, key *hd.ExtendedKey, redeemScript []byte, feePerByte big.Int) ([]wallet.Signature, error) {
-	var sigs []wallet.Signature
-	for i, in := range ins {
-		sigBytes := append(in.OutpointHash, in.OrderID...)
-		sigs = append(sigs, wallet.Signature{
-			Signature:  sigBytes,
-			InputIndex: uint32(i),
+// Note a database transaction is used here. Same rules of Commit() and
+// Rollback() apply.
+func (w *MockWallet) WatchAddress(tx iwallet.Tx, addr iwallet.Address) error {
+	dbtx := tx.(*dbTx)
+	dbtx.onCommit = func() error {
+		w.mtx.Lock()
+		defer w.mtx.Unlock()
+
+		w.watchedAddrs[addr] = struct{}{}
+		return nil
+	}
+	return nil
+}
+
+// CreateMultisigAddress creates a new threshold multisig address using the
+// provided pubkeys and the threshold. The multisig address is returned along
+// with a byte slice. The byte slice will typically be the redeem script for
+// the address (in Bitcoin related coins). The slice will be saved in OpenBazaar
+// with the order and passed back into the wallet when signing the transaction.
+// In practice this does not need to be a redeem script so long as the wallet
+// knows how to sign the transaction when it sees it.
+//
+// This function should be deterministic as both buyer and vendor will be passing
+// in the same set of keys and expecting to get back the same address and redeem
+// script. If this is not the case the vendor will reject the order.
+//
+// Note that this is normally a 2 of 3 escrow in the normal case, however OpenBazaar
+// also uses 1 of 2 multisigs as a form of a "cancelable" address when sending to
+// a node that is offline. This allows the sender to cancel the payment if the vendor
+// never comes back online.
+func (w *MockWallet) CreateMultisigAddress(keys []btcec.PublicKey, threshold int) (iwallet.Address, []byte, error) {
+	var redeemScript []byte
+	for _, key := range keys {
+		redeemScript = append(redeemScript, key.SerializeCompressed()...)
+	}
+	t := make([]byte, 4)
+	binary.BigEndian.PutUint32(t, uint32(threshold))
+	redeemScript = append(redeemScript, t...)
+
+	h := sha256.Sum256(redeemScript)
+	addr := iwallet.NewAddress(hex.EncodeToString(h[:]), iwallet.CtTestnetMock)
+	return *addr, redeemScript, nil
+}
+
+// CreateMultisigWithTimeout is the same as CreateMultisigAddress but it adds
+// an additional timeout to the address. The address should have two ways to
+// release the funds:
+//  - m of n signatures are provided (or)
+//  - timeout has passed and a signature for timeoutKey is provided.
+func (w *MockWallet) CreateMultisigWithTimeout(keys []*btcec.PublicKey, threshold int, timeout time.Duration, timeoutKey *btcec.PublicKey) (iwallet.Address, []byte, error) {
+	var redeemScript []byte
+	for _, key := range keys {
+		redeemScript = append(redeemScript, key.SerializeCompressed()...)
+	}
+	t := make([]byte, 4)
+	binary.BigEndian.PutUint32(t, uint32(threshold))
+	redeemScript = append(redeemScript, t...)
+	redeemScript = append(redeemScript, timeoutKey.SerializeCompressed()...)
+
+	h := sha256.Sum256(redeemScript)
+	addr := iwallet.NewAddress(hex.EncodeToString(h[:]), iwallet.CtTestnetMock)
+	return *addr, redeemScript, nil
+}
+
+// SignMultisigTransaction should use the provided key to create a signature for
+// the multisig transaction. Since this a threshold signature this function will
+// separately by each party signing this transaction. The resulting signatures
+// will be shared between the relevant parties and one of them will aggregate
+// the signatures into a transaction for broadcast.
+//
+// For coins like bitcoin you may need to return one signature *per input* which is
+// why a slice of signatures is returned.
+func (w *MockWallet) SignMultisigTransaction(txn iwallet.Transaction, key *btcec.PrivateKey, redeemScript []byte) ([]iwallet.EscrowSignature, error) {
+	var sigs []iwallet.EscrowSignature
+	for i := range txn.From {
+		sigBytes := make([]byte, 64)
+		rand.Read(sigBytes)
+
+		sigs = append(sigs, iwallet.EscrowSignature{
+			Index:     i,
+			Signature: sigBytes,
 		})
 	}
 	return sigs, nil
 }
 
-// Multisign collects all of the signatures generated by the `CreateMultisigSignature` function and builds a final
-// transaction that can then be broadcast to the blockchain. The []byte return is the raw transaction. It should be
-// broadcasted if `broadcast` is true. If the signatures combine and produce an invalid transaction then an error
-// should be returned.
+// BuildAndSend should used the passed in signatures to build the transaction.
+// Note the signatures are a slice of slices. This is because coins like Bitcoin
+// may require one signature *per input*. In this case the outer slice is the
+// signatures from the different key holders and the inner slice is the keys
+// per input.
 //
-// This method is called by openbazaar-go by whichever party to the escrow is trying to release the funds only after
-// all needed parties have signed using `CreateMultisigSignature` and have shared their signatures with each other.
-func (w *MockWallet) Multisign(ins []wallet.TransactionInput, outs []wallet.TransactionOutput, sigs1 []wallet.Signature, sigs2 []wallet.Signature, redeemScript []byte, feePerByte big.Int, broadcast bool) ([]byte, error) {
-	w.mtx.Lock()
-	defer w.mtx.Unlock()
+// Note a database transaction is used here. Same rules of Commit() and
+// Rollback() apply.
+func (w *MockWallet) BuildAndSend(tx iwallet.Tx, txn iwallet.Transaction, signatures [][]iwallet.EscrowSignature, redeemScript []byte) error {
+	w.mtx.RLock()
+	defer w.mtx.RUnlock()
 
-	var mockTx []byte
-	var cbin []wallet.TransactionInput
-	for _, in := range ins {
-		mockTx = append(mockTx, in.OutpointHash...)
-		cbin = append(cbin, wallet.TransactionInput{
-			Value:         in.Value,
-			OutpointHash:  in.OutpointHash,
-			OutpointIndex: in.OutpointIndex,
-			LinkedAddress: in.LinkedAddress,
-		})
-	}
-	var value int64 // TODO: switch to big.Int once new interface is merged.
-	var cbout []wallet.TransactionOutput
-	for _, out := range outs {
-		if _, ok := w.addrs[out.Address.String()]; ok {
-			value++
-		}
-		mockTx = append(mockTx, out.Address.ScriptAddress()...)
-		cbout = append(cbout, wallet.TransactionOutput{
-			Value:   out.Value,
-			Address: out.Address,
-			OrderID: out.OrderID,
-			Index:   out.Index,
-		})
-	}
-	for _, sig := range sigs1 {
-		mockTx = append(mockTx, sig.Signature...)
-	}
-	for _, sig := range sigs2 {
-		mockTx = append(mockTx, sig.Signature...)
-	}
-	txid := chainhash.DoubleHashH(mockTx)
-
-	for i, out := range cbout {
-		txidBytes, err := hex.DecodeString(txid.String())
-		if err != nil {
-			return nil, err
-		}
-		if _, ok := w.addrs[out.Address.String()]; ok {
-			w.utxos[txid.String()+strconv.Itoa(i)] = mockUtxo{
-				OutpointIndex: uint32(i),
-				OutpointHash:  txidBytes,
-				Value:         *big.NewInt(out.Value),
-				Address:       out.Address,
-			}
-		}
-	}
-
-	txn := wallet.Txn{
-		Bytes:     mockTx,
-		Timestamp: time.Now(),
-		Txid:      txid.String(),
-		Value:     value,
-		WatchOnly: value == 0,
-	}
-
-	cb := wallet.TransactionCallback{
-		Value:     value,
-		Timestamp: time.Now(),
-		Txid:      txid.String(),
-		WatchOnly: value == 0,
-		Inputs:    cbin,
-		Outputs:   cbout,
-	}
-
-	for _, listener := range w.listeners {
-		listener(cb)
-	}
-
-	w.transactions[txid] = txn
-	if w.outgoing != nil {
-		w.outgoing <- cb
-	}
-
-	return mockTx, nil
-}
-
-// GetFeePerByte returns the current fee per byte for the given fee level. There
-// are three fee levels ― priority, normal, and economic.
-//
-//The returned value should be in the coin's base unit (for example: satoshis).
-func (w *MockWallet) GetFeePerByte(feeLevel wallet.FeeLevel) big.Int {
-	return *big.NewInt(1)
-}
-
-// Spend transfers the given amount of coins (in the coin's base unit. For example: in
-// satoshis) to the given address using the provided fee level. Openbazaar-go calls
-// this method in two places. 1) When the user requests a normal transfer from their
-// wallet to another address. 2) When clicking 'pay from internal wallet' to fund
-// an order the user just placed.
-// It also includes a referenceID which basically refers to the order the spend will affect
-//
-// If spendAll is true the amount field will be ignored and all the funds in the wallet will
-// be swept to the provided payment address. For most coins this entails subtracting the
-// transaction fee from the total amount being sent rather than adding it on as is normally
-// the case when spendAll is false.
-func (w *MockWallet) Spend(amount big.Int, addr btc.Address, feeLevel wallet.FeeLevel, referenceID string, spendAll bool) (*chainhash.Hash, error) {
-	w.mtx.Lock()
-	defer w.mtx.Unlock()
-
-	var utxos []mockUtxo
-	total := new(big.Int)
-	total.Add(total, big.NewInt(250))
-	var cbin []wallet.TransactionInput
-	for _, utxo := range w.utxos {
-		utxos = append(utxos, utxo)
-		total.Add(total, &utxo.Value)
-		cbin = append(cbin, wallet.TransactionInput{
-			Value:         utxo.Value.Int64(),
-			LinkedAddress: utxo.Address,
-			OutpointHash:  utxo.OutpointHash,
-			OutpointIndex: utxo.OutpointIndex,
-		})
-
-		if total.Cmp(&amount) >= 0 {
-			break
-		}
-	}
-	if total.Cmp(&amount) < 0 {
-		return nil, wallet.ErrorInsuffientFunds
-	}
-
-	for _, utxo := range utxos {
-		delete(w.utxos, hex.EncodeToString(utxo.OutpointHash)+strconv.Itoa(int(utxo.OutpointIndex)))
-	}
-
-	change := total.Sub(total, &amount)
-
-	cbout := []wallet.TransactionOutput{
-		{
-			Address: addr,
-			Value:   amount.Int64(),
-			Index:   0,
-			OrderID: referenceID,
-		},
-	}
-
-	if change.Cmp(big.NewInt(0)) >= 0 {
-		changeAddr := w.NewAddress(wallet.INTERNAL)
-		id := make([]byte, 32)
-		rand.Read(id)
-		w.utxos[hex.EncodeToString(id)+strconv.Itoa(1)] = mockUtxo{
-			OutpointHash:  id,
-			OutpointIndex: 1,
-			Value:         *change,
-			Address:       changeAddr,
-		}
-		cbout = append(cbout, wallet.TransactionOutput{
-			Address: changeAddr,
-			Value:   change.Int64(),
-			Index:   1,
-			OrderID: referenceID,
-		})
-	}
-
-	value := big.NewInt(0)
-	value = value.Sub(value, &amount)
+	dbtx := tx.(*dbTx)
 
 	txidBytes := make([]byte, 32)
 	rand.Read(txidBytes)
-	txid, err := chainhash.NewHash(txidBytes)
-	if err != nil {
-		return nil, err
+	txn.ID = iwallet.TransactionID(hex.EncodeToString(txidBytes))
+
+	var utxosToAdd []mockUtxo
+	for i, out := range txn.To {
+		if _, ok := w.addrs[out.Address]; ok {
+			idx := make([]byte, 4)
+			binary.BigEndian.PutUint32(idx, uint32(i))
+			utxosToAdd = append(utxosToAdd, mockUtxo{
+				address:  out.Address,
+				value:    out.Amount,
+				outpoint: append(txidBytes, idx...),
+			})
+		}
 	}
 
-	txn := wallet.Txn{
-		Value:     value.Int64(),
-		Txid:      txid.String(),
-		Timestamp: time.Now(),
+	dbtx.onCommit = func() error {
+		w.mtx.Lock()
+		defer w.mtx.Unlock()
+
+		for _, utxo := range utxosToAdd {
+			w.utxos[hex.EncodeToString(utxo.outpoint)] = utxo
+			w.addrs[utxo.address] = true
+		}
+
+		w.transactions[txn.ID] = txn
+
+		if w.outgoing != nil {
+			w.outgoing <- txn
+		}
+
+		for _, sub := range w.txSubs {
+			sub <- txn
+		}
+		return nil
 	}
 
-	cb := wallet.TransactionCallback{
-		Value:     value.Int64(),
-		Txid:      txid.String(),
-		Timestamp: time.Now(),
-		Inputs:    cbin,
-		Outputs:   cbout,
-	}
-
-	w.transactions[*txid] = txn
-
-	for _, listener := range w.listeners {
-		listener(cb)
-	}
-
-	if w.outgoing != nil {
-		w.outgoing <- cb
-	}
-
-	return txid, nil
-
-}
-
-// EstimateFee should return the estimate fee that will be required to make a transaction
-// spending from the given inputs to the given outputs. FeePerByte is denominated in
-// the coin's base unit (for example: satoshis).
-func (w *MockWallet) EstimateFee(ins []wallet.TransactionInput, outs []wallet.TransactionOutput, feePerByte big.Int) big.Int {
-	return *big.NewInt(250)
-}
-
-// EstimateSpendFee should return the anticipated fee to transfer a given amount of coins
-// out of the wallet at the provided fee level. Typically this involves building a
-// transaction with enough inputs to cover the request amount and calculating the size
-// of the transaction. It is OK, if a transaction comes in after this function is called
-// that changes the estimated fee as it's only intended to be an estimate.
-//
-// All amounts should be in the coin's base unit (for example: satoshis).
-func (w *MockWallet) EstimateSpendFee(amount big.Int, feeLevel wallet.FeeLevel) (big.Int, error) {
-	return *big.NewInt(250), nil
-}
-
-// SweepAddress should sweep all the funds from the provided inputs into the provided `address` using the given
-// `key`. If `address` is nil, the funds should be swept into an internal address own by this wallet.
-// If the `redeemScript` is not nil, this should be treated as a multisig (p2sh) address and signed accordingly.
-//
-// This method is called by openbazaar-go in the following scenarios:
-// 1) The buyer placed a direct order to a vendor who was offline. The buyer sent funds into a 1 of 2 multisig.
-// Upon returning online the vendor accepts the order and calls SweepAddress to move the funds into his wallet.
-//
-// 2) Same as above but the buyer wishes to cancel the order before the vendor comes online. He calls SweepAddress
-// to return the funds from the 1 of 2 multisig back into has wallet.
-//
-// 3) Same as above but rather than accepting the order, the vendor rejects it. When the buyer receives the reject
-// message he calls SweepAddress to move the funds back into his wallet.
-//
-// 4) The timeout has expired on a 2 of 3 multisig. The vendor calls SweepAddress to claim the funds.
-func (w *MockWallet) SweepAddress(ins []wallet.TransactionInput, address *btc.Address, key *hd.ExtendedKey, redeemScript *[]byte, feeLevel wallet.FeeLevel) (*chainhash.Hash, error) {
-
-}
-
-// BumpFee should attempt to bump the fee on a given unconfirmed transaction (if possible) to
-// try to get it confirmed and return the txid of the new transaction (if one exists).
-// Since this method is only called in response to user action, it is acceptable to
-// return an error if this functionality is not available in this wallet or on the network.
-func (w *MockWallet) BumpFee(txid chainhash.Hash) (*chainhash.Hash, error) {
-	return nil, nil
+	return nil
 }

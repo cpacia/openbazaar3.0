@@ -8,7 +8,8 @@ import (
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
-	repo "github.com/cpacia/openbazaar3.0/repo"
+	"github.com/cpacia/openbazaar3.0/repo"
+	"github.com/cpacia/openbazaar3.0/wallet"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/bootstrap"
 	coremock "github.com/ipfs/go-ipfs/core/mock"
@@ -49,6 +50,9 @@ func MockNode() (*OpenBazaarNode, error) {
 
 	bus := events.NewBus()
 	tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost.Network())
+
+	w := wallet.NewMockWallet()
+	w.SetEventBus(bus)
 
 	node := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,

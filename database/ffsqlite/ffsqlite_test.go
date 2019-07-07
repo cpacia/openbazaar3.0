@@ -102,7 +102,7 @@ func TestFFSqliteDB_Rollback(t *testing.T) {
 		if err := tx.DB().Save(&models.OutgoingMessage{ID: "abc"}).Error; err != nil {
 			return err
 		}
-		if err := tx.SetProfile(&models.Profile{Name:name}); err != nil {
+		if err := tx.SetProfile(&models.Profile{Name: name}); err != nil {
 			return err
 		}
 		return errors.New("failure :(")
@@ -113,7 +113,7 @@ func TestFFSqliteDB_Rollback(t *testing.T) {
 
 	var (
 		messages []models.OutgoingMessage
-		profile *models.Profile
+		profile  *models.Profile
 	)
 	err = db.View(func(tx database.Tx) error {
 		if err := tx.DB().Find(&messages).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
@@ -402,7 +402,7 @@ func TestFFSqliteDB_listing(t *testing.T) {
 		t.Errorf("Returned incorrect listing terms. Expected %s, got %s", listing3.Listing.TermsAndConditions, l3.TermsAndConditions)
 	}
 
-	err = db.Update(func(tx database.Tx)error {
+	err = db.Update(func(tx database.Tx) error {
 		return tx.DeleteListing(l1.Slug)
 	})
 	if err != nil {
