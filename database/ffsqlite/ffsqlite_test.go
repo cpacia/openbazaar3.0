@@ -130,7 +130,7 @@ func TestFFSqliteDB_Rollback(t *testing.T) {
 		t.Error("Db update failed to roll back.")
 	}
 
-	if profile.Name == name {
+	if profile != nil {
 		t.Error("Db update failed to roll back.")
 	}
 }
