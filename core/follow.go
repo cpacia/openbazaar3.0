@@ -19,7 +19,7 @@ import (
 // remote peer. A publish is not done here if you want the data to show
 // on the network immediately you must manually trigger a publish.
 func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error {
-	return n.repo.DB().Update(func(tx database.Tx) error {
+	err := n.repo.DB().Update(func(tx database.Tx) error {
 		following, err := tx.GetFollowing()
 		if err != nil && !os.IsNotExist(err) {
 			return err
@@ -61,6 +61,11 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 		}
 		return nil
 	})
+	if err != nil {
+		maybeCloseDone(done)
+		return err
+	}
+	return nil
 }
 
 // UnfollowNode deletes the following peer from the local repo,
@@ -68,7 +73,7 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 // remote peer. A publish is not done here if you want the data to show
 // on the network immediately you must manually trigger a publish.
 func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) error {
-	return n.repo.DB().Update(func(tx database.Tx) error {
+	err := n.repo.DB().Update(func(tx database.Tx) error {
 		following, err := tx.GetFollowing()
 		if err != nil && !os.IsNotExist(err) {
 			return err
@@ -114,6 +119,10 @@ func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) erro
 		}
 		return nil
 	})
+	if err != nil {
+		maybeCloseDone(done)
+	}
+	return nil
 }
 
 // GetMyFollowers returns the followers list for this node.

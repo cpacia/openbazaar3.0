@@ -31,7 +31,7 @@ import (
 // SaveListing saves the provided listing. It will validate it
 // to make sure it conforms to the requirements, update the listing
 // index and update the listing count in the profile.
-func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) error {
+func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) error {
 	err := n.repo.DB().Update(func(tx database.Tx) error {
 		// Set the escrow timeout.
 		if n.UsingTestnet() {
@@ -203,6 +203,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 		return nil
 	})
 	if err != nil {
+		maybeCloseDone(done)
 		return err
 	}
 	n.Publish(done)
@@ -211,7 +212,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 
 // DeleteListing deletes the listing from disk, updates the listing index and
 // profile counts, and publishes.
-func (n *OpenBazaarNode) DeleteListing(slug string, done chan struct{}) error {
+func (n *OpenBazaarNode) DeleteListing(slug string, done chan<- struct{}) error {
 	err := n.repo.DB().Update(func(tx database.Tx) error {
 		if err := tx.DB().Where("slug = ?", slug).Delete(&models.Coupon{}).Error; err != nil {
 			return err
@@ -236,6 +237,7 @@ func (n *OpenBazaarNode) DeleteListing(slug string, done chan struct{}) error {
 		return nil
 	})
 	if err != nil {
+		maybeCloseDone(done)
 		return err
 	}
 	n.Publish(done)

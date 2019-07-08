@@ -27,10 +27,11 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 
 	payload, err := ptypes.MarshalAny(&chatMsg)
 	if err != nil {
+		maybeCloseDone(done)
 		return err
 	}
 
-	return n.repo.DB().Update(func(tx database.Tx) error {
+	err = n.repo.DB().Update(func(tx database.Tx) error {
 		var prev models.ChatMessage
 		if err := tx.DB().Order("timestamp desc").Where("peer_id = ? AND outgoing = ?", to.Pretty(), true).Last(&prev).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
@@ -55,6 +56,11 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 		log.Debugf("Sending CHAT message to %s. MessageID: %s", to, msg.MessageID)
 		return n.messenger.ReliablySendMessage(tx, to, msg, done)
 	})
+	if err != nil {
+		maybeCloseDone(done)
+		return err
+	}
+	return nil
 }
 
 // SendTypingMessage sends the typing message to the remote peer which

@@ -16,6 +16,8 @@ func TestOpenBazaarNode_SaveListing(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	defer node.DestroyNode()
+
 	listing := factory.NewPhysicalListing("ron-swanson-shirt")
 
 	done := make(chan struct{})
@@ -53,6 +55,8 @@ func TestOpenBazaarNode_DeleteListing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer node.DestroyNode()
 
 	listing := factory.NewPhysicalListing("ron-swanson-shirt")
 
@@ -135,6 +139,8 @@ func Test_generateListingSlug(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	defer node.DestroyNode()
+
 	listing := factory.NewPhysicalListing("ron-swanson-shirt")
 
 	done := make(chan struct{})
@@ -189,6 +195,8 @@ func Test_validateCryptocurrencyListing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer node.DestroyNode()
 
 	tests := []struct {
 		listing   *pb.Listing
@@ -632,6 +640,9 @@ func Test_validateListing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer node.DestroyNode()
+
 	tests := []struct {
 		listing   *pb.SignedListing
 		transform func(sl *pb.SignedListing)

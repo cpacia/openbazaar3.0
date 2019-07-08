@@ -24,6 +24,7 @@ import (
 func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{}) error {
 	pubkey, err := n.masterPrivKey.ECPubKey()
 	if err != nil {
+		maybeCloseDone(done)
 		return err
 	}
 
@@ -32,6 +33,9 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 	profile.LastModified = time.Now()
 
 	if err := validateProfile(profile); err != nil {
+		if done != nil {
+			close(done)
+		}
 		return err
 	}
 
@@ -47,7 +51,7 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 		return nil
 	})
 	if err != nil {
-		return err
+		maybeCloseDone(done)
 	}
 	n.Publish(done)
 	return nil

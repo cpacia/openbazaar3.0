@@ -29,3 +29,10 @@ func multihashSha256(b []byte) (*multihash.Multihash, error) {
 	}
 	return &multihash, err
 }
+
+// maybeCloseDone is a helper to close the done chan if it's not nil.
+func maybeCloseDone(done chan<- struct{}) {
+	if done != nil {
+		close(done)
+	}
+}
