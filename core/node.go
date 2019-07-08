@@ -4,6 +4,7 @@ import (
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
+	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	"github.com/ipfs/go-ipfs/core"
@@ -55,6 +56,9 @@ type OpenBazaarNode struct {
 
 	// multiwallet is a map of cyptocurrency wallets.
 	multiwallet wallet.Multiwallet
+
+	// orderProcessor is the engine we use for processing all orders.
+	orderProcessor *orders.OrderProcessor
 
 	// testnet is whether the this node is configured to use the test network.
 	testnet bool

@@ -8,6 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
+	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
@@ -58,6 +59,8 @@ func MockNode() (*OpenBazaarNode, error) {
 	mw := make(wallet.Multiwallet)
 	mw[iwallet.CtTestnetMock] = w
 
+	op := orders.NewOrderProcessor(r.DB(), messenger, mw)
+
 	node := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
 		repo:            r,
@@ -70,6 +73,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		masterPrivKey:   masterPrivKey,
 		multiwallet:     mw,
 		followerTracker: tracker,
+		orderProcessor:  op,
 	}
 
 	node.registerHandlers()
@@ -135,6 +139,8 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		mw := make(wallet.Multiwallet)
 		mw[iwallet.CtTestnetMock] = w
 
+		op := orders.NewOrderProcessor(r.DB(), messenger, mw)
+
 		node := &OpenBazaarNode{
 			ipfsNode:        ipfsNode,
 			repo:            r,
@@ -147,6 +153,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			masterPrivKey:   masterPrivKey,
 			multiwallet:     mw,
 			followerTracker: tracker,
+			orderProcessor:  op,
 		}
 
 		node.registerHandlers()

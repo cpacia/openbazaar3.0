@@ -62,6 +62,7 @@ func (m *Messenger) ReliablySendMessage(tx database.Tx, peer peer.ID, message *p
 		ID:                message.MessageID,
 		Recipient:         peer.Pretty(),
 		SerializedMessage: ser,
+		MessageType:       message.MessageType.String(),
 		Timestamp:         time.Now(),
 		LastAttempt:       time.Now(),
 	}).Error

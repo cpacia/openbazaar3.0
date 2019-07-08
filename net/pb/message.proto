@@ -18,6 +18,7 @@ message Message {
         FOLLOW                   = 3;
         UNFOLLOW                 = 4;
         STORE                    = 5;
+        ORDER                    = 6;
     }
 }
 
@@ -43,4 +44,30 @@ message StoreMessage {
 
 message AckMessage {
     string ackedMessageID = 1;
+}
+
+message OrderMessage {
+    string orderID                      = 1;
+    google.protobuf.Timestamp timestamp = 2;
+    MessageType messageType             = 3;
+    google.protobuf.Any message         = 4;
+
+    enum MessageType {
+        ORDER_OPEN         = 0;
+        ORDER_REJECT       = 1;
+        ORDER_CANCEL       = 2;
+        ORDER_CONFIRMATION = 3;
+        ORDER_FULFILLMENT  = 4;
+        ORDER_COMPLETE     = 5;
+        DISPUTE_OPEN       = 6;
+        DISPUTE_UPDATE     = 7;
+        DISPUTE_CLOSE      = 8;
+        REFUND             = 9;
+        PAYMENT_SENT       = 10;
+        PAYMENT_FINALIZED  = 11;
+    }
+}
+
+message OrderList {
+    repeated OrderMessage messages = 1;
 }

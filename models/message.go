@@ -13,6 +13,7 @@ type OutgoingMessage struct {
 	ID                string `gorm:"primary_key"`
 	Recipient         string `gorm:"index"`
 	SerializedMessage []byte
+	MessageType       string
 	Timestamp         time.Time
 	LastAttempt       time.Time
 }

@@ -162,7 +162,8 @@ func (n *OpenBazaarNode) sendAckMessage(messageID string, to peer.ID) {
 }
 
 // handleAckMessage is the handler for the ACK message. It sends it off to the messenger
-// for processing.
+// for processing. If this is an order message it also sends it to the order processor
+// to be recorded there as well.
 func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) error {
 	if message.MessageType != pb.Message_ACK {
 		return errors.New("message is not type ACK")
@@ -171,12 +172,23 @@ func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) err
 	if err := ptypes.UnmarshalAny(message.Payload, ack); err != nil {
 		return err
 	}
+
 	err := n.repo.DB().Update(func(tx database.Tx) error {
+		var outgoingMessage models.OutgoingMessage
+		if err := tx.DB().Where("id = ?", ack.AckedMessageID).First(&outgoingMessage).Error; err != nil {
+			return err
+		}
+		if outgoingMessage.MessageType == pb.Message_ORDER.String() {
+			if err := n.orderProcessor.ProcessACK(tx, &outgoingMessage); err != nil {
+				return err
+			}
+		}
 		return n.messenger.ProcessACK(tx, ack)
 	})
 	if err != nil {
 		return err
 	}
+
 	n.eventBus.Emit(&events.MessageACK{MessageID: ack.AckedMessageID})
 	return nil
 }

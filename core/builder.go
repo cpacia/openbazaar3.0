@@ -11,7 +11,9 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/net/pb"
+	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
+	"github.com/cpacia/openbazaar3.0/wallet"
 	bitswap "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-datastore"
 	config "github.com/ipfs/go-ipfs-config"
@@ -118,6 +120,10 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	messenger := net.NewMessenger(service, obRepo.DB())
 	tracker := NewFollowerTracker(obRepo, bus, ipfsNode.PeerHost.Network())
 
+	mw := wallet.Multiwallet{} // TODO: wire this up.
+
+	op := orders.NewOrderProcessor(obRepo.DB(), messenger, mw)
+
 	// Construct our OpenBazaar node.repo object
 	obNode := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
@@ -129,6 +135,8 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		banManager:      bm,
 		eventBus:        bus,
 		followerTracker: tracker,
+		multiwallet:     mw,
+		orderProcessor:  op,
 		testnet:         cfg.Testnet,
 		shutdown:        make(chan struct{}),
 	}

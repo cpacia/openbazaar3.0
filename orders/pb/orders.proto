@@ -1,0 +1,15 @@
+syntax = "proto3";
+option go_package = "pb";
+
+message OrderOpen {}
+message OrderReject {}
+message OrderCancel {}
+message OrderConfirmation {}
+message OrderFulfillment {}
+message OrderComplete {}
+message DisputeOpen {}
+message DisputeUpdate {}
+message DisputeClose {}
+message Refund {}
+message PaymentSent {}
+message PaymentFinalized {}
