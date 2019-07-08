@@ -29,3 +29,18 @@ type MessageStore struct {
 	Peer peer.ID
 	Cids []cid.Cid
 }
+
+// PublishStarted is an event that gets pushed to the bus
+// when publishing starts. It contains an ID so that we can
+// match up this publish with the response if there are
+// concurrent publishes.
+type PublishStarted struct {
+	ID int
+}
+
+// PublishFinished is an event that gets pushed to the bus
+// when publishing finishes. It contains an ID so that we can
+// match up this event with start event.
+type PublishFinished struct {
+	ID int
+}

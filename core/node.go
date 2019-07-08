@@ -1,20 +1,12 @@
 package core
 
 import (
-	"context"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
-	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
-	"github.com/golang/protobuf/ptypes"
-	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/ipfs/go-ipfs/core/coreapi"
-	fpath "github.com/ipfs/go-path"
-	"github.com/ipfs/interface-go-ipfs-core/options"
-	ipath "github.com/ipfs/interface-go-ipfs-core/path"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
 	"os/signal"
@@ -67,6 +59,10 @@ type OpenBazaarNode struct {
 	// testnet is whether the this node is configured to use the test network.
 	testnet bool
 
+	// republishChan is used to signal to the republish loop that a publish
+	// has just completed and it should update it's last published time.
+	republishChan chan struct{}
+
 	// shutdown is closed when the node is stopped. Any listening
 	// goroutines can use this to terminate.
 	shutdown chan struct{}
@@ -86,6 +82,7 @@ func (n *OpenBazaarNode) Start() {
 	go n.messenger.Start()
 	go n.followerTracker.Start()
 	go n.syncMessages()
+	go n.republish()
 }
 
 // Stop cleanly shutsdown the OpenBazaarNode and signals to any
@@ -120,101 +117,6 @@ func (n *OpenBazaarNode) IPFSNode() *core.IpfsNode {
 // Identity returns the peer ID for this node.
 func (n *OpenBazaarNode) Identity() peer.ID {
 	return n.ipfsNode.Identity
-}
-
-// Publish will publish the current public data directory to IPNS.
-// It will interrupt the publish if a shutdown happens during.
-func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
-	go func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		go func() {
-			select {
-			case <-ctx.Done():
-			case <-n.shutdown:
-				cancel()
-			}
-			if done != nil {
-				close(done)
-			}
-		}()
-
-		api, err := coreapi.NewCoreAPI(n.ipfsNode)
-		if err != nil {
-			log.Errorf("Error building core API: %s", err.Error())
-			return
-		}
-
-		currentRoot, err := n.ipnsRecordValue()
-
-		// First uppin old root hash
-		if err == nil {
-			rp, err := api.ResolvePath(context.Background(), ipath.IpfsPath(currentRoot))
-			if err != nil {
-				log.Errorf("Error resolving path: %s", err.Error())
-				return
-			}
-
-			if err := api.Pin().Rm(context.Background(), rp, options.Pin.RmRecursive(true)); err != nil {
-				log.Errorf("Error unpinning root: %s", err.Error())
-				return
-			}
-		}
-
-		// Add the directory to IPFS
-		stat, err := os.Lstat(n.repo.DB().PublicDataPath())
-		if err != nil {
-			log.Errorf("Error calling Lstat: %s", err.Error())
-			return
-		}
-
-		f, err := files.NewSerialFile(n.repo.DB().PublicDataPath(), false, stat)
-		if err != nil {
-			log.Errorf("Error serializing file: %s", err.Error())
-			return
-		}
-
-		opts := []options.UnixfsAddOption{
-			options.Unixfs.Pin(true),
-		}
-		pth, err := api.Unixfs().Add(context.Background(), files.ToDir(f), opts...)
-		if err != nil {
-			log.Errorf("Error adding root: %s", err.Error())
-			return
-		}
-
-		// Publish
-		if err := n.ipfsNode.Namesys.Publish(ctx, n.ipfsNode.PrivateKey, fpath.FromString(pth.Root().String())); err != nil {
-			log.Errorf("Error namesys publish: %s", err.Error())
-			return
-		}
-
-		// Send the new graph to our connected followers.
-		graph, err := n.fetchGraph()
-		if err != nil {
-			log.Errorf("Error fetching graph: %s", err.Error())
-			return
-		}
-
-		storeMsg := &pb.StoreMessage{}
-		for _, cid := range graph {
-			storeMsg.Cids = append(storeMsg.Cids, cid.Bytes())
-		}
-
-		any, err := ptypes.MarshalAny(storeMsg)
-		if err != nil {
-			log.Errorf("Error marshalling store message: %s", err.Error())
-			return
-		}
-
-		msg := newMessageWithID()
-		msg.MessageType = pb.Message_STORE
-		msg.Payload = any
-		for _, peer := range n.followerTracker.ConnectedFollowers() {
-			go n.networkService.SendMessage(context.Background(), peer, msg)
-		}
-	}()
 }
 
 // SubscribeEvent returns a subscription to the provided event. The event argument

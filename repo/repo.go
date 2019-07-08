@@ -338,6 +338,7 @@ func autoMigrateDatabase(db database.Database) error {
 		&models.FollowerStat{},
 		&models.FollowSequence{},
 		&models.Coupon{},
+		&models.Event{},
 	}
 
 	return db.Update(func(tx database.Tx) error {

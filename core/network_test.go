@@ -267,3 +267,22 @@ func TestOpenBazaarNode_PublishToFollowers(t *testing.T) {
 		}
 	}
 }
+
+func TestOpenBazaarNode_republish(t *testing.T) {
+	mocknet, err := NewMocknet(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer mocknet.TearDown()
+
+	sub, err := mocknet.Nodes()[0].SubscribeEvent(&events.PublishFinished{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go mocknet.Nodes()[0].republish()
+
+	<-sub.Out()
+
+}

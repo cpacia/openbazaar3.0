@@ -11,10 +11,142 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
+	"github.com/ipfs/go-ipfs/core/coreapi"
+	fpath "github.com/ipfs/go-path"
+	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"math"
+	"math/rand"
+	"os"
+	"time"
 )
+
+// republishInterval is the amount of time to go between republishes.
+const republishInterval = time.Hour * 36
+
+// Publish will publish the current public data directory to IPNS.
+// It will interrupt the publish if a shutdown happens during.
+//
+// This cannot be called with the database lock held.
+func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
+	go func() {
+		log.Info("Publishing to IPNS...")
+
+		publishID := rand.Intn(math.MaxInt32)
+		n.eventBus.Emit(&events.PublishStarted{
+			ID: publishID,
+		})
+
+		defer func() {
+			n.eventBus.Emit(&events.PublishFinished{
+				ID: publishID,
+			})
+			if n.republishChan != nil {
+				n.republishChan <- struct{}{}
+			}
+			log.Info("Publishing complete")
+		}()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go func() {
+			select {
+			case <-ctx.Done():
+			case <-n.shutdown:
+				cancel()
+			}
+			if done != nil {
+				close(done)
+			}
+		}()
+
+		api, err := coreapi.NewCoreAPI(n.ipfsNode)
+		if err != nil {
+			log.Errorf("Error building core API: %s", err.Error())
+			return
+		}
+
+		currentRoot, err := n.ipnsRecordValue()
+
+		// First uppin old root hash
+		if err == nil {
+			rp, err := api.ResolvePath(context.Background(), path.IpfsPath(currentRoot))
+			if err != nil {
+				log.Errorf("Error resolving path: %s", err.Error())
+				return
+			}
+
+			if err := api.Pin().Rm(context.Background(), rp, options.Pin.RmRecursive(true)); err != nil {
+				log.Errorf("Error unpinning root: %s", err.Error())
+				return
+			}
+		}
+
+		// Add the directory to IPFS
+		stat, err := os.Lstat(n.repo.DB().PublicDataPath())
+		if err != nil {
+			log.Errorf("Error calling Lstat: %s", err.Error())
+			return
+		}
+
+		f, err := files.NewSerialFile(n.repo.DB().PublicDataPath(), false, stat)
+		if err != nil {
+			log.Errorf("Error serializing file: %s", err.Error())
+			return
+		}
+
+		opts := []options.UnixfsAddOption{
+			options.Unixfs.Pin(true),
+		}
+		pth, err := api.Unixfs().Add(context.Background(), files.ToDir(f), opts...)
+		if err != nil {
+			log.Errorf("Error adding root: %s", err.Error())
+			return
+		}
+
+		// Publish
+		if err := n.ipfsNode.Namesys.Publish(ctx, n.ipfsNode.PrivateKey, fpath.FromString(pth.Root().String())); err != nil {
+			log.Errorf("Error namesys publish: %s", err.Error())
+			return
+		}
+
+		err = n.repo.DB().Update(func(tx database.Tx) error {
+			return tx.DB().Save(&models.Event{Name: "last_publish", Time: time.Now()}).Error
+		})
+		if err != nil {
+			log.Errorf("Error saving last publish time to the db: %s", err.Error())
+		}
+
+		// Send the new graph to our connected followers.
+		graph, err := n.fetchGraph()
+		if err != nil {
+			log.Errorf("Error fetching graph: %s", err.Error())
+			return
+		}
+
+		storeMsg := &pb.StoreMessage{}
+		for _, cid := range graph {
+			storeMsg.Cids = append(storeMsg.Cids, cid.Bytes())
+		}
+
+		any, err := ptypes.MarshalAny(storeMsg)
+		if err != nil {
+			log.Errorf("Error marshalling store message: %s", err.Error())
+			return
+		}
+
+		msg := newMessageWithID()
+		msg.MessageType = pb.Message_STORE
+		msg.Payload = any
+		for _, peer := range n.followerTracker.ConnectedFollowers() {
+			go n.networkService.SendMessage(context.Background(), peer, msg)
+		}
+	}()
+}
 
 // sendAckMessage saves the incoming message ID in the database so we can
 // check for duplicate messages later. Then it sends the ACK message to
@@ -137,6 +269,47 @@ func (n *OpenBazaarNode) syncMessages() {
 				}
 				go n.networkService.SendMessage(context.Background(), recipient, &message)
 			}
+		case <-n.shutdown:
+			return
+		}
+	}
+}
+
+// republish is a loop that runs and republishes the IPNS record. It shoots for
+// 36 hours from the last republish so as to not slam the network on startup
+// every time.
+func (n *OpenBazaarNode) republish() {
+	var lastPublish time.Time
+	err := n.repo.DB().View(func(tx database.Tx) error {
+		var event models.Event
+		if err := tx.DB().Where("name = ?", "last_publish").First(&event).Error; err != nil {
+			return err
+		}
+		lastPublish = event.Time
+		return nil
+	})
+	if err != nil && !gorm.IsRecordNotFoundError(err) {
+		log.Error("Error loading last republish time: %s", err.Error())
+	}
+
+	n.republishChan = make(chan struct{})
+
+	tick := time.After(republishInterval - time.Now().Sub(lastPublish))
+	for {
+		select {
+		case <-tick:
+			lastPublish = time.Now()
+			tick = time.After(republishInterval - time.Now().Sub(lastPublish))
+			err = n.repo.DB().Update(func(tx database.Tx) error {
+				return tx.DB().Save(&models.Event{Name: "last_publish", Time: lastPublish}).Error
+			})
+			if err != nil {
+				log.Errorf("Error saving last publish time to the db: %s", err.Error())
+			}
+			n.Publish(nil)
+		case <-n.republishChan:
+			lastPublish = time.Now()
+			tick = time.After(republishInterval - time.Now().Sub(lastPublish))
 		case <-n.shutdown:
 			return
 		}
