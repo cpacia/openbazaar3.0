@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-
 var UnsuppertedCoinError = errors.New("multiwallet does not contain an implementation for the given coin")
 
 // TODO: this is a place holder for the new multiwallet

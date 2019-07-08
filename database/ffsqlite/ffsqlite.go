@@ -290,6 +290,9 @@ func (t *tx) SetListingIndex(index models.ListingIndex) error {
 func (t *tx) setInterfaceType(i interface{}) error {
 	switch i.(type) {
 	case *models.Profile:
+		if i.(*models.Profile) == nil {
+			return nil
+		}
 		if err := t.ffdb.SetProfile(i.(*models.Profile)); err != nil {
 			return err
 		}
@@ -302,6 +305,9 @@ func (t *tx) setInterfaceType(i interface{}) error {
 			return err
 		}
 	case *pb.SignedListing:
+		if i.(*pb.SignedListing) == nil {
+			return nil
+		}
 		if err := t.ffdb.SetListing(i.(*pb.SignedListing)); err != nil {
 			return err
 		}

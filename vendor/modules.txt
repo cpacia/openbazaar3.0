@@ -11,8 +11,8 @@ github.com/Stebalien/go-bitfield
 # github.com/bren2010/proquint v0.0.0-20160323162903-38337c27106d
 github.com/bren2010/proquint
 # github.com/btcsuite/btcd v0.0.0-20190629003639-c26ffa870fd8
-github.com/btcsuite/btcd/chaincfg
 github.com/btcsuite/btcd/btcec
+github.com/btcsuite/btcd/chaincfg
 github.com/btcsuite/btcd/chaincfg/chainhash
 github.com/btcsuite/btcd/wire
 # github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
@@ -26,7 +26,7 @@ github.com/cenkalti/backoff
 github.com/cheekybits/genny/generic
 # github.com/coreos/go-semver v0.3.0
 github.com/coreos/go-semver/semver
-# github.com/cpacia/wallet-interface v0.0.0-20190707142616-73f128192ad4
+# github.com/cpacia/wallet-interface v0.0.0-20190707213128-cb75495c686d
 github.com/cpacia/wallet-interface
 # github.com/cskr/pubsub v1.0.2
 github.com/cskr/pubsub

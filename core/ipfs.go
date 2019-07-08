@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -13,11 +15,13 @@ import (
 	"github.com/ipfs/go-ipfs/namesys"
 	ipnspb "github.com/ipfs/go-ipns/pb"
 	"github.com/ipfs/go-merkledag"
+	"github.com/ipfs/interface-go-ipfs-core/options"
 	nameopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"io/ioutil"
 	"os"
+	gopath "path"
 	"strings"
 	"sync"
 	"time"
@@ -82,12 +86,42 @@ func (n *OpenBazaarNode) add(filePath string) (cid.Cid, error) {
 	if err != nil {
 		return cid.Cid{}, err
 	}
-
 	node, err := fileAdder.AddAllAndPin(f)
 	if err != nil {
 		return cid.Cid{}, err
 	}
 	return node.Cid(), nil
+}
+
+func (n *OpenBazaarNode) cid(file []byte) (cid.Cid, error) {
+	api, err := coreapi.NewCoreAPI(n.ipfsNode)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	b := make([]byte, 20)
+	rand.Read(b)
+	dir := gopath.Join(os.TempDir(), "openbazaar-files")
+
+	os.MkdirAll(dir, os.ModePerm)
+
+	pth := gopath.Join(dir, hex.EncodeToString(b))
+	defer os.Remove(pth)
+
+	if err := ioutil.WriteFile(pth, file, os.ModePerm); err != nil {
+		return cid.Cid{}, err
+	}
+
+	cid, err := n.add(pth)
+	if err != nil {
+		return cid, err
+	}
+
+	rp, err := api.ResolvePath(context.Background(), path.IpfsPath(cid))
+	if err != nil {
+		return cid, err
+	}
+
+	return cid, api.Pin().Rm(context.Background(), rp, options.Pin.RmRecursive(true))
 }
 
 // pin fetches a file from IPFS given a path and pins it.

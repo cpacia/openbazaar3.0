@@ -206,4 +206,3 @@ func (mn *Mocknet) TearDown() error {
 	}
 	return nil
 }
-

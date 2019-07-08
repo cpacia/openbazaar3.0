@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/OpenBazaar/jsonpb"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -18,10 +19,8 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/multiformats/go-multihash"
-	"math"
 	"math/big"
 	"os"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -88,7 +87,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 		listing.Metadata.Version = ListingVersion
 
 		// Add the vendor ID to the listing
-		profile, err := n.GetMyProfile()
+		profile, err := tx.GetProfile()
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -111,12 +110,14 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 		}
 		listing.VendorID = &pb.ID{
 			PeerID: n.Identity().Pretty(),
-			Handle: profile.Handle,
 			Pubkeys: &pb.ID_Pubkeys{
 				Identity:  pubkey,
 				Secp256K1: ecPubKey.SerializeCompressed(),
 			},
 			Sig: sig.Serialize(),
+		}
+		if profile != nil {
+			listing.VendorID.Handle = profile.Handle
 		}
 
 		// Delete the coupons for this slug and resave them.
@@ -142,8 +143,10 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 			couponsToStore = append(couponsToStore, coupon)
 		}
 		if len(couponsToStore) > 0 {
-			if err := tx.DB().Save(&couponsToStore).Error; err != nil {
-				return err
+			for _, coupon := range couponsToStore {
+				if err := tx.DB().Save(&coupon).Error; err != nil {
+					return err
+				}
 			}
 		}
 
@@ -163,8 +166,17 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan struct{}) er
 			return err
 		}
 
+		m := jsonpb.Marshaler{
+			Indent:       "    ",
+			EmitDefaults: false,
+		}
+		ser, err := m.MarshalToString(sl)
+		if err != nil {
+			return err
+		}
+
 		// Update listing index
-		cid, err := n.add(path.Join(n.repo.DB().PublicDataPath(), "listings", listing.Slug+".json"))
+		cid, err := n.cid([]byte(ser))
 		if err != nil {
 			return err
 		}
@@ -734,12 +746,17 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	if len(sl.Listing.VendorID.Pubkeys.Secp256K1) != 33 {
 		return errors.New("vendor secp256k1 pubkey invalid length")
 	}
-	valid, err := identityPubkey.Verify(sl.Listing.VendorID.Pubkeys.Secp256K1, sl.Listing.VendorID.Sig)
+	ecPubkey, err := btcec.ParsePubKey(sl.Listing.VendorID.Pubkeys.Secp256K1, btcec.S256())
 	if err != nil {
 		return err
 	}
+	sig, err := btcec.ParseSignature(sl.Listing.VendorID.Sig, btcec.S256())
+	if err != nil {
+		return err
+	}
+	valid := sig.Verify([]byte(sl.Listing.VendorID.PeerID), ecPubkey)
 	if !valid {
-		return errors.New("invalid signature on vendor secp256k1 key")
+		return errors.New("invalid secp256k1 signature on vendor identity key")
 	}
 
 	// Validate signature on listing
@@ -884,15 +901,22 @@ func (n *OpenBazaarNode) validateCryptocurrencyListing(listing *pb.Listing) erro
 		return ErrCryptocurrencyListingIllegalField("item.condition")
 	}
 
-	var expectedDivisibility uint32
-	if wallet, err := n.multiwallet.WalletForCurrencyCode(listing.Metadata.PricingCurrency.Code); err != nil {
+	var (
+		expectedDivisibility uint32
+		currencyCode string
+	)
+	currencyCode = listing.Metadata.PricingCurrency.Code
+	if strings.HasPrefix(normalizeCurrencyCode(listing.Metadata.PricingCurrency.Code), "T") {
+		currencyCode = strings.TrimPrefix(currencyCode, "T")
+	}
+	currency, ok := models.CurrencyDefinitions[normalizeCurrencyCode(currencyCode)]
+	if !ok {
 		expectedDivisibility = models.DefaultCurrencyDivisibility
 	} else {
-		expectedDivisibility = uint32(math.Log10(float64(wallet.ExchangeRates().UnitsPerCoin())))
+		expectedDivisibility = uint32(currency.Divisibility)
 	}
 
 	if listing.Metadata.PricingCurrency.Divisibility != expectedDivisibility {
-		fmt.Println("listing.Metadata.PricingCurrency.Divisibility : ", listing.Metadata.PricingCurrency.Divisibility, "  ", expectedDivisibility)
 		return ErrListingCoinDivisibilityIncorrect
 	}
 
@@ -902,9 +926,11 @@ func (n *OpenBazaarNode) validateCryptocurrencyListing(listing *pb.Listing) erro
 // validateMarketPriceListing validates the part of the listing that is relevant to
 // market price cryptocurrency listings.
 func validateMarketPriceListing(listing *pb.Listing) error {
-	n, _ := new(big.Int).SetString(listing.Item.Price, 10)
-	if n.Cmp(big.NewInt(0)) > 0 {
-		return ErrMarketPriceListingIllegalField("item.price")
+	if listing.Item.Price != "" {
+		n, _ := new(big.Int).SetString(listing.Item.Price, 10)
+		if n.Cmp(big.NewInt(0)) > 0 {
+			return ErrMarketPriceListingIllegalField("item.price")
+		}
 	}
 
 	if listing.Metadata.PriceModifier != 0 {

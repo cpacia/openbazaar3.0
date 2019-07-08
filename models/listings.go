@@ -111,10 +111,7 @@ func NewListingMetadataFromListing(listing *pb.Listing, cid cid.Cid) (*ListingMe
 		}
 	}
 
-	cv, err := NewCurrencyValue(listing.Item.Price, CurrencyDefinitions[listing.Metadata.PricingCurrency.Code])
-	if err != nil {
-		return nil, err
-	}
+	cv := NewCurrencyValue(listing.Item.Price, CurrencyDefinitions[listing.Metadata.PricingCurrency.Code])
 
 	ld := &ListingMetadata{
 		Hash:         cid.String(),

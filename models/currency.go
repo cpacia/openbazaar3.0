@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/op/go-logging"
 	"math"
 	"math/big"
 	"runtime/debug"
-	"strconv"
 	"strings"
 )
 
@@ -25,6 +25,9 @@ var (
 	ErrCurrencyDefinitionUndefined        = errors.New("currency definition is not defined")
 
 	CurrencyDefinitions = CurrencyDictionary{
+		// Testing
+		"MCK": {Name: "Mock", Code: CurrencyCode("MCK"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8},
+
 		// Crypto
 		"BTC": {Name: "Bitcoin", Code: CurrencyCode("BTC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8},
 		"BCH": {Name: "Bitcoin Cash", Code: CurrencyCode("BCH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8},
@@ -301,7 +304,7 @@ func (c *Currency) Equal(other *Currency) bool {
 
 // CurrencyValue represents the amount and variety of currency
 type CurrencyValue struct {
-	Amount   *big.Int
+	Amount   iwallet.Amount
 	Currency *Currency
 }
 
@@ -316,9 +319,7 @@ func (c *CurrencyValue) MarshalJSON() ([]byte, error) {
 		Currency: Currency{},
 	}
 
-	if c.Amount != nil {
-		c0.Amount = c.Amount.String()
-	}
+	c0.Amount = c.Amount.String()
 
 	if c.Currency != nil {
 		c0.Currency = Currency{
@@ -342,7 +343,7 @@ func (c *CurrencyValue) UnmarshalJSON(b []byte) error {
 
 	err := json.Unmarshal(b, &c0)
 	if err == nil {
-		c.Amount, _ = new(big.Int).SetString(c0.Amount, 10)
+		c.Amount = iwallet.NewAmount(c0.Amount)
 		c.Currency = &c0.Currency
 	}
 
@@ -351,27 +352,20 @@ func (c *CurrencyValue) UnmarshalJSON(b []byte) error {
 
 // NewCurrencyValueFromInt is a convenience function which converts an int64
 // into a string and passes the arguments to NewCurrencyValue
-func NewCurrencyValueFromInt(amount int64, currency *Currency) (*CurrencyValue, error) {
-	return NewCurrencyValue(strconv.FormatInt(amount, 10), currency)
+func NewCurrencyValueFromInt(amount int64, currency *Currency) *CurrencyValue {
+	return &CurrencyValue{iwallet.NewAmount(amount), currency}
 }
 
 // NewCurrencyValueFromUint is a convenience function which converts an int64
 // into a string and passes the arguments to NewCurrencyValue
-func NewCurrencyValueFromUint(amount uint64, currency *Currency) (*CurrencyValue, error) {
-	return NewCurrencyValue(strconv.FormatUint(amount, 10), currency)
+func NewCurrencyValueFromUint(amount uint64, currency *Currency) *CurrencyValue {
+	return &CurrencyValue{iwallet.NewAmount(amount), currency}
 }
 
 // NewCurrencyValue accepts string amounts and currency codes, and creates
 // a valid CurrencyValue
-func NewCurrencyValue(amount string, currency *Currency) (*CurrencyValue, error) {
-	var (
-		i  = new(big.Int)
-		ok bool
-	)
-	if _, ok = i.SetString(amount, 10); !ok {
-		return nil, ErrCurrencyValueAmountInvalid
-	}
-	return &CurrencyValue{Amount: i, Currency: currency}, nil
+func NewCurrencyValue(amount string, currency *Currency) *CurrencyValue {
+	return &CurrencyValue{Amount: iwallet.NewAmount(amount), Currency: currency}
 }
 
 // AmountInt64 returns a valid int64 or an error
@@ -426,9 +420,10 @@ func (v *CurrencyValue) ConvertTo(final *Currency, exchangeRate float64) (*Curre
 	currencyRate.SetFloat64(exchangeRate)
 	divisibilityRate.SetFloat64(divRateFloat)
 
-	j.SetInt(v.Amount)
+	x := big.Int(v.Amount)
+	j.SetInt(&x)
 	j.Mul(j, currencyRate)
 	j.Mul(j, divisibilityRate)
 	result, _ := j.Int(nil)
-	return &CurrencyValue{Amount: result, Currency: final}, nil
+	return &CurrencyValue{Amount: iwallet.NewAmount(result), Currency: final}, nil
 }

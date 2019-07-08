@@ -212,3 +212,18 @@ func Test_ipfsFetchGraph(t *testing.T) {
 		t.Errorf("Expected %d elements in the graph. Got %d", 4, len(graph))
 	}
 }
+
+func Test_ipfsCid(t *testing.T) {
+	node, err := MockNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cid, err := node.cid([]byte("hola"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := "QmZNhQu5jyvfNtZrp7Xvu7iqhuF4occHLcxZKj7S3F8a3D"
+	if cid.String() != expected {
+		t.Errorf("Returned incorrect cid. Expected %s, got %s", expected, cid.String())
+	}
+}

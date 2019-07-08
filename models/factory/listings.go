@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
@@ -12,7 +13,7 @@ func NewPhysicalListing(slug string) *pb.Listing {
 		RefundPolicy:       "Sample Refund policy",
 		Metadata: &pb.Listing_Metadata{
 			Version:            1,
-			AcceptedCurrencies: []string{"TBTC"},
+			AcceptedCurrencies: []string{"TMCK"},
 			PricingCurrency: &pb.Currency{
 				Code:         "USD",
 				CurrencyType: "fiat",
@@ -124,7 +125,7 @@ func NewDigitalListing(slug string) *pb.Listing {
 		RefundPolicy:       "Sample Refund policy",
 		Metadata: &pb.Listing_Metadata{
 			Version:            1,
-			AcceptedCurrencies: []string{"TBTC"},
+			AcceptedCurrencies: []string{"TMCK"},
 			PricingCurrency: &pb.Currency{
 				Code:         "USD",
 				CurrencyType: "fiat",
@@ -175,7 +176,7 @@ func NewDigitalListing(slug string) *pb.Listing {
 func NewCryptoListing(slug string) *pb.Listing {
 	listing := NewPhysicalListing(slug)
 	listing.Metadata.PricingCurrency = &pb.Currency{
-		Divisibility: 1e8,
+		Divisibility: 18,
 		Name:         "Testnet Ethereum",
 		CurrencyType: "crypto",
 		Code:         "TETH",
@@ -188,4 +189,198 @@ func NewCryptoListing(slug string) *pb.Listing {
 	listing.Item.Price = "100"
 	listing.Coupons = nil
 	return listing
+}
+
+func NewSignedListing() *pb.SignedListing {
+	j := `{
+    "listing": {
+        "slug": "ron-swanson-shirt",
+        "vendorID": {
+            "peerID": "QmVuxKiPHHvWSTYs81QnD7Gax6fSKXezWoriUiMbHptjx3",
+            "pubkeys": {
+                "identity": "CAASogEwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALDcjysiMNE+XN0ZEdbXt6G/2uqghbOaYnX1InnJMl2Fsrhkdig4b27yPB/3PKQzvXnQoGAFgLkPtuc3VbWRutj7b1MoBTIo2llJ1r6HxGimbEpa1XpPWWrnTuzVWCOTTou7v2Bf1xdIgkFFVEYiGogkOzriac2vwfUIYnBoWCtbAgMBAAE=",
+                "secp256k1": "A9ggvaQogAYipQ1E1WSn+U585Vq+jSz8Wk61g8etNzAQ"
+            },
+            "sig": "MEUCIQDFNSHt11ODTf9ck4wf0GczfhHbmUpEibAVmc/iBwJQ6wIgX/XKUP40bCRPjJgukAvVYtTOYqXaa968w+w0ma6K/wk="
+        },
+        "metadata": {
+            "version": 4,
+            "contractType": "PHYSICAL_GOOD",
+            "format": "FIXED_PRICE",
+            "expiry": "2038-01-19T03:14:07.000Z",
+            "acceptedCurrencies": [
+                "TMCK"
+            ],
+            "escrowTimeoutHours": 1080,
+            "pricingCurrency": {
+                "code": "USD",
+                "divisibility": 2,
+                "name": "United State Dollar",
+                "currencyType": "fiat"
+            }
+        },
+        "item": {
+            "title": "Ron Swanson Tshirt",
+            "description": "Example item",
+            "processingTime": "3 days",
+            "tags": [
+                "tshirts"
+            ],
+            "images": [
+                {
+                    "filename": "image.jpg",
+                    "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                    "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                    "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                    "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                    "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
+                },
+                {
+                    "filename": "image.jpg",
+                    "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                    "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                    "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                    "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                    "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
+                }
+            ],
+            "categories": [
+                "tshirts"
+            ],
+            "grams": 14,
+            "condition": "new",
+            "options": [
+                {
+                    "name": "Size",
+                    "description": "What size do you want your shirt?",
+                    "variants": [
+                        {
+                            "name": "Small",
+                            "image": {
+                                "filename": "image.jpg",
+                                "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
+                            }
+                        },
+                        {
+                            "name": "Large",
+                            "image": {
+                                "filename": "image.jpg",
+                                "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Color",
+                    "description": "What color do you want your shirt?",
+                    "variants": [
+                        {
+                            "name": "Red",
+                            "image": {
+                                "filename": "image.jpg",
+                                "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
+                            }
+                        },
+                        {
+                            "name": "Green",
+                            "image": {
+                                "filename": "image.jpg",
+                                "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+                                "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "skus": [
+                {
+                    "selections": [
+                        {
+                            "option": "Size",
+                            "variant": "Large"
+                        },
+                        {
+                            "option": "Color",
+                            "variant": "Red"
+                        }
+                    ],
+                    "productID": "1",
+                    "quantity": 12,
+                    "surcharge": "0"
+                },
+                {
+                    "selections": [
+                        {
+                            "option": "Size",
+                            "variant": "Small"
+                        },
+                        {
+                            "option": "Color",
+                            "variant": "Green"
+                        }
+                    ],
+                    "productID": "2",
+                    "quantity": 44,
+                    "surcharge": "0"
+                }
+            ],
+            "price": "100"
+        },
+        "shippingOptions": [
+            {
+                "name": "usps",
+                "type": "FIXED_PRICE",
+                "regions": [
+                    "ALL"
+                ],
+                "services": [
+                    {
+                        "name": "standard",
+                        "estimatedDelivery": "3 days",
+                        "price": "20"
+                    }
+                ]
+            }
+        ],
+        "taxes": [
+            {
+                "taxType": "Sales tax",
+                "taxRegions": [
+                    "UNITED_STATES"
+                ],
+                "taxShipping": true,
+                "percentage": 7
+            }
+        ],
+        "coupons": [
+            {
+                "title": "Insider's Discount",
+                "hash": "QmYCS6GX6CWukvGgJjQLtRqAPBgtVw2AxHzofDrKGHDPuQ",
+                "percentDiscount": 5
+            }
+        ],
+        "termsAndConditions": "Sample Terms and Conditions",
+        "refundPolicy": "Sample Refund policy"
+    },
+    "signature": "lQ8CqetSEJ7PIBBEvDa/rWCQqEN0JHww0O+PNwG3obyWsI/gXnx+CgOxWJ9T4jPx3pCPGJ1RsXC8EL0SqHqOoJrn6xb9yRBMARSa6jVfhScc/O/GQY2nKm7MBVZIK87C0kEiYJP0/WdWGFUBT9VgAormcxNV9azhRasFpqotJhg="
+}`
+	sl := new(pb.SignedListing)
+	jsonpb.UnmarshalString(j, sl)
+
+	return sl
 }
