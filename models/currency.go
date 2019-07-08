@@ -405,6 +405,9 @@ func (v *CurrencyValue) Equal(other *CurrencyValue) bool {
 // where v is the receiver, exchangeRate is the ratio of (1 final.Currency/v.Currency)
 // v and final must both be Valid() and exchangeRate must not be zero.
 func (v *CurrencyValue) ConvertTo(final *Currency, exchangeRate float64) (*CurrencyValue, error) {
+	if final == nil || v.Currency == nil {
+		return nil, fmt.Errorf("cannot convert invalid value")
+	}
 	if exchangeRate <= 0 {
 		return nil, ErrCurrencyValueNegativeRate
 	}

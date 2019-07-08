@@ -671,7 +671,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 			if n.Cmp(discount0) < 0 {
 				return errors.New("price discount cannot be greater than the item price")
 			}
-			if n.Cmp(discount0) == 0 {
+			if discount0.Cmp(big.NewInt(0)) == 0 {
 				flag = true
 			}
 		}
@@ -903,7 +903,7 @@ func (n *OpenBazaarNode) validateCryptocurrencyListing(listing *pb.Listing) erro
 
 	var (
 		expectedDivisibility uint32
-		currencyCode string
+		currencyCode         string
 	)
 	currencyCode = listing.Metadata.PricingCurrency.Code
 	if strings.HasPrefix(normalizeCurrencyCode(listing.Metadata.PricingCurrency.Code), "T") {
