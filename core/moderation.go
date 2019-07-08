@@ -5,8 +5,10 @@ import (
 	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core/coreapi"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"strings"
 )
 
@@ -15,7 +17,10 @@ const (
 	moderatorTopic = "openbazaar:moderators"
 
 	// moderatorCid is the cid path of the provider block.
-	moderatorCid = "/ipld/QmV9mSiAvEMvv6JyVYFaojPb4Se3XSpb4tW35AcjGfVqxb"
+	moderatorCid = "QmV9mSiAvEMvv6JyVYFaojPb4Se3XSpb4tW35AcjGfVqxb"
+
+	// maxModerators is the maximum number of moderators to return in a single query.
+	maxModerators = 1000
 )
 
 // SetSelfAsModerator sets this node as a node that is offering moderation services.
@@ -36,7 +41,7 @@ func (n *OpenBazaarNode) SetSelfAsModerator(ctx context.Context, modInfo *models
 		modInfo.AcceptedCurrencies = append(modInfo.AcceptedCurrencies, normalizeCurrencyCode(cc))
 	}
 
-	err := n.repo.DB().Update(func(tx database.Tx)error {
+	err := n.repo.DB().Update(func(tx database.Tx) error {
 		profile, err := tx.GetProfile()
 		if err != nil {
 			return err
@@ -72,7 +77,7 @@ func (n *OpenBazaarNode) SetSelfAsModerator(ctx context.Context, modInfo *models
 // RemoveSelfAsModerator removes this node as a moderator in the DHT and updates
 // the profile and publishes.
 func (n *OpenBazaarNode) RemoveSelfAsModerator(ctx context.Context, done chan<- struct{}) error {
-	err := n.repo.DB().Update(func(tx database.Tx)error {
+	err := n.repo.DB().Update(func(tx database.Tx) error {
 		profile, err := tx.GetProfile()
 		if err != nil {
 			return err
@@ -87,10 +92,7 @@ func (n *OpenBazaarNode) RemoveSelfAsModerator(ctx context.Context, done chan<- 
 		if err != nil {
 			return err
 		}
-		if err = api.Block().Rm(ctx, path.New(moderatorCid)); err != nil {
-			return err
-		}
-		return nil
+		return api.Block().Rm(ctx, path.New(moderatorCid))
 	})
 	if err != nil {
 		maybeCloseDone(done)
@@ -98,4 +100,35 @@ func (n *OpenBazaarNode) RemoveSelfAsModerator(ctx context.Context, done chan<- 
 	}
 	n.Publish(done)
 	return nil
+}
+
+// GetModerators returns a slice of moderators found on the network.
+func (n *OpenBazaarNode) GetModerators(ctx context.Context) []peer.ID {
+	var mods []peer.ID
+	for mod := range n.GetModeratorsAsync(ctx) {
+		mods = append(mods, mod)
+	}
+	return mods
+}
+
+// GetModeratorsAsync returns a chan over which new moderator IDs are pushed.
+func (n *OpenBazaarNode) GetModeratorsAsync(ctx context.Context) <-chan peer.ID {
+	ch := make(chan peer.ID)
+
+	go func() {
+		c, err := cid.Decode(moderatorCid)
+		if err != nil {
+			log.Errorf("Error decoding moderator cid: %s", err)
+			close(ch)
+			return
+		}
+		provCh := n.ipfsNode.Routing.FindProvidersAsync(ctx, c, maxModerators)
+
+		for prov := range provCh {
+			ch <- prov.ID
+		}
+		close(ch)
+	}()
+
+	return ch
 }
