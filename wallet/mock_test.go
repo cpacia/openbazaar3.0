@@ -395,7 +395,7 @@ func TestMockWalletNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addr, err := network.Wallets()[0].NewAddress("")
+	addr, err := network.Wallets()[0].NewAddress()
 	if err != nil {
 		t.Fatal(err)
 	}

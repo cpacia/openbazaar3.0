@@ -193,6 +193,26 @@ func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) err
 	return nil
 }
 
+// handleOrderMessage is the handler for the ORDER message. It sends it off to the order
+// order processor for processing.
+func (n *OpenBazaarNode) handleOrderMessage(from peer.ID, message *pb.Message) error {
+	defer n.sendAckMessage(message.MessageID, from)
+
+	if n.isDuplicate(message) {
+		return nil
+	}
+
+	if message.MessageType != pb.Message_ORDER {
+		return errors.New("message is not type ORDER")
+	}
+	order := new(pb.OrderMessage)
+	if err := ptypes.UnmarshalAny(message.Payload, order); err != nil {
+		return err
+	}
+
+	return n.orderProcessor.ProcessMessage(from, order)
+}
+
 func (n *OpenBazaarNode) handleStoreMessage(from peer.ID, message *pb.Message) error {
 	if message.MessageType != pb.Message_STORE {
 		return errors.New("message is not type STORE")

@@ -91,7 +91,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 	defer mocknet.TearDown()
 
 	for _, node := range mocknet.Nodes() {
-		node.Start()
+		go node.syncMessages()
 	}
 
 	// Disconnect the two nodes.

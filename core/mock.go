@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/database"
@@ -130,6 +131,12 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			return nil, err
 		}
 
+		ratingSeed := sha256.Sum256(dbSeed.Value)
+		ratingPrivKey, err := hdkeychain.NewMaster(ratingSeed[:], &chaincfg.MainNetParams)
+		if err != nil {
+			return nil, err
+		}
+
 		bus := events.NewBus()
 		tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost.Network())
 
@@ -139,7 +146,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		mw := make(wallet.Multiwallet)
 		mw[iwallet.CtTestnetMock] = w
 
-		op := orders.NewOrderProcessor(r.DB(), messenger, mw)
+		op := orders.NewOrderProcessor(r.DB(), messenger, mw, bus)
 
 		node := &OpenBazaarNode{
 			ipfsNode:        ipfsNode,
@@ -151,6 +158,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			ipnsQuorum:      1,
 			shutdown:        make(chan struct{}),
 			masterPrivKey:   masterPrivKey,
+			ratingMasterKey: ratingPrivKey,
 			multiwallet:     mw,
 			followerTracker: tracker,
 			orderProcessor:  op,

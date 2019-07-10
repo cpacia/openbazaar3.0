@@ -29,6 +29,10 @@ type OpenBazaarNode struct {
 	// be used when building escrow transactions.
 	masterPrivKey *hdkeychain.ExtendedKey
 
+	// ratingMasterKey represents an secp256k1 (HD) private key that
+	// we used to generate rating keys to sign ratings with.
+	ratingMasterKey *hdkeychain.ExtendedKey
+
 	// ipnsQuorum is the size of the IPNS quorum to use. Smaller quorums
 	// resolve faster but run the risk of getting back older records.
 	ipnsQuorum uint

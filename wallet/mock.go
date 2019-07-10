@@ -384,7 +384,7 @@ func (w *MockWallet) CurrentAddress() (iwallet.Address, error) {
 //
 // Wallets that only use a single address, like Ethereum, should save the
 // passed in order ID locally such as to associate payments with orders.
-func (w *MockWallet) NewAddress(orderID string) (iwallet.Address, error) {
+func (w *MockWallet) NewAddress() (iwallet.Address, error) {
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
 
@@ -394,7 +394,7 @@ func (w *MockWallet) NewAddress(orderID string) (iwallet.Address, error) {
 	return *addr, nil
 }
 
-func (w *MockWallet) newAddress(orderID string) (iwallet.Address, error) {
+func (w *MockWallet) newAddress() (iwallet.Address, error) {
 	b := make([]byte, 20)
 	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
 	w.addrs[*addr] = false
@@ -532,7 +532,7 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 	// Maybe add change
 	var changeUtxo *mockUtxo
 	if totalUtxo.Cmp(totalWithFee) > 0 {
-		changeAddr, err := w.newAddress("")
+		changeAddr, err := w.newAddress()
 		if err != nil {
 			return txn.ID, err
 		}

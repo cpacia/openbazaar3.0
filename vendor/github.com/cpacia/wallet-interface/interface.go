@@ -78,10 +78,7 @@ type Wallet interface {
 	// associates this address with the order and assumes if a payment is received
 	// by this address that it is for the order. Failure to return a never before
 	// used address could put the order in a bad state.
-	//
-	// Wallets that only use a single address, like Ethereum, should save the
-	// passed in order ID locally such as to associate payments with orders.
-	NewAddress(orderID string) (Address, error)
+	NewAddress() (Address, error)
 
 	// Balance should return the confirmed and unconfirmed balance for the wallet.
 	Balance() (unconfirmed Amount, confirmed Amount, err error)

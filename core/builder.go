@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -114,6 +115,11 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	if err != nil {
 		return nil, err
 	}
+	ratingSeed := sha256.Sum256(dbSeed.Value)
+	ratingPrivKey, err := hdkeychain.NewMaster(ratingSeed[:], &chaincfg.MainNetParams)
+	if err != nil {
+		return nil, err
+	}
 	bus := events.NewBus()
 	bm := net.NewBanManager(nil) // TODO: load ids from db
 	service := net.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
@@ -122,13 +128,14 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	mw := wallet.Multiwallet{} // TODO: wire this up.
 
-	op := orders.NewOrderProcessor(obRepo.DB(), messenger, mw)
+	op := orders.NewOrderProcessor(obRepo.DB(), messenger, mw, bus)
 
 	// Construct our OpenBazaar node.repo object
 	obNode := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
 		repo:            obRepo,
 		masterPrivKey:   masterPrivKey,
+		ratingMasterKey: ratingPrivKey,
 		ipnsQuorum:      cfg.IPNSQuorum,
 		messenger:       messenger,
 		networkService:  service,

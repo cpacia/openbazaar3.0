@@ -1,8 +1,10 @@
 package orders
 
 import (
+	"bytes"
 	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
@@ -14,24 +16,32 @@ import (
 	"github.com/op/go-logging"
 )
 
-var log = logging.MustGetLogger("ORDR")
+var (
+	log                 = logging.MustGetLogger("ORDR")
+	ErrDuplicateMessage = errors.New("duplicate message")
+	ErrChangedMessage   = errors.New("different duplicate message")
+)
 
 type OrderProcessor struct {
 	db          database.Database
 	messenger   *net.Messenger
 	multiwallet wallet.Multiwallet
+	eventBus    events.Bus
 }
 
 // NewOrderProcessor initializes and returns a new OrderProcessor
-func NewOrderProcessor(db database.Database, messenger *net.Messenger, multiwallet wallet.Multiwallet) *OrderProcessor {
-	return &OrderProcessor{db, messenger, multiwallet}
+func NewOrderProcessor(db database.Database, messenger *net.Messenger, multiwallet wallet.Multiwallet, bus events.Bus) *OrderProcessor {
+	return &OrderProcessor{db, messenger, multiwallet, bus}
 }
 
 func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage) error {
 	return op.db.Update(func(tx database.Tx) error {
 		// Load the order if it exists.
-		var order models.Order
-		err := tx.DB().Where("order_id = ?", message.OrderID).First(&order).Error
+		var (
+			order models.Order
+			err   error
+		)
+		err = tx.DB().Where("order_id = ?", message.OrderID).First(&order).Error
 		if err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		} else if gorm.IsRecordNotFoundError(err) && message.MessageType != npb.OrderMessage_ORDER_OPEN {
@@ -39,6 +49,7 @@ func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage
 			// in the case where we download offline messages out of order. In this case we will park
 			// the message so that we can try again later if we receive other messages.
 			log.Warningf("Received %s message from peer %d for an order that does not exist yet", message.MessageType, peer)
+			order.ID = models.OrderID(message.OrderID)
 			if err := order.ParkMessage(message); err != nil {
 				return err
 			}
@@ -48,9 +59,10 @@ func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage
 			return nil
 		}
 
+		var event interface{}
 		switch message.MessageType {
 		case npb.OrderMessage_ORDER_OPEN:
-			err = op.handleOrderOpenMessage(&order, message)
+			event, err = op.handleOrderOpenMessage(&order, message)
 		default:
 			return errors.New("unknown order message type")
 		}
@@ -58,6 +70,10 @@ func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage
 		// Save changes to the database.
 		if err := tx.DB().Save(&order).Error; err != nil {
 			return err
+		}
+
+		if event != nil {
+			op.eventBus.Emit(event)
 		}
 
 		return err
@@ -106,4 +122,14 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 	default:
 		return errors.New("unknown order message type")
 	}
+}
+
+// isDuplicate checks the serialization of the passed in message against the
+// passed in serialization and returns true if they match.
+func isDuplicate(message proto.Message, serialized []byte) (bool, error) {
+	ser, err := proto.Marshal(message)
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(ser, serialized), nil
 }

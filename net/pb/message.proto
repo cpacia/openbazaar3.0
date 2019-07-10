@@ -48,9 +48,8 @@ message AckMessage {
 
 message OrderMessage {
     string orderID                      = 1;
-    google.protobuf.Timestamp timestamp = 2;
-    MessageType messageType             = 3;
-    google.protobuf.Any message         = 4;
+    MessageType messageType             = 2;
+    google.protobuf.Any message         = 3;
 
     enum MessageType {
         ORDER_OPEN         = 0;
