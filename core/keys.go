@@ -51,7 +51,7 @@ func generateRatingPrivateKeys(ratingPrivKey *hdkeychain.ExtendedKey, numKeys in
 
 // generateHdKeys is a helper function that can generate from either public or private
 // keys.
-func generateHdKeys(hdKey *hdkeychain.ExtendedKey, numKeys int) ([][]byte, error){
+func generateHdKeys(hdKey *hdkeychain.ExtendedKey, numKeys int) ([][]byte, error) {
 	keys := make([][]byte, 0, numKeys)
 	i := 0
 	for len(keys) < numKeys {

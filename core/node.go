@@ -64,6 +64,9 @@ type OpenBazaarNode struct {
 	// orderProcessor is the engine we use for processing all orders.
 	orderProcessor *orders.OrderProcessor
 
+	// exchangeRates is a provider of exchange rate data for various currencies.
+	exchangeRates *wallet.ExchangeRateProvider
+
 	// testnet is whether the this node is configured to use the test network.
 	testnet bool
 

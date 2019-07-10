@@ -128,6 +128,8 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	mw := wallet.Multiwallet{} // TODO: wire this up.
 
+	erp := wallet.NewExchangeRateProvider(nil, cfg.ExchangeRateProviders) // TODO: wire up proxy
+
 	op := orders.NewOrderProcessor(obRepo.DB(), messenger, mw, bus)
 
 	// Construct our OpenBazaar node.repo object
@@ -143,6 +145,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		eventBus:        bus,
 		followerTracker: tracker,
 		multiwallet:     mw,
+		exchangeRates:   erp,
 		orderProcessor:  op,
 		testnet:         cfg.Testnet,
 		shutdown:        make(chan struct{}),

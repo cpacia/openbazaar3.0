@@ -60,7 +60,12 @@ func MockNode() (*OpenBazaarNode, error) {
 	mw := make(wallet.Multiwallet)
 	mw[iwallet.CtTestnetMock] = w
 
-	op := orders.NewOrderProcessor(r.DB(), messenger, mw)
+	erp, err := wallet.NewMockExchangeRates()
+	if err != nil {
+		return nil, err
+	}
+
+	op := orders.NewOrderProcessor(r.DB(), messenger, mw, bus)
 
 	node := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
@@ -75,6 +80,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		multiwallet:     mw,
 		followerTracker: tracker,
 		orderProcessor:  op,
+		exchangeRates:   erp,
 	}
 
 	node.registerHandlers()
@@ -146,6 +152,11 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		mw := make(wallet.Multiwallet)
 		mw[iwallet.CtTestnetMock] = w
 
+		erp, err := wallet.NewMockExchangeRates()
+		if err != nil {
+			return nil, err
+		}
+
 		op := orders.NewOrderProcessor(r.DB(), messenger, mw, bus)
 
 		node := &OpenBazaarNode{
@@ -162,6 +173,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			multiwallet:     mw,
 			followerTracker: tracker,
 			orderProcessor:  op,
+			exchangeRates:   erp,
 		}
 
 		node.registerHandlers()

@@ -10,6 +10,8 @@ import (
 	hd "github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/events"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/jarcoal/httpmock"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -848,4 +850,39 @@ func (w *MockWallet) BuildAndSend(tx iwallet.Tx, txn iwallet.Transaction, signat
 	}
 
 	return nil
+}
+
+// NewMockExchangeRates returns a mock exchange rate provider that returns
+// mock data.
+func NewMockExchangeRates() (*ExchangeRateProvider, error) {
+	mockedHTTPClient := http.Client{}
+	httpmock.ActivateNonDefault(&mockedHTTPClient)
+
+	httpmock.RegisterResponder(http.MethodGet, "https://testrates.com/api",
+		func(req *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(http.StatusInternalServerError, MockExchangeRateResponse)
+		},
+	)
+
+	provider := NewExchangeRateProvider(nil, []string{"https://testrates.com/api"})
+	obAPI, ok := provider.providers[0].(*openBazaarAPI)
+	if !ok {
+		return nil, errors.New("type assertion failure provider 0 is not openBazaarAPI")
+	}
+	obAPI.client = &mockedHTTPClient
+
+	return provider, nil
+}
+
+// MockExchangeRateResponse is a mock response from an exchange rate API.
+var MockExchangeRateResponse = map[string]apiRate{
+	"BTC": apiRate{Last: 1},
+	"BCH": apiRate{Last: 31.588915},
+	"LTC": apiRate{Last: 112.163246},
+	"ZEC": apiRate{Last: 128.77109},
+	"ETH": apiRate{Last: 42.35316},
+	"USD": apiRate{Last: 12863.08},
+	"EUR": apiRate{Last: 11444.58},
+	"JPY": apiRate{Last: 1398311.17},
+	"CNY": apiRate{Last: 88439.82},
 }

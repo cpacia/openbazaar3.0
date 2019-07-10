@@ -17,7 +17,6 @@
 package badger
 
 import (
-	"time"
 	"bytes"
 	"context"
 	"encoding/hex"
@@ -345,10 +344,6 @@ func (txn *Txn) modify(e *Entry) error {
 // The current transaction keeps a reference to the key and val byte slice
 // arguments. Users must not modify key and val until the end of the transaction.
 func (txn *Txn) Set(key, val []byte) error {
-	return txn.SetEntry(NewEntry(key, val))
-}
-
-func (txn *Txn) SetWithTTL(key, val []byte, t time.Duration) error {
 	return txn.SetEntry(NewEntry(key, val))
 }
 

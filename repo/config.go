@@ -36,16 +36,17 @@ var (
 //
 // See loadConfig for details on the configuration load process.
 type Config struct {
-	ShowVersion   bool     `short:"v" long:"version" description:"Display version information and exit"`
-	ConfigFile    string   `short:"C" long:"configfile" description:"Path to configuration file"`
-	DataDir       string   `short:"b" long:"datadir" description:"Directory to store data"`
-	LogDir        string   `long:"logdir" description:"Directory to log output."`
-	LogLevel      string   `short:"l" long:"loglevel" description:"set the logging level [debug, info, notice, warning, error, critical]" default:"info"`
-	BoostrapAddrs []string `long:"bootstrapaddr" description:"Override the default bootstrap addresses with the provided values"`
-	SwarmAddrs    []string `long:"swarmaddr" description:"Override the default swarm addresses with the provided values"`
-	GatewayAddr   string   `long:"gatewayaddr" description:"Override the default gateway address with the provided value"`
-	Testnet       bool     `short:"t" long:"testnet" description:"Use the test network"`
-	IPNSQuorum    uint     `long:"ipnsquorum" description:"The size of the IPNS quorum to use. Smaller is faster but less up-to-date." default:"2"`
+	ShowVersion           bool     `short:"v" long:"version" description:"Display version information and exit"`
+	ConfigFile            string   `short:"C" long:"configfile" description:"Path to configuration file"`
+	DataDir               string   `short:"b" long:"datadir" description:"Directory to store data"`
+	LogDir                string   `long:"logdir" description:"Directory to log output."`
+	LogLevel              string   `short:"l" long:"loglevel" description:"set the logging level [debug, info, notice, warning, error, critical]" default:"info"`
+	BoostrapAddrs         []string `long:"bootstrapaddr" description:"Override the default bootstrap addresses with the provided values"`
+	SwarmAddrs            []string `long:"swarmaddr" description:"Override the default swarm addresses with the provided values"`
+	GatewayAddr           string   `long:"gatewayaddr" description:"Override the default gateway address with the provided value"`
+	Testnet               bool     `short:"t" long:"testnet" description:"Use the test network"`
+	IPNSQuorum            uint     `long:"ipnsquorum" description:"The size of the IPNS quorum to use. Smaller is faster but less up-to-date." default:"2"`
+	ExchangeRateProviders []string `long:"exchangerateprovider" description:"API URL to use for exchanges. Must conform to the BitcoinAverage format." default:"https://ticker.openbazaar.org/api"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command

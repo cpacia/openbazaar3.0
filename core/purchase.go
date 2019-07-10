@@ -36,9 +36,9 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 
 func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, error) {
 	var (
-		listings []*pb.Listing
-		items []*pb.OrderOpen_Item
-		options []*pb.OrderOpen_Item_Option
+		listings      []*pb.Listing
+		items         []*pb.OrderOpen_Item
+		options       []*pb.OrderOpen_Item_Option
 		refundAddress string
 	)
 	wallet, err := n.multiwallet.WalletForCurrencyCode(purchase.PaymentCoin)
@@ -94,20 +94,20 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 
 		for _, option := range item.Options {
 			orderOption := &pb.OrderOpen_Item_Option{
-				Name: option.Name,
+				Name:  option.Name,
 				Value: option.Value,
 			}
 			options = append(options, orderOption)
 		}
 
 		orderItem := &pb.OrderOpen_Item{
-			ListingHash: listingHash.B58String(),
-			Quantity: item.Quantity,
-			CouponCodes: item.Coupons,
-			Memo: item.Memo,
+			ListingHash:    listingHash.B58String(),
+			Quantity:       item.Quantity,
+			CouponCodes:    item.Coupons,
+			Memo:           item.Memo,
 			PaymentAddress: item.PaymentAddress,
 			ShippingOption: &pb.OrderOpen_Item_ShippingOption{
-				Name: item.Shipping.Name,
+				Name:    item.Shipping.Name,
 				Service: item.Shipping.Service,
 			},
 			Options: options,
@@ -129,23 +129,23 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 			Handle: profile.Handle,
 		},
 		AlternateContactInfo: purchase.AlternateContactInfo,
-		Listings: listings,
-		Items: items,
+		Listings:             listings,
+		Items:                items,
 		Shipping: &pb.OrderOpen_Shipping{
-			ShipTo: purchase.ShipTo,
-			Address: purchase.Address,
-			City: purchase.City,
-			State: purchase.State,
-			PostalCode:purchase.PostalCode,
-			Country: pb.CountryCode(pb.CountryCode_value[purchase.CountryCode]),
+			ShipTo:       purchase.ShipTo,
+			Address:      purchase.Address,
+			City:         purchase.City,
+			State:        purchase.State,
+			PostalCode:   purchase.PostalCode,
+			Country:      pb.CountryCode(pb.CountryCode_value[purchase.CountryCode]),
 			AddressNotes: purchase.AddressNotes,
 		},
-		Version: orderOpenVersion,
+		Version:       orderOpenVersion,
 		RefundAddress: refundAddress,
 		Payment: &pb.OrderOpen_Payment{
 			Moderator: purchase.Moderator,
 			Chaincode: hex.EncodeToString(chaincode),
-			Coin: purchase.PaymentCoin,
+			Coin:      purchase.PaymentCoin,
 		},
 	}
 

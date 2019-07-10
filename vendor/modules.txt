@@ -557,8 +557,10 @@ golang.org/x/crypto/internal/chacha20
 golang.org/x/crypto/poly1305
 golang.org/x/crypto/cryptobyte/asn1
 # golang.org/x/net v0.0.0-20190522135303-fa69b94a3b58
+golang.org/x/net/proxy
 golang.org/x/net/html
 golang.org/x/net/context
+golang.org/x/net/internal/socks
 golang.org/x/net/html/atom
 golang.org/x/net/ipv4
 golang.org/x/net/ipv6
