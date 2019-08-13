@@ -71,7 +71,7 @@ func TestMessenger(t *testing.T) {
 
 	var messages []models.OutgoingMessage
 	err = messenger1.db.View(func(tx database.Tx) error {
-		return tx.DB().Find(&messages).Error
+		return tx.Read().Find(&messages).Error
 	})
 	if err != nil {
 		t.Error(err)
@@ -89,7 +89,7 @@ func TestMessenger(t *testing.T) {
 
 	var messages2 []models.OutgoingMessage
 	err = messenger1.db.View(func(tx database.Tx) error {
-		return tx.DB().Find(&messages2).Error
+		return tx.Read().Find(&messages2).Error
 	})
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		t.Error(err)
@@ -127,11 +127,11 @@ func TestMessenger_retryAllMessages(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		return tx.DB().Save(&models.OutgoingMessage{
+		return tx.Save(&models.OutgoingMessage{
 			ID:                "abc",
 			Recipient:         service2.host.ID().Pretty(),
 			SerializedMessage: ser,
-		}).Error
+		})
 	})
 	if err != nil {
 		t.Fatal(err)

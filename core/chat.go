@@ -33,7 +33,7 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 
 	err = n.repo.DB().Update(func(tx database.Tx) error {
 		var prev models.ChatMessage
-		if err := tx.DB().Order("timestamp desc").Where("peer_id = ? AND outgoing = ?", to.Pretty(), true).Last(&prev).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Order("timestamp desc").Where("peer_id = ? AND outgoing = ?", to.Pretty(), true).Last(&prev).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 
@@ -49,7 +49,7 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, subject string, do
 		chatModel.Outgoing = true
 		chatModel.Sequence = prev.Sequence + 1
 
-		if err := tx.DB().Save(chatModel).Error; err != nil {
+		if err := tx.Save(chatModel); err != nil {
 			return err
 		}
 
@@ -98,7 +98,7 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, subject string) er
 	return n.repo.DB().Update(func(tx database.Tx) error {
 		// Check unread count. If zero we can just exit.
 		var unreadCount int
-		if err := tx.DB().Where("peer_id = ? AND read = ? AND subject = ?", peer.Pretty(), false, subject).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Where("peer_id = ? AND read = ? AND subject = ?", peer.Pretty(), false, subject).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 
@@ -108,12 +108,12 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, subject string) er
 
 		// Load the last message
 		lastMessage := models.ChatMessage{}
-		if err := tx.DB().Order("timestamp desc").Where("peer_id = ? AND read = ? AND subject = ?", peer.Pretty(), false, subject).First(&lastMessage).Error; err != nil {
+		if err := tx.Read().Order("timestamp desc").Where("peer_id = ? AND read = ? AND subject = ?", peer.Pretty(), false, subject).First(&lastMessage).Error; err != nil {
 			return err
 		}
 
 		// Update the local DB
-		if err := tx.DB().Model(&models.ChatMessage{}).Where("peer_id = ? AND subject = ?", peer.Pretty(), subject).UpdateColumn("read", true).Error; err != nil {
+		if err := tx.Update("read", true, map[string]interface{}{"peer_id = ?": peer.Pretty(), "subject = ?": subject}, &models.ChatMessage{}); err != nil {
 			return err
 		}
 
@@ -146,7 +146,7 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, subject string) er
 func (n *OpenBazaarNode) GetChatConversations() ([]models.ChatConversation, error) {
 	var convos []models.ChatConversation
 	err := n.repo.DB().View(func(tx database.Tx) error {
-		rows, err := tx.DB().Raw("select distinct peer_id from chat_messages where subject='' order by timestamp desc;").Rows()
+		rows, err := tx.Read().Raw("select distinct peer_id from chat_messages where subject='' order by timestamp desc;").Rows()
 		if err != nil {
 			return err
 		}
@@ -163,11 +163,11 @@ func (n *OpenBazaarNode) GetChatConversations() ([]models.ChatConversation, erro
 
 		for _, peer := range ids {
 			var message models.ChatMessage
-			if err := tx.DB().Order("timestamp desc").Where("peer_id = ?", peer).Last(&message).Error; err != nil {
+			if err := tx.Read().Order("timestamp desc").Where("peer_id = ?", peer).Last(&message).Error; err != nil {
 				return err
 			}
 			var unreadCount int
-			if err := tx.DB().Where("peer_id = ? AND read = ? AND subject = ? AND outgoing = ?", peer, false, "", false).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			if err := tx.Read().Where("peer_id = ? AND read = ? AND subject = ? AND outgoing = ?", peer, false, "", false).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 				return err
 			}
 
@@ -193,7 +193,7 @@ func (n *OpenBazaarNode) GetChatConversations() ([]models.ChatConversation, erro
 func (n *OpenBazaarNode) GetChatMessagesByPeer(peer peer.ID) ([]models.ChatMessage, error) {
 	var messages []models.ChatMessage
 	err := n.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("peer_id = ?", peer.Pretty()).Find(&messages).Error
+		return tx.Read().Where("peer_id = ?", peer.Pretty()).Find(&messages).Error
 	})
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		return nil, err
@@ -205,7 +205,7 @@ func (n *OpenBazaarNode) GetChatMessagesByPeer(peer peer.ID) ([]models.ChatMessa
 func (n *OpenBazaarNode) GetChatMessagesBySubject(subject string) ([]models.ChatMessage, error) {
 	var messages []models.ChatMessage
 	err := n.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("subject = ?", subject).Find(&messages).Error
+		return tx.Read().Where("subject = ?", subject).Find(&messages).Error
 	})
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		return nil, err
@@ -235,7 +235,7 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		}
 		err = n.repo.DB().Update(func(tx database.Tx) error {
 			// Save the incoming message to the DB
-			return tx.DB().Save(incomingMsg).Error
+			return tx.Save(incomingMsg)
 		})
 		if err != nil {
 			return err
@@ -247,15 +247,12 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		err := n.repo.DB().Update(func(tx database.Tx) error {
 			// Load the message with the provided ID
 			var chmsg models.ChatMessage
-			if err := tx.DB().Where("message_id = ?", chatMsg.ReadID).Find(&chmsg).Error; err != nil {
+			if err := tx.Read().Where("message_id = ?", chatMsg.ReadID).Find(&chmsg).Error; err != nil {
 				return err
 			}
 
 			// Update all unread messages before the given message ID.
-			if err := tx.DB().Model(&models.ChatMessage{}).Where("peer_id = ? AND read = ? AND subject = ? AND timestamp <= ?", from.Pretty(), false, chatMsg.Subject, chmsg.Timestamp).UpdateColumn("read", true).Error; err != nil {
-				return err
-			}
-			return nil
+			return tx.Update("read", true, map[string]interface{}{"peer_id = ?": from.Pretty(), "read = ?": false, "subject = ?": chatMsg.Subject, "timestamp <= ?": chmsg.Timestamp}, &models.ChatMessage{})
 		})
 		if err != nil {
 			return err

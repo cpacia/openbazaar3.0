@@ -1,6 +1,7 @@
 package ffsqlite
 
 import (
+	"fmt"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
@@ -125,6 +126,12 @@ func readTx(db *gorm.DB, ffdb *FlatFileDB) database.Tx {
 	return &tx{dbtx: db, ffdb: ffdb, isForWrites: false}
 }
 
+// Commit commits all changes that have been made to the db or public data.
+// Depending on the backend implementation this could be to a cache that
+// is periodically synced to persistent storage or directly to persistent
+// storage.  In any case, all transactions which are started after the commit
+// finishes will include all changes made by this transaction.  Calling this
+// function on a managed transaction will result in a panic.
 func (t *tx) Commit() error {
 	if t.closed {
 		panic("tx already closed")
@@ -150,6 +157,9 @@ func (t *tx) Commit() error {
 	return nil
 }
 
+// Rollback undoes all changes that have been made to the db or public
+// data.  Calling this function on a managed transaction will result in
+// a panic.
 func (t *tx) Rollback() error {
 	if t.closed {
 		panic("tx already closed")
@@ -173,10 +183,39 @@ func (t *tx) Rollback() error {
 	return nil
 }
 
-func (t *tx) DB() *gorm.DB {
+// Save will save the passed in model to the database. If it already exists
+// it will be overridden.
+func (t *tx) Save(model interface{}) error {
+	return t.dbtx.Save(model).Error
+}
+
+// Read returns the underlying sql database in a read-only mode so that
+// queries can be made against it.
+func (t *tx) Read() *gorm.DB {
 	return t.dbtx
 }
 
+func (t *tx) Update(key string, value interface{}, where map[string]interface{}, model interface{}) error {
+	db := t.dbtx.Model(model)
+	for k, v := range where {
+		db = db.Where(k, v)
+	}
+	return db.UpdateColumn(key, value).Error
+}
+
+// Delete will delete all models of the given type from the database where
+// field == key.
+func (t *tx) Delete(key string, value interface{}, model interface{}) error {
+	return t.dbtx.Where(fmt.Sprintf("%s = ?", key), value).Delete(model).Error
+}
+
+// Migrate will auto-migrate the database to from any previous schema for this
+// model to the current schema.
+func (t *tx) Migrate(model interface{}) error {
+	return t.dbtx.AutoMigrate(model).Error
+}
+
+// GetProfile returns the profile.
 func (t *tx) GetProfile() (*models.Profile, error) {
 	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		profile, ok := t.commitCache[x].(*models.Profile)
@@ -187,6 +226,7 @@ func (t *tx) GetProfile() (*models.Profile, error) {
 	return t.ffdb.GetProfile()
 }
 
+// SetProfile sets the profile.
 func (t *tx) SetProfile(profile *models.Profile) error {
 	current, err := t.ffdb.GetProfile()
 	if err != nil && !os.IsNotExist(err) {
@@ -197,6 +237,7 @@ func (t *tx) SetProfile(profile *models.Profile) error {
 	return nil
 }
 
+// GetFollowers returns followers list.
 func (t *tx) GetFollowers() (models.Followers, error) {
 	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		followers, ok := t.commitCache[x].(models.Followers)
@@ -207,6 +248,7 @@ func (t *tx) GetFollowers() (models.Followers, error) {
 	return t.ffdb.GetFollowers()
 }
 
+// SetFollowers sets the followers list.
 func (t *tx) SetFollowers(followers models.Followers) error {
 	current, err := t.ffdb.GetFollowers()
 	if err != nil && !os.IsNotExist(err) {
@@ -217,6 +259,7 @@ func (t *tx) SetFollowers(followers models.Followers) error {
 	return nil
 }
 
+// GetFollowing returns the following list.
 func (t *tx) GetFollowing() (models.Following, error) {
 	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		following, ok := t.commitCache[x].(models.Following)
@@ -227,6 +270,7 @@ func (t *tx) GetFollowing() (models.Following, error) {
 	return t.ffdb.GetFollowing()
 }
 
+// SetFollowing sets the following list.
 func (t *tx) SetFollowing(following models.Following) error {
 	current, err := t.ffdb.GetFollowing()
 	if err != nil && !os.IsNotExist(err) {
@@ -237,6 +281,7 @@ func (t *tx) SetFollowing(following models.Following) error {
 	return nil
 }
 
+// GetListing returns the listing for the given slug.
 func (t *tx) GetListing(slug string) (*pb.Listing, error) {
 	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		listing, ok := t.commitCache[x].(*pb.SignedListing)
@@ -247,6 +292,7 @@ func (t *tx) GetListing(slug string) (*pb.Listing, error) {
 	return t.ffdb.GetListing(slug)
 }
 
+// SetListing saves the given listing.
 func (t *tx) SetListing(listing *pb.SignedListing) error {
 	current, err := t.ffdb.getSignedListing(listing.Listing.Slug)
 	if err != nil && !os.IsNotExist(err) {
@@ -257,6 +303,7 @@ func (t *tx) SetListing(listing *pb.SignedListing) error {
 	return nil
 }
 
+// DeleteListing deletes the given listing.
 func (t *tx) DeleteListing(slug string) error {
 	current, err := t.ffdb.getSignedListing(slug)
 	if err != nil && !os.IsNotExist(err) {
@@ -267,6 +314,7 @@ func (t *tx) DeleteListing(slug string) error {
 	return nil
 }
 
+// GetListingIndex returns the listing index.
 func (t *tx) GetListingIndex() (models.ListingIndex, error) {
 	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		index, ok := t.commitCache[x].(models.ListingIndex)
@@ -277,6 +325,7 @@ func (t *tx) GetListingIndex() (models.ListingIndex, error) {
 	return t.ffdb.GetListingIndex()
 }
 
+// SetListingIndex sets the listing index.
 func (t *tx) SetListingIndex(index models.ListingIndex) error {
 	current, err := t.ffdb.GetListingIndex()
 	if err != nil && !os.IsNotExist(err) {

@@ -58,14 +58,14 @@ func (m *Messenger) ReliablySendMessage(tx database.Tx, peer peer.ID, message *p
 	// Before we do anything save the message to the database. This way
 	// we can retry sending the message until we know for sure that it
 	// has been delivered.
-	err = tx.DB().Save(&models.OutgoingMessage{
+	err = tx.Save(&models.OutgoingMessage{
 		ID:                message.MessageID,
 		Recipient:         peer.Pretty(),
 		SerializedMessage: ser,
 		MessageType:       message.MessageType.String(),
 		Timestamp:         time.Now(),
 		LastAttempt:       time.Now(),
-	}).Error
+	})
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (m *Messenger) ProcessACK(tx database.Tx, ack *pb.AckMessage) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	return tx.DB().Where("id = ?", ack.AckedMessageID).Delete(&models.OutgoingMessage{}).Error
+	return tx.Read().Where("id = ?", ack.AckedMessageID).Delete(&models.OutgoingMessage{}).Error
 }
 
 // SendACK sends an ACK for the message with the given ID to the provided
@@ -166,7 +166,7 @@ func (m *Messenger) retryAllMessages() {
 	m.mtx.RLock()
 	var messages []models.OutgoingMessage
 	err := m.db.View(func(tx database.Tx) error {
-		return tx.DB().Find(&messages).Error
+		return tx.Read().Find(&messages).Error
 	})
 	if err != nil {
 		log.Errorf("Error loading outgoing messages from the database: %s", err)
@@ -189,7 +189,7 @@ func (m *Messenger) retryAllMessages() {
 		go m.trySendMessage(pid, pmes, nil)
 
 		err = m.db.Update(func(tx database.Tx) error {
-			return tx.DB().Model(&message).Update("last_attempt", time.Now()).Error
+			return tx.Update("last_attempt", time.Now(), nil, &message)
 		})
 		if err != nil {
 			log.Error("Error updating last attempt for outgoing message: %s", err)

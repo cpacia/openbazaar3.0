@@ -14,7 +14,6 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/ipfs/go-cid"
 	ipath "github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/jinzhu/gorm"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/microcosm-cc/bluemonday"
@@ -120,10 +119,6 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 			listing.VendorID.Handle = profile.Handle
 		}
 
-		// Delete the coupons for this slug and resave them.
-		if err := tx.DB().Where("slug = ?", listing.Slug).Delete(&models.Coupon{}).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
-			return err
-		}
 		var couponsToStore []models.Coupon
 		for i, coupon := range listing.Coupons {
 			hash := coupon.GetHash()
@@ -144,7 +139,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 		}
 		if len(couponsToStore) > 0 {
 			for _, coupon := range couponsToStore {
-				if err := tx.DB().Save(&coupon).Error; err != nil {
+				if err := tx.Save(&coupon); err != nil {
 					return err
 				}
 			}
@@ -214,7 +209,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 // profile counts, and publishes.
 func (n *OpenBazaarNode) DeleteListing(slug string, done chan<- struct{}) error {
 	err := n.repo.DB().Update(func(tx database.Tx) error {
-		if err := tx.DB().Where("slug = ?", slug).Delete(&models.Coupon{}).Error; err != nil {
+		if err := tx.Delete("slug", slug, &models.Coupon{}); err != nil {
 			return err
 		}
 

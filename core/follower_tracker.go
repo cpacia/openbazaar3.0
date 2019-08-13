@@ -105,13 +105,13 @@ func (t *FollowerTracker) Close() {
 
 		err := t.repo.DB().Update(func(tx database.Tx) error {
 			var stat models.FollowerStat
-			if err := tx.DB().Where("peer_id = ?", pid.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			if err := tx.Read().Where("peer_id = ?", pid.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 				return err
 			}
 			stat.PeerID = pid.Pretty()
 			stat.LastConnection = time.Now()
 			stat.ConnectedDuration += connectedDuration
-			return tx.DB().Save(&stat).Error
+			return tx.Save(&stat)
 		})
 		if err != nil {
 			log.Error(err)
@@ -190,13 +190,13 @@ func (t *FollowerTracker) listenEvents() {
 
 				err := t.repo.DB().Update(func(tx database.Tx) error {
 					var stat models.FollowerStat
-					if err := tx.DB().Where("peer_id = ?", notif.Peer.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+					if err := tx.Read().Where("peer_id = ?", notif.Peer.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 						return err
 					}
 					stat.PeerID = notif.Peer.Pretty()
 					stat.LastConnection = time.Now()
 					stat.ConnectedDuration += connectedDuration
-					return tx.DB().Save(&stat).Error
+					return tx.Save(&stat)
 				})
 				if err != nil {
 					log.Error(err)
@@ -272,7 +272,7 @@ func (t *FollowerTracker) tryConnectFollowers() {
 	// First try connecting to known good followers.
 	var stats []models.FollowerStat
 	err := t.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Order("connected_duration asc").Order("last_connection asc").Find(&stats).Error
+		return tx.Read().Order("connected_duration asc").Order("last_connection asc").Find(&stats).Error
 	})
 	if err != nil {
 		log.Error(err)

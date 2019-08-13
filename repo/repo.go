@@ -145,17 +145,17 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 
 	err = db.Update(func(tx database.Tx) error {
 		if dbIdentity != nil {
-			if err := tx.DB().Create(&dbIdentity).Error; err != nil {
+			if err := tx.Save(&dbIdentity); err != nil {
 				return err
 			}
 		}
 		if dbSeed != nil {
-			if err := tx.DB().Create(&dbSeed).Error; err != nil {
+			if err := tx.Save(&dbSeed); err != nil {
 				return err
 			}
 		}
 		if dbMnemonic != nil {
-			if err := tx.DB().Create(&dbMnemonic).Error; err != nil {
+			if err := tx.Save(&dbMnemonic); err != nil {
 				return err
 			}
 		}
@@ -345,7 +345,7 @@ func autoMigrateDatabase(db database.Database) error {
 
 	return db.Update(func(tx database.Tx) error {
 		for _, m := range dbModels {
-			if err := tx.DB().AutoMigrate(m).Error; err != nil {
+			if err := tx.Migrate(m); err != nil {
 				return err
 			}
 		}

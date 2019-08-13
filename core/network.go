@@ -115,7 +115,7 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 		}
 
 		err = n.repo.DB().Update(func(tx database.Tx) error {
-			return tx.DB().Save(&models.Event{Name: "last_publish", Time: time.Now()}).Error
+			return tx.Save(&models.Event{Name: "last_publish", Time: time.Now()})
 		})
 		if err != nil {
 			log.Errorf("Error saving last publish time to the db: %s", err.Error())
@@ -153,7 +153,7 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 // the remote peer.
 func (n *OpenBazaarNode) sendAckMessage(messageID string, to peer.ID) {
 	err := n.repo.DB().Update(func(tx database.Tx) error {
-		return tx.DB().Save(&models.IncomingMessage{ID: messageID}).Error
+		return tx.Save(&models.IncomingMessage{ID: messageID})
 	})
 	if err != nil {
 		log.Errorf("Error saving incoming message ID to database: %s", err)
@@ -175,7 +175,7 @@ func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) err
 
 	err := n.repo.DB().Update(func(tx database.Tx) error {
 		var outgoingMessage models.OutgoingMessage
-		if err := tx.DB().Where("id = ?", ack.AckedMessageID).First(&outgoingMessage).Error; err != nil {
+		if err := tx.Read().Where("id = ?", ack.AckedMessageID).First(&outgoingMessage).Error; err != nil {
 			return err
 		}
 		if outgoingMessage.MessageType == pb.Message_ORDER.String() {
@@ -259,7 +259,7 @@ func (n *OpenBazaarNode) handleStoreMessage(from peer.ID, message *pb.Message) e
 // isDuplicate checks if the message ID exists in the incoming messages database.
 func (n *OpenBazaarNode) isDuplicate(message *pb.Message) bool {
 	err := n.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("id = ?", message.MessageID).First(&models.IncomingMessage{}).Error
+		return tx.Read().Where("id = ?", message.MessageID).First(&models.IncomingMessage{}).Error
 	})
 	return err == nil
 }
@@ -282,7 +282,7 @@ func (n *OpenBazaarNode) syncMessages() {
 			}
 			var messages []models.OutgoingMessage
 			err = n.repo.DB().View(func(tx database.Tx) error {
-				return tx.DB().Where("recipient = ?", notif.Peer.Pretty()).Find(&messages).Error
+				return tx.Read().Where("recipient = ?", notif.Peer.Pretty()).Find(&messages).Error
 			})
 			if err != nil && !gorm.IsRecordNotFoundError(err) {
 				log.Error("syncMessages outgoing messages lookup error: %s", err)
@@ -314,7 +314,7 @@ func (n *OpenBazaarNode) republish() {
 	var lastPublish time.Time
 	err := n.repo.DB().View(func(tx database.Tx) error {
 		var event models.Event
-		if err := tx.DB().Where("name = ?", "last_publish").First(&event).Error; err != nil {
+		if err := tx.Read().Where("name = ?", "last_publish").First(&event).Error; err != nil {
 			return err
 		}
 		lastPublish = event.Time
@@ -333,7 +333,7 @@ func (n *OpenBazaarNode) republish() {
 			lastPublish = time.Now()
 			tick = time.After(republishInterval - time.Now().Sub(lastPublish))
 			err = n.repo.DB().Update(func(tx database.Tx) error {
-				return tx.DB().Save(&models.Event{Name: "last_publish", Time: lastPublish}).Error
+				return tx.Save(&models.Event{Name: "last_publish", Time: lastPublish})
 			})
 			if err != nil {
 				log.Errorf("Error saving last publish time to the db: %s", err.Error())

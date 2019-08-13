@@ -41,7 +41,7 @@ func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage
 			order models.Order
 			err   error
 		)
-		err = tx.DB().Where("order_id = ?", message.OrderID).First(&order).Error
+		err = tx.Read().Where("order_id = ?", message.OrderID).First(&order).Error
 		if err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		} else if gorm.IsRecordNotFoundError(err) && message.MessageType != npb.OrderMessage_ORDER_OPEN {
@@ -53,7 +53,7 @@ func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage
 			if err := order.ParkMessage(message); err != nil {
 				return err
 			}
-			if err := tx.DB().Save(&order).Error; err != nil {
+			if err := tx.Read().Save(&order).Error; err != nil {
 				return err
 			}
 			return nil
@@ -68,7 +68,7 @@ func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage
 		}
 
 		// Save changes to the database.
-		if err := tx.DB().Save(&order).Error; err != nil {
+		if err := tx.Read().Save(&order).Error; err != nil {
 			return err
 		}
 
@@ -92,7 +92,7 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 		return err
 	}
 
-	dbtx := tx.DB().Where("order_id = ?", orderMessage.OrderID)
+	dbtx := tx.Read().Where("order_id = ?", orderMessage.OrderID)
 
 	switch orderMessage.MessageType {
 	case npb.OrderMessage_ORDER_OPEN:

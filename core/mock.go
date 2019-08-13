@@ -43,7 +43,7 @@ func MockNode() (*OpenBazaarNode, error) {
 
 	var dbSeed models.Key
 	err = r.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("name = ?", "seed").First(&dbSeed).Error
+		return tx.Read().Where("name = ?", "seed").First(&dbSeed).Error
 	})
 
 	masterPrivKey, err := hdkeychain.NewMaster(dbSeed.Value, &chaincfg.MainNetParams)
@@ -129,7 +129,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 
 		var dbSeed models.Key
 		err = r.DB().View(func(tx database.Tx) error {
-			return tx.DB().Where("name = ?", "seed").First(&dbSeed).Error
+			return tx.Read().Where("name = ?", "seed").First(&dbSeed).Error
 		})
 
 		masterPrivKey, err := hdkeychain.NewMaster(dbSeed.Value, &chaincfg.MainNetParams)

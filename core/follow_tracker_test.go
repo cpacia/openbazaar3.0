@@ -59,7 +59,7 @@ func TestFollowerTracker_ConnectDisconnect(t *testing.T) {
 
 	var stat models.FollowerStat
 	err = node.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().First(&stat).Error
+		return tx.Read().First(&stat).Error
 	})
 	if err != nil {
 		t.Fatal(err)

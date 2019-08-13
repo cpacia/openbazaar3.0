@@ -302,7 +302,7 @@ func (n *OpenBazaarNode) ipnsRecordValue() (cid.Cid, error) {
 // inside the protobuf record.
 func getFromDatastore(tx database.Tx, p peer.ID) (path.Path, error) {
 	var entry models.CachedIPNSEntry
-	if err := tx.DB().Where("peer_id = ?", p.String()).First(&entry).Error; err != nil {
+	if err := tx.Read().Where("peer_id = ?", p.String()).First(&entry).Error; err != nil {
 		return nil, err
 	}
 	return path.New(string("/ipfs/" + entry.CID)), nil
@@ -313,5 +313,5 @@ func putToDatastoreCache(tx database.Tx, p peer.ID, pth path.Path) error {
 		PeerID: p.String(),
 		CID:    strings.TrimPrefix(pth.String(), "/ipfs/"),
 	}
-	return tx.DB().Save(entry).Error
+	return tx.Save(entry)
 }

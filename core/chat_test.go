@@ -33,7 +33,7 @@ func TestOpenBazaarNode_SendChatMessage(t *testing.T) {
 
 	var messages []models.ChatMessage
 	err = node.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Find(&messages).Error
+		return tx.Read().Find(&messages).Error
 	})
 
 	if err != nil {
@@ -178,13 +178,13 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 		chatMessage2 models.ChatMessage
 	)
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("message_id = ?", notif2.MessageID).First(&chatMessage1).Error
+		return tx.Read().Where("message_id = ?", notif2.MessageID).First(&chatMessage1).Error
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("message_id = ?", notif.MessageID).First(&chatMessage2).Error
+		return tx.Read().Where("message_id = ?", notif.MessageID).First(&chatMessage2).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -328,7 +328,7 @@ func TestOpenBazaarNode_ChatSequence(t *testing.T) {
 
 	var messages []models.ChatMessage
 	err = node.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Find(&messages).Error
+		return tx.Read().Find(&messages).Error
 	})
 
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 )
 
 func TestFFSqliteDB_UpdateAndView(t *testing.T) {
@@ -25,10 +26,10 @@ func TestFFSqliteDB_UpdateAndView(t *testing.T) {
 	}
 
 	err = db.Update(func(tx database.Tx) error {
-		if err := tx.DB().AutoMigrate(&models.OutgoingMessage{}).Error; err != nil {
+		if err := tx.Migrate(&models.OutgoingMessage{}); err != nil {
 			return err
 		}
-		return tx.DB().Save(&models.OutgoingMessage{ID: "abc"}).Error
+		return tx.Save(&models.OutgoingMessage{ID: "abc"})
 	})
 	if err != nil {
 		t.Error(err)
@@ -36,7 +37,7 @@ func TestFFSqliteDB_UpdateAndView(t *testing.T) {
 
 	var messages []models.OutgoingMessage
 	err = db.View(func(tx database.Tx) error {
-		if err := tx.DB().Find(&messages).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Find(&messages).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 		return nil
@@ -52,7 +53,7 @@ func TestFFSqliteDB_UpdateAndView(t *testing.T) {
 	err = db.Update(func(tx database.Tx) error {
 		err := errors.New("atomic update failure")
 
-		if err := tx.DB().Save(&models.OutgoingMessage{ID: "abc"}).Error; err != nil {
+		if err := tx.Save(&models.OutgoingMessage{ID: "abc"}); err != nil {
 			t.Fatal(err)
 		}
 		return err
@@ -63,7 +64,7 @@ func TestFFSqliteDB_UpdateAndView(t *testing.T) {
 
 	var messages2 []models.OutgoingMessage
 	err = db.View(func(tx database.Tx) error {
-		if err := tx.DB().Find(&messages2).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Find(&messages2).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 		return nil
@@ -91,7 +92,7 @@ func TestFFSqliteDB_Rollback(t *testing.T) {
 	}
 
 	err = db.Update(func(tx database.Tx) error {
-		return tx.DB().AutoMigrate(&models.OutgoingMessage{}).Error
+		return tx.Migrate(&models.OutgoingMessage{})
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +100,7 @@ func TestFFSqliteDB_Rollback(t *testing.T) {
 
 	name := "Ron Paul"
 	err = db.Update(func(tx database.Tx) error {
-		if err := tx.DB().Save(&models.OutgoingMessage{ID: "abc"}).Error; err != nil {
+		if err := tx.Save(&models.OutgoingMessage{ID: "abc"}); err != nil {
 			return err
 		}
 		if err := tx.SetProfile(&models.Profile{Name: name}); err != nil {
@@ -116,7 +117,7 @@ func TestFFSqliteDB_Rollback(t *testing.T) {
 		profile  *models.Profile
 	)
 	err = db.View(func(tx database.Tx) error {
-		if err := tx.DB().Find(&messages).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Find(&messages).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 		profile, err = tx.GetProfile()
@@ -132,6 +133,93 @@ func TestFFSqliteDB_Rollback(t *testing.T) {
 
 	if profile != nil {
 		t.Error("Db update failed to roll back.")
+	}
+}
+
+func TestFFSqliteDB_CRUD(t *testing.T) {
+	dataDir := path.Join(os.TempDir(), "openbazaar-test", "ffsqlitedb-update")
+
+	if err := os.MkdirAll(dataDir, os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dataDir)
+
+	db, err := NewFFMemoryDB(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.Update(func(tx database.Tx) error {
+		if err := tx.Migrate(&models.ChatMessage{}); err != nil {
+			return err
+		}
+		return tx.Save(&models.ChatMessage{
+			MessageID: "abc",
+			PeerID:    "qm123",
+			Subject:   "test",
+			Timestamp: time.Time{},
+			Read:      false,
+			Outgoing:  false,
+			Message:   "hello",
+			Sequence:  0,
+		})
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	var messages []models.ChatMessage
+	err = db.View(func(tx database.Tx) error {
+		return tx.Read().Find(&messages).Error
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(messages) != 1 {
+		t.Error("Failed to save message to the database")
+	}
+
+	err = db.Update(func(tx database.Tx) error {
+		return tx.Update("read", true, map[string]interface{}{"peer_id = ?": "qm123", "subject = ?": "test"}, &models.ChatMessage{})
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	var messages2 []models.ChatMessage
+	err = db.View(func(tx database.Tx) error {
+		return tx.Read().Find(&messages2).Error
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(messages2) != 1 {
+		t.Error("Failed to read message to the database")
+	}
+
+	if !messages2[0].Read {
+		t.Error("Failed to update model to set read to true")
+	}
+
+	err = db.Update(func(tx database.Tx) error {
+		return tx.Delete("peer_id", "qm123", &models.ChatMessage{})
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	var messages3 []models.ChatMessage
+	err = db.View(func(tx database.Tx) error {
+		return tx.Read().Find(&messages3).Error
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(messages3) != 0 {
+		t.Error("Failed to delete chat message from the database")
 	}
 }
 

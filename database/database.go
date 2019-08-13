@@ -68,9 +68,27 @@ type Tx interface {
 	// a panic.
 	Rollback() error
 
-	// DB returns the underlying sql database. A transaction
-	// should be open on the db and any changes should be atomic.
-	DB() *gorm.DB
+	// Read returns the underlying sql database in a read-only mode so that
+	// queries can be made against it.
+	Read() *gorm.DB
+
+	// Save will save the passed in model to the database. If it already exists
+	// it will be overridden.
+	Save(i interface{}) error
+
+	// Update will update the given key to the value for the given model. The
+	// where map can be used to impose extra conditions on which specific model
+	// gets updated. The map key must be of the format "key = ?". This allows
+	// for using alternative conditions such as "timestamp <= ?".
+	Update(key string, value interface{}, where map[string]interface{}, model interface{}) error
+
+	// Delete will delete all models of the given type from the database where
+	// key == value. The key must be of the value
+	Delete(key string, value interface{}, model interface{}) error
+
+	// Migrate will auto-migrate the database to from any previous schema for this
+	// model to the current schema.
+	Migrate(model interface{}) error
 
 	// PublicData provides atomic access to the IPFS data directory.
 	PublicData

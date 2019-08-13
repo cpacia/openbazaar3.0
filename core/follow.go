@@ -32,12 +32,12 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 		}
 
 		var seq models.FollowSequence
-		if err := tx.DB().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 		seq.Num++
 		seq.PeerID = peerID.Pretty()
-		if err := tx.DB().Save(&seq).Error; err != nil {
+		if err := tx.Save(&seq); err != nil {
 			return err
 		}
 
@@ -92,12 +92,12 @@ func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) erro
 		}
 
 		var seq models.FollowSequence
-		if err := tx.DB().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 		seq.PeerID = peerID.Pretty()
 		seq.Num++
-		if err := tx.DB().Save(&seq).Error; err != nil {
+		if err := tx.Save(&seq); err != nil {
 			return err
 		}
 

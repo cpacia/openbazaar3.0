@@ -36,7 +36,7 @@ func TestNewNode(t *testing.T) {
 	// Load our identity key from the db and set it in the config.
 	var dbIdentityKey models.Key
 	err = node.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("name = ?", "identity").First(&dbIdentityKey).Error
+		return tx.Read().Where("name = ?", "identity").First(&dbIdentityKey).Error
 	})
 
 	id, err := repo.IdentityFromKey(dbIdentityKey.Value)

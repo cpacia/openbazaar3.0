@@ -250,7 +250,7 @@ func TestOpenBazaarNode_FollowSequence(t *testing.T) {
 
 	var seq models.FollowSequence
 	err = node.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("peer_id = ?", p.Pretty()).First(&seq).Error
+		return tx.Read().Where("peer_id = ?", p.Pretty()).First(&seq).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -268,7 +268,7 @@ func TestOpenBazaarNode_FollowSequence(t *testing.T) {
 	<-done
 
 	err = node.repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("peer_id = ?", p.Pretty()).First(&seq).Error
+		return tx.Read().Where("peer_id = ?", p.Pretty()).First(&seq).Error
 	})
 	if err != nil {
 		t.Fatal(err)

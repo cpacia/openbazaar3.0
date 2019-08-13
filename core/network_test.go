@@ -33,7 +33,7 @@ func Test_SendAndReceiveAcks(t *testing.T) {
 
 	var chatMessages []models.ChatMessage
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Model(&models.ChatMessage{}).Find(&chatMessages).Error
+		return tx.Read().Model(&models.ChatMessage{}).Find(&chatMessages).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +52,7 @@ func Test_SendAndReceiveAcks(t *testing.T) {
 
 	var incomingMessages []models.IncomingMessage
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Model(&models.IncomingMessage{}).Find(&incomingMessages).Error
+		return tx.Read().Model(&models.IncomingMessage{}).Find(&incomingMessages).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -130,13 +130,13 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		err = tx.DB().Save(&models.OutgoingMessage{
+		err = tx.Save(&models.OutgoingMessage{
 			ID:                m1.MessageID,
 			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
 			SerializedMessage: ser,
 			Timestamp:         time.Now(),
 			LastAttempt:       time.Now(),
-		}).Error
+		})
 		if err != nil {
 			return err
 		}
@@ -146,13 +146,13 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 			return err
 		}
 
-		err = tx.DB().Save(&models.OutgoingMessage{
+		err = tx.Save(&models.OutgoingMessage{
 			ID:                m2.MessageID,
 			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
 			SerializedMessage: ser,
 			Timestamp:         time.Now(),
 			LastAttempt:       time.Now(),
-		}).Error
+		})
 		if err != nil {
 			return err
 		}
@@ -162,13 +162,13 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 			return err
 		}
 
-		err = tx.DB().Save(&models.OutgoingMessage{
+		err = tx.Save(&models.OutgoingMessage{
 			ID:                m3.MessageID,
 			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
 			SerializedMessage: ser,
 			Timestamp:         time.Now(),
 			LastAttempt:       time.Now(),
-		}).Error
+		})
 		if err != nil {
 			return err
 		}

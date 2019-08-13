@@ -71,7 +71,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	// Load our identity key from the db and set it in the config.
 	var dbIdentityKey models.Key
 	err = obRepo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("name = ?", "identity").First(&dbIdentityKey).Error
+		return tx.Read().Where("name = ?", "identity").First(&dbIdentityKey).Error
 	})
 
 	ipfsConfig.Identity, err = repo.IdentityFromKey(dbIdentityKey.Value)
@@ -108,7 +108,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	// Load the seed from the db so we can build the masterPrivKey
 	var dbSeed models.Key
 	err = obRepo.DB().View(func(tx database.Tx) error {
-		return tx.DB().Where("name = ?", "seed").First(&dbSeed).Error
+		return tx.Read().Where("name = ?", "seed").First(&dbSeed).Error
 	})
 
 	masterPrivKey, err := hdkeychain.NewMaster(dbSeed.Value, &chaincfg.MainNetParams)

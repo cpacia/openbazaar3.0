@@ -89,7 +89,7 @@ func TestNewRepoWithCustomMnemonicSeed(t *testing.T) {
 
 	var dbSeed models.Key
 	err = r.db.View(func(tx database.Tx) error {
-		return tx.DB().Where("name = ?", "mnemonic").First(&dbSeed).Error
+		return tx.Read().Where("name = ?", "mnemonic").First(&dbSeed).Error
 	})
 	if err != nil {
 		t.Fatal(err)
