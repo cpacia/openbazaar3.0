@@ -81,6 +81,7 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 	)
 	if !fsrepo.IsInitialized(dataDir) {
 		if err := checkWriteable(dataDir); err != nil {
+			fmt.Println(err)
 			return nil, err
 		}
 		if mnemonicSeed == "" {
@@ -192,7 +193,7 @@ func checkWriteable(dir string) error {
 
 	if os.IsNotExist(err) {
 		// Directory does not exist, check that we can create it
-		return os.Mkdir(dir, 0775)
+		return os.MkdirAll(dir, 0775)
 	}
 
 	if os.IsPermission(err) {

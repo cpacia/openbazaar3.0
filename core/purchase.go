@@ -26,10 +26,10 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 	paymentAddress iwallet.Address, paymentAmount iwallet.Amount, err error) {
 
 	// Create Order object
-	order, err := n.createOrder(purchase)
+	/*order, err := n.createOrder(purchase)
 	if err != nil {
 		return
-	}
+	}*/
 
 	return
 }
