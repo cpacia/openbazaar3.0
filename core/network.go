@@ -210,7 +210,12 @@ func (n *OpenBazaarNode) handleOrderMessage(from peer.ID, message *pb.Message) e
 		return err
 	}
 
-	return n.orderProcessor.ProcessMessage(from, order)
+	event, err := n.orderProcessor.ProcessMessage(from, order)
+	if err != nil {
+		return err
+	}
+	n.eventBus.Emit(event)
+	return nil
 }
 
 func (n *OpenBazaarNode) handleStoreMessage(from peer.ID, message *pb.Message) error {

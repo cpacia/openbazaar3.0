@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
-	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
@@ -26,16 +25,28 @@ type OrderProcessor struct {
 	db          database.Database
 	messenger   *net.Messenger
 	multiwallet wallet.Multiwallet
-	eventBus    events.Bus
 }
 
 // NewOrderProcessor initializes and returns a new OrderProcessor
-func NewOrderProcessor(db database.Database, messenger *net.Messenger, multiwallet wallet.Multiwallet, bus events.Bus) *OrderProcessor {
-	return &OrderProcessor{db, messenger, multiwallet, bus}
+func NewOrderProcessor(db database.Database, messenger *net.Messenger, multiwallet wallet.Multiwallet) *OrderProcessor {
+	return &OrderProcessor{db, messenger, multiwallet}
 }
 
-func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage) error {
-	return op.db.Update(func(tx database.Tx) error {
+// ProcessMessage is the main handler for the OrderProcessor. It ingests a new message
+// loads the corresponding order from the database, passes the message off to the appropriate
+// handler for processing, then saves the updated state back into the database.
+// Any messages that arrive out of order are saved in the database as a parked message which
+// will allow for future processing. The same is said for messages that error.
+//
+// The end result of this process is if the buyer and vendor pass in the same set of messages
+// into this function, regardless of order, the exact same state should be calculated for
+// both nodes.
+//
+// If the processing of the message triggers an event to emitted onto the bus, the event is
+// returned.
+func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
+	var event interface{}
+	err := op.db.Update(func(tx database.Tx) error {
 		// Load the order if it exists.
 		var (
 			order models.Order
@@ -59,25 +70,20 @@ func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage
 			return nil
 		}
 
-		var event interface{}
 		switch message.MessageType {
 		case npb.OrderMessage_ORDER_OPEN:
 			event, err = op.handleOrderOpenMessage(&order, message)
 		default:
 			return errors.New("unknown order message type")
 		}
-
-		// Save changes to the database.
-		if err := tx.Read().Save(&order).Error; err != nil {
+		if err != nil {
 			return err
 		}
 
-		if event != nil {
-			op.eventBus.Emit(event)
-		}
-
-		return err
+		// Save changes to the database.
+		return tx.Save(&order)
 	})
+	return event, err
 }
 
 // ProcessACK loads the order from the database and sets the ACK for the message type.
@@ -92,36 +98,36 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 		return err
 	}
 
-	dbtx := tx.Read().Where("order_id = ?", orderMessage.OrderID)
-
+	var key string
 	switch orderMessage.MessageType {
 	case npb.OrderMessage_ORDER_OPEN:
-		return dbtx.Update("order_open_acked", true).Error
+		key = "order_open_acked"
 	case npb.OrderMessage_ORDER_REJECT:
-		return dbtx.Update("order_reject_acked", true).Error
+		key = "order_reject_acked"
 	case npb.OrderMessage_ORDER_CANCEL:
-		return dbtx.Update("order_cancel_acked", true).Error
+		key = "order_cancel_acked"
 	case npb.OrderMessage_ORDER_CONFIRMATION:
-		return dbtx.Update("order_confirmation_acked", true).Error
+		key = "order_confirmation_acked"
 	case npb.OrderMessage_ORDER_FULFILLMENT:
-		return dbtx.Update("order_fulfillment_acked", true).Error
+		key = "order_fulfillment_acked"
 	case npb.OrderMessage_ORDER_COMPLETE:
-		return dbtx.Update("order_complete_acked", true).Error
+		key = "order_complete_acked"
 	case npb.OrderMessage_DISPUTE_OPEN:
-		return dbtx.Update("dispute_open_acked", true).Error
+		key = "dispute_open_acked"
 	case npb.OrderMessage_DISPUTE_UPDATE:
-		return dbtx.Update("dispute_update_acked", true).Error
+		key = "dispute_update_acked"
 	case npb.OrderMessage_DISPUTE_CLOSE:
-		return dbtx.Update("dispute_closed_acked", true).Error
+		key = "dispute_closed_acked"
 	case npb.OrderMessage_REFUND:
-		return dbtx.Update("refund_acked", true).Error
+		key = "refund_acked"
 	case npb.OrderMessage_PAYMENT_SENT:
-		return dbtx.Update("payment_sent_acked", true).Error
+		key = "payment_sent_acked"
 	case npb.OrderMessage_PAYMENT_FINALIZED:
-		return dbtx.Update("payment_finalized_acked", true).Error
+		key = "payment_finalized_acked"
 	default:
 		return errors.New("unknown order message type")
 	}
+	return tx.Update(key, true, map[string]interface{}{"order_id = ?": orderMessage.OrderID}, &models.Order{})
 }
 
 // isDuplicate checks the serialization of the passed in message against the
