@@ -115,7 +115,7 @@ type Database interface {
 	// user-supplied function will result in a panic.
 	Update(fn func(tx Tx) error) error
 
-	// PublicDataPath returns the path to the public data directory.
+	// Returns the path to the public data directory.
 	PublicDataPath() string
 
 	// Close cleanly shuts down the database and syncs all data.  It will

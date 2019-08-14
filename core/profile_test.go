@@ -18,7 +18,7 @@ func TestOpenBazaarNode_Profile(t *testing.T) {
 
 	err = node.SetProfile(&models.Profile{
 		Name:      name,
-		PublicKey: strings.Repeat("s", 66),
+		EscrowPublicKey: strings.Repeat("s", 66),
 	}, nil)
 	if err != nil {
 		t.Error(err)
@@ -45,7 +45,7 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 	done := make(chan struct{})
 	err = mocknet.Nodes()[0].SetProfile(&models.Profile{
 		Name:      name,
-		PublicKey: strings.Repeat("s", 66),
+		EscrowPublicKey: strings.Repeat("s", 66),
 	}, done)
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 	done = make(chan struct{})
 	err = mocknet.Nodes()[0].SetProfile(&models.Profile{
 		Name:      name2,
-		PublicKey: strings.Repeat("s", 66),
+		EscrowPublicKey: strings.Repeat("s", 66),
 	}, done)
 	if err != nil {
 		t.Fatal(err)
@@ -190,7 +190,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Valid name",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("s", 66),
+				EscrowPublicKey: strings.Repeat("s", 66),
 			},
 			valid: true,
 		},
@@ -198,7 +198,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Name zero len",
 			profile: &models.Profile{
 				Name:      "",
-				PublicKey: strings.Repeat("s", 66),
+				EscrowPublicKey: strings.Repeat("s", 66),
 			},
 			valid: false,
 		},
@@ -206,7 +206,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Name > max len",
 			profile: &models.Profile{
 				Name:      strings.Repeat("r", WordMaxCharacters+1),
-				PublicKey: strings.Repeat("s", 66),
+				EscrowPublicKey: strings.Repeat("s", 66),
 			},
 			valid: false,
 		},
@@ -214,7 +214,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Name at max len",
 			profile: &models.Profile{
 				Name:      strings.Repeat("r", WordMaxCharacters),
-				PublicKey: strings.Repeat("s", 66),
+				EscrowPublicKey: strings.Repeat("s", 66),
 			},
 			valid: true,
 		},
@@ -223,7 +223,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
 				Location:  strings.Repeat("r", WordMaxCharacters),
-				PublicKey: strings.Repeat("s", 66),
+				EscrowPublicKey: strings.Repeat("s", 66),
 			},
 			valid: true,
 		},
@@ -232,7 +232,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
 				Location:  strings.Repeat("r", WordMaxCharacters+1),
-				PublicKey: strings.Repeat("s", 66),
+				EscrowPublicKey: strings.Repeat("s", 66),
 			},
 			valid: false,
 		},
@@ -241,7 +241,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
 				About:     strings.Repeat("r", AboutMaxCharacters),
-				PublicKey: strings.Repeat("s", 66),
+				EscrowPublicKey: strings.Repeat("s", 66),
 			},
 			valid: true,
 		},
@@ -250,7 +250,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
 				About:     strings.Repeat("r", AboutMaxCharacters+1),
-				PublicKey: strings.Repeat("s", 66),
+				EscrowPublicKey: strings.Repeat("s", 66),
 			},
 			valid: false,
 		},
@@ -259,7 +259,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:             "Ron Swanson",
 				ShortDescription: strings.Repeat("r", models.ShortDescriptionLength),
-				PublicKey:        strings.Repeat("s", 66),
+				EscrowPublicKey:        strings.Repeat("s", 66),
 			},
 			valid: true,
 		},
@@ -268,7 +268,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:             "Ron Swanson",
 				ShortDescription: strings.Repeat("r", models.ShortDescriptionLength+1),
-				PublicKey:        strings.Repeat("s", 66),
+				EscrowPublicKey:        strings.Repeat("s", 66),
 			},
 			valid: false,
 		},
@@ -276,7 +276,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Public key correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 			},
 			valid: true,
 		},
@@ -284,7 +284,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Public key != len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 67),
+				EscrowPublicKey: strings.Repeat("r", 67),
 			},
 			valid: false,
 		},
@@ -292,7 +292,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:website correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Website: strings.Repeat("s", URLMaxCharacters),
 				},
@@ -303,7 +303,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:website > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Website: strings.Repeat("s", URLMaxCharacters+1),
 				},
@@ -314,7 +314,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:email correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Email: strings.Repeat("s", SentenceMaxCharacters),
 				},
@@ -325,7 +325,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:email > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Email: strings.Repeat("s", SentenceMaxCharacters+1),
 				},
@@ -336,7 +336,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:phone number correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					PhoneNumber: strings.Repeat("s", WordMaxCharacters),
 				},
@@ -347,7 +347,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:phone number > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					PhoneNumber: strings.Repeat("s", WordMaxCharacters+1),
 				},
@@ -358,7 +358,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:social list correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Social: make([]models.SocialAccount, MaxListItems),
 				},
@@ -369,7 +369,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:social list > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Social: make([]models.SocialAccount, MaxListItems+1),
 				},
@@ -380,7 +380,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:social:username correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Social: []models.SocialAccount{
 						{
@@ -395,7 +395,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:social:username > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Social: []models.SocialAccount{
 						{
@@ -410,7 +410,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:social:type correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Social: []models.SocialAccount{
 						{
@@ -425,7 +425,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:social:type > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Social: []models.SocialAccount{
 						{
@@ -440,7 +440,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:social:proof correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Social: []models.SocialAccount{
 						{
@@ -455,7 +455,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Contact info:social:proof > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ContactInfo: &models.ProfileContactInfo{
 					Social: []models.SocialAccount{
 						{
@@ -470,7 +470,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:description correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Description: strings.Repeat("s", AboutMaxCharacters),
 				},
@@ -481,7 +481,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:description > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Description: strings.Repeat("s", AboutMaxCharacters+1),
 				},
@@ -492,7 +492,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:terms and conditions correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					TermsAndConditions: strings.Repeat("s", PolicyMaxCharacters),
 				},
@@ -503,7 +503,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:terms and conditions > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					TermsAndConditions: strings.Repeat("s", PolicyMaxCharacters+1),
 				},
@@ -514,7 +514,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:language list correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Languages: make([]string, MaxListItems),
 				},
@@ -525,7 +525,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:languages list > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Languages: make([]string, MaxListItems+1),
 				},
@@ -536,7 +536,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:language correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Languages: []string{
 						strings.Repeat("s", WordMaxCharacters),
@@ -549,7 +549,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:languages > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Languages: []string{
 						strings.Repeat("s", WordMaxCharacters+1),
@@ -562,7 +562,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:fixed fee:currency code correct len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Fee: models.ModeratorFee{
 						FixedFee: &models.CurrencyValue{
@@ -581,7 +581,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Mod info:fixed fee: currency code > max len",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Fee: models.ModeratorFee{
 						FixedFee: &models.CurrencyValue{
@@ -600,7 +600,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Valid avatar hashes",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				AvatarHashes: models.ProfileImage{
 					Large:    "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 					Medium:   "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
@@ -615,7 +615,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Invalid avatar hashes",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				AvatarHashes: models.ProfileImage{
 					Large:    "xxx",
 					Medium:   "xxx",
@@ -630,7 +630,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Valid header hashes",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				HeaderHashes: models.ProfileImage{
 					Large:    "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 					Medium:   "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
@@ -645,7 +645,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Invalid header hashes",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				HeaderHashes: models.ProfileImage{
 					Large:    "xxx",
 					Medium:   "xxx",
@@ -660,7 +660,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Average rating correct range",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				Stats: &models.ProfileStats{
 					AverageRating: 5,
 				},
@@ -671,7 +671,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			name: "Average rating incorrect range",
 			profile: &models.Profile{
 				Name:      "Ron Swanson",
-				PublicKey: strings.Repeat("r", 66),
+				EscrowPublicKey: strings.Repeat("r", 66),
 				Stats: &models.ProfileStats{
 					AverageRating: 6,
 				},

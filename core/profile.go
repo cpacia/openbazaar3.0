@@ -22,13 +22,7 @@ import (
 // return as soon as the profile is saved to disk. The optional done
 // chan will be closed when publishing is complete.
 func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{}) error {
-	pubkey, err := n.masterPrivKey.ECPubKey()
-	if err != nil {
-		maybeCloseDone(done)
-		return err
-	}
-
-	profile.PublicKey = hex.EncodeToString(pubkey.SerializeCompressed())
+	profile.EscrowPublicKey = hex.EncodeToString(n.escrowMasterKey.PubKey().SerializeCompressed())
 	profile.PeerID = n.ipfsNode.Identity.Pretty()
 	profile.LastModified = time.Now()
 
@@ -41,7 +35,7 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 
 	// TODO: add accepted currencies if moderator
 
-	err = n.repo.DB().Update(func(tx database.Tx) error {
+	err := n.repo.DB().Update(func(tx database.Tx) error {
 		if err := n.updateProfileStats(tx, profile); err != nil {
 			return err
 		}
@@ -250,7 +244,7 @@ func validateProfile(profile *models.Profile) error {
 			return errors.New("original image hashes must be properly formatted CID")
 		}
 	}
-	if len(profile.PublicKey) != 66 {
+	if len(profile.EscrowPublicKey) != 66 {
 		return fmt.Errorf("secp256k1 public key character length is greater than the max of %d", 66)
 	}
 	if profile.Stats != nil {

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 )
@@ -11,15 +12,10 @@ import (
 //
 // This is a hardened key so anyone who views the key should not be able to derive our master pubkey key
 // nor any other keys we use for ratings.
-func generateRatingPublicKeys(ratingPrivKey *hdkeychain.ExtendedKey, numKeys int, chaincode []byte) ([][]byte, error) {
-	pubkey, err := ratingPrivKey.ECPubKey()
-	if err != nil {
-		return nil, err
-	}
-
+func generateRatingPublicKeys(ratingPubKey *btcec.PublicKey, numKeys int, chaincode []byte) ([][]byte, error) {
 	hdKey := hdkeychain.NewExtendedKey(
 		chaincfg.MainNetParams.HDPublicKeyID[:],
-		pubkey.SerializeCompressed(),
+		ratingPubKey.SerializeCompressed(),
 		chaincode,
 		[]byte{0x00, 0x00, 0x00, 0x00},
 		0,
@@ -31,15 +27,10 @@ func generateRatingPublicKeys(ratingPrivKey *hdkeychain.ExtendedKey, numKeys int
 
 // generateRatingPrivateKeys does the same thing as it's public key counterpart except it
 // returns the private keys.
-func generateRatingPrivateKeys(ratingPrivKey *hdkeychain.ExtendedKey, numKeys int, chaincode []byte) ([][]byte, error) {
-	privKey, err := ratingPrivKey.ECPrivKey()
-	if err != nil {
-		return nil, err
-	}
-
+func generateRatingPrivateKeys(ratingPrivKey *btcec.PrivateKey, numKeys int, chaincode []byte) ([][]byte, error) {
 	hdKey := hdkeychain.NewExtendedKey(
 		chaincfg.MainNetParams.HDPrivateKeyID[:],
-		privKey.Serialize(),
+		ratingPrivKey.Serialize(),
 		chaincode,
 		[]byte{0x00, 0x00, 0x00, 0x00},
 		0,

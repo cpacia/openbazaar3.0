@@ -25,7 +25,7 @@ type Profile struct {
 
 	Stats *ProfileStats `json:"stats"`
 
-	PublicKey string `json:"publicKey"`
+	EscrowPublicKey string `json:"publicKey"`
 
 	LastModified time.Time `json:"lastModified"`
 }

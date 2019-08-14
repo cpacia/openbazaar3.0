@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -76,8 +79,8 @@ func (r *Repo) DestroyRepo() error {
 
 func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 	var (
-		dbIdentity, dbSeed, dbMnemonic *models.Key
-		err                            error
+		dbIdentity, dbEscrowKey, dbRatingKey, dbBip44Key, dbMnemonic *models.Key
+		err                                                          error
 	)
 	if !fsrepo.IsInitialized(dataDir) {
 		if err := checkWriteable(dataDir); err != nil {
@@ -90,7 +93,7 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 				return nil, err
 			}
 		}
-		seed := bip39.NewSeed(mnemonicSeed, "Secret Passphrase")
+		seed := bip39.NewSeed(mnemonicSeed, "")
 		identityKey, err := IdentityKeyFromSeed(seed, 0)
 		if err != nil {
 			return nil, err
@@ -109,13 +112,27 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 		if err := initializeIpnsKeyspace(dataDir, identityKey); err != nil {
 			return nil, err
 		}
+
+		escrowKey, ratingKey, bip44Key, err := createHDKeys(seed)
+		if err != nil {
+			return nil, err
+		}
+
 		dbIdentity = &models.Key{
 			Name:  "identity",
 			Value: identityKey,
 		}
-		dbSeed = &models.Key{
-			Name:  "seed",
-			Value: seed,
+		dbEscrowKey = &models.Key{
+			Name:  "escrow",
+			Value: escrowKey.Serialize(),
+		}
+		dbRatingKey = &models.Key{
+			Name:  "ratings",
+			Value: ratingKey.Serialize(),
+		}
+		dbBip44Key = &models.Key{
+			Name:  "escrow",
+			Value: []byte(bip44Key.String()),
 		}
 		dbMnemonic = &models.Key{
 			Name:  "mnemonic",
@@ -149,8 +166,18 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 				return err
 			}
 		}
-		if dbSeed != nil {
-			if err := tx.Save(&dbSeed); err != nil {
+		if dbEscrowKey != nil {
+			if err := tx.Save(&dbEscrowKey); err != nil {
+				return err
+			}
+		}
+		if dbRatingKey != nil {
+			if err := tx.Save(&dbRatingKey); err != nil {
+				return err
+			}
+		}
+		if dbBip44Key != nil {
+			if err := tx.Save(&dbBip44Key); err != nil {
 				return err
 			}
 		}
@@ -213,6 +240,45 @@ func createMnemonic(newEntropy func(int) ([]byte, error), newMnemonic func([]byt
 		return "", err
 	}
 	return mnemonic, nil
+}
+
+func createHDKeys(seed []byte) (escrowKey, ratingKey *btcec.PrivateKey, bip44Key *hdkeychain.ExtendedKey, err error) {
+	masterPrivKey, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	twoZeroNine, err := masterPrivKey.Child(hdkeychain.HardenedKeyStart + 209)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	bip44Key, err = masterPrivKey.Child(hdkeychain.HardenedKeyStart + 44)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	escrowHDKey, err := twoZeroNine.Child(0)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	ratingHDKey, err := twoZeroNine.Child(1)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	escrowKey, err = escrowHDKey.ECPrivKey()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	ratingKey, err = ratingHDKey.ECPrivKey()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return escrowKey, ratingKey, bip44Key, nil
 }
 
 func initializeIpnsKeyspace(repoRoot string, privKeyBytes []byte) error {

@@ -60,10 +60,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 	if err != nil {
 		return nil, err
 	}
-	secp256k1Pubkey, err := n.masterPrivKey.ECPubKey()
-	if err != nil {
-		return nil, err
-	}
+
 	profile := &models.Profile{}
 	err = n.repo.DB().View(func(tx database.Tx) error {
 		profile, err = tx.GetProfile()
@@ -124,7 +121,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 			PeerID: n.Identity().Pretty(),
 			Pubkeys: &pb.ID_Pubkeys{
 				Identity:  identityPubkey,
-				Secp256K1: secp256k1Pubkey.SerializeCompressed(),
+				Escrow: n.escrowMasterKey.PubKey().SerializeCompressed(),
 			},
 			Handle: profile.Handle,
 		},
@@ -149,17 +146,13 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		},
 	}
 
-	ratingKeys, err := generateRatingPublicKeys(n.ratingMasterKey, len(order.Listings), chaincode)
+	ratingKeys, err := generateRatingPublicKeys(n.ratingMasterKey.PubKey(), len(order.Listings), chaincode)
 	if err != nil {
 		return nil, err
 	}
 	order.RatingKeys = ratingKeys
 
-	privKey, err := n.masterPrivKey.ECPrivKey()
-	if err != nil {
-		return nil, err
-	}
-	identitySig, err := privKey.Sign([]byte(n.Identity().Pretty()))
+	identitySig, err := n.escrowMasterKey.Sign([]byte(n.Identity().Pretty()))
 	if err != nil {
 		return nil, err
 	}

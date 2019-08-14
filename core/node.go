@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/orders"
@@ -24,14 +24,14 @@ type OpenBazaarNode struct {
 	// repo holds the database and public data directory.
 	repo *repo.Repo
 
-	// masterPrivKey represents an secp256k1 (HD) private key that
-	// is advertised by the node in its profile and in listings to
-	// be used when building escrow transactions.
-	masterPrivKey *hdkeychain.ExtendedKey
+	// escrowMasterKey represents an secp256k1 private key, the
+	// public key of which is advertised by the node in its profile
+	// and in listings to be used when building escrow transactions.
+	escrowMasterKey *btcec.PrivateKey
 
-	// ratingMasterKey represents an secp256k1 (HD) private key that
+	// ratingMasterKey represents an secp256k1 private key that
 	// we used to generate rating keys to sign ratings with.
-	ratingMasterKey *hdkeychain.ExtendedKey
+	ratingMasterKey *btcec.PrivateKey
 
 	// ipnsQuorum is the size of the IPNS quorum to use. Smaller quorums
 	// resolve faster but run the risk of getting back older records.

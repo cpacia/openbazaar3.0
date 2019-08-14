@@ -94,16 +94,8 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 		if err != nil {
 			return err
 		}
-		ecPubKey, err := n.masterPrivKey.ECPubKey()
-		if err != nil {
-			return err
-		}
-		// Sign the PeerID with the secp256k1 key
-		ecPrivKey, err := n.masterPrivKey.ECPrivKey()
-		if err != nil {
-			return err
-		}
-		sig, err := ecPrivKey.Sign([]byte(n.Identity().Pretty()))
+
+		sig, err := n.escrowMasterKey.Sign([]byte(n.Identity().Pretty()))
 		if err != nil {
 			return err
 		}
@@ -111,7 +103,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 			PeerID: n.Identity().Pretty(),
 			Pubkeys: &pb.ID_Pubkeys{
 				Identity:  pubkey,
-				Secp256K1: ecPubKey.SerializeCompressed(),
+				Escrow: n.escrowMasterKey.PubKey().SerializeCompressed(),
 			},
 			Sig: sig.Serialize(),
 		}
@@ -740,10 +732,10 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	if peerID.Pretty() != sl.Listing.VendorID.PeerID {
 		return errors.New("vendor peerID does not match public key")
 	}
-	if len(sl.Listing.VendorID.Pubkeys.Secp256K1) != 33 {
-		return errors.New("vendor secp256k1 pubkey invalid length")
+	if len(sl.Listing.VendorID.Pubkeys.Escrow) != 33 {
+		return errors.New("vendor escrow pubkey invalid length")
 	}
-	ecPubkey, err := btcec.ParsePubKey(sl.Listing.VendorID.Pubkeys.Secp256K1, btcec.S256())
+	ecPubkey, err := btcec.ParsePubKey(sl.Listing.VendorID.Pubkeys.Escrow, btcec.S256())
 	if err != nil {
 		return err
 	}

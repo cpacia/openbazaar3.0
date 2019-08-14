@@ -21,6 +21,6 @@ message ID {
 
     message Pubkeys {
         bytes identity   = 1; // IPFS public key
-        bytes secp256k1  = 2; // Cryptocurrency public key
+        bytes escrow     = 2; // Cryptocurrency public key
     }
 }

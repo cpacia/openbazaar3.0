@@ -3,10 +3,8 @@ package core
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -105,21 +103,21 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
-	// Load the seed from the db so we can build the masterPrivKey
-	var dbSeed models.Key
+	// Load the keys from the db
+	var (
+		dbEscrowKey models.Key
+		dbRatingKey models.Key
+	)
 	err = obRepo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("name = ?", "seed").First(&dbSeed).Error
+		if err := tx.Read().Where("name = ?", "escrow").First(&dbEscrowKey).Error; err != nil {
+			return err
+		}
+		return tx.Read().Where("name = ?", "ratings").First(&dbRatingKey).Error
 	})
 
-	masterPrivKey, err := hdkeychain.NewMaster(dbSeed.Value, &chaincfg.MainNetParams)
-	if err != nil {
-		return nil, err
-	}
-	ratingSeed := sha256.Sum256(dbSeed.Value)
-	ratingPrivKey, err := hdkeychain.NewMaster(ratingSeed[:], &chaincfg.MainNetParams)
-	if err != nil {
-		return nil, err
-	}
+	escrowKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbEscrowKey.Value)
+	ratingKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbRatingKey.Value)
+
 	bus := events.NewBus()
 	bm := net.NewBanManager(nil) // TODO: load ids from db
 	service := net.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
@@ -136,8 +134,8 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	obNode := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
 		repo:            obRepo,
-		masterPrivKey:   masterPrivKey,
-		ratingMasterKey: ratingPrivKey,
+		escrowMasterKey: escrowKey,
+		ratingMasterKey: ratingKey,
 		ipnsQuorum:      cfg.IPNSQuorum,
 		messenger:       messenger,
 		networkService:  service,

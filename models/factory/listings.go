@@ -199,7 +199,7 @@ func NewSignedListing() *pb.SignedListing {
             "peerID": "QmVuxKiPHHvWSTYs81QnD7Gax6fSKXezWoriUiMbHptjx3",
             "pubkeys": {
                 "identity": "CAASogEwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALDcjysiMNE+XN0ZEdbXt6G/2uqghbOaYnX1InnJMl2Fsrhkdig4b27yPB/3PKQzvXnQoGAFgLkPtuc3VbWRutj7b1MoBTIo2llJ1r6HxGimbEpa1XpPWWrnTuzVWCOTTou7v2Bf1xdIgkFFVEYiGogkOzriac2vwfUIYnBoWCtbAgMBAAE=",
-                "secp256k1": "A9ggvaQogAYipQ1E1WSn+U585Vq+jSz8Wk61g8etNzAQ"
+                "escrow": "A9ggvaQogAYipQ1E1WSn+U585Vq+jSz8Wk61g8etNzAQ"
             },
             "sig": "MEUCIQDFNSHt11ODTf9ck4wf0GczfhHbmUpEibAVmc/iBwJQ6wIgX/XKUP40bCRPjJgukAvVYtTOYqXaa968w+w0ma6K/wk="
         },

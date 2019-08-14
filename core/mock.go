@@ -2,9 +2,7 @@ package core
 
 import (
 	"context"
-	"crypto/sha256"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -41,15 +39,20 @@ func MockNode() (*OpenBazaarNode, error) {
 
 	messenger := net.NewMessenger(service, r.DB())
 
-	var dbSeed models.Key
+	// Load the keys from the db
+	var (
+		dbEscrowKey models.Key
+		dbRatingKey models.Key
+	)
 	err = r.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("name = ?", "seed").First(&dbSeed).Error
+		if err := tx.Read().Where("name = ?", "escrow").First(&dbEscrowKey).Error; err != nil {
+			return err
+		}
+		return tx.Read().Where("name = ?", "ratings").First(&dbRatingKey).Error
 	})
 
-	masterPrivKey, err := hdkeychain.NewMaster(dbSeed.Value, &chaincfg.MainNetParams)
-	if err != nil {
-		return nil, err
-	}
+	escrowKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbEscrowKey.Value)
+	ratingKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbRatingKey.Value)
 
 	bus := events.NewBus()
 	tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost.Network())
@@ -76,7 +79,8 @@ func MockNode() (*OpenBazaarNode, error) {
 		banManager:      banManager,
 		ipnsQuorum:      1,
 		shutdown:        make(chan struct{}),
-		masterPrivKey:   masterPrivKey,
+		escrowMasterKey: escrowKey,
+		ratingMasterKey: ratingKey,
 		multiwallet:     mw,
 		followerTracker: tracker,
 		orderProcessor:  op,
@@ -127,21 +131,20 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 
 		messenger := net.NewMessenger(service, r.DB())
 
-		var dbSeed models.Key
+		// Load the keys from the db
+		var (
+			dbEscrowKey models.Key
+			dbRatingKey models.Key
+		)
 		err = r.DB().View(func(tx database.Tx) error {
-			return tx.Read().Where("name = ?", "seed").First(&dbSeed).Error
+			if err := tx.Read().Where("name = ?", "escrow").First(&dbEscrowKey).Error; err != nil {
+				return err
+			}
+			return tx.Read().Where("name = ?", "ratings").First(&dbRatingKey).Error
 		})
 
-		masterPrivKey, err := hdkeychain.NewMaster(dbSeed.Value, &chaincfg.MainNetParams)
-		if err != nil {
-			return nil, err
-		}
-
-		ratingSeed := sha256.Sum256(dbSeed.Value)
-		ratingPrivKey, err := hdkeychain.NewMaster(ratingSeed[:], &chaincfg.MainNetParams)
-		if err != nil {
-			return nil, err
-		}
+		escrowKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbEscrowKey.Value)
+		ratingKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbRatingKey.Value)
 
 		bus := events.NewBus()
 		tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost.Network())
@@ -168,8 +171,8 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			banManager:      banManager,
 			ipnsQuorum:      1,
 			shutdown:        make(chan struct{}),
-			masterPrivKey:   masterPrivKey,
-			ratingMasterKey: ratingPrivKey,
+			escrowMasterKey: escrowKey,
+			ratingMasterKey: ratingKey,
 			multiwallet:     mw,
 			followerTracker: tracker,
 			orderProcessor:  op,
