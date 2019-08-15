@@ -56,6 +56,11 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 	}
 	paymentAmount = *models.NewCurrencyValue(orderOpen.Payment.Amount, currency)
 
+	wallet, err := n.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+	if err != nil {
+		return orderID, paymentAddress, paymentAmount, err
+	}
+
 	// If this is a direct payment we will first request an address from the vendor.
 	// If he is online and responds to our request we will update the payment address
 	// in the order with the address he gave us.
@@ -69,11 +74,6 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 		// Vendor failed to respond to address request so we will change the
 		// payment method to CANCELABLE.
 		if err != nil {
-			wallet, err := n.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
-			if err != nil {
-				return orderID, paymentAddress, paymentAmount, err
-			}
-
 			escrowWallet, ok := wallet.(iwallet.Escrow)
 			if !ok {
 				return orderID, paymentAddress, paymentAmount, errors.New("selected payment currency does not support escrow transactions")
@@ -99,10 +99,6 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 			orderOpen.Payment.AdditionalAddressData = hex.EncodeToString(script)
 			orderOpen.Payment.EscrowReleaseFee = escrowFee.String()
 		} else {
-			wallet, err := n.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
-			if err != nil {
-				return orderID, paymentAddress, paymentAmount, err
-			}
 			if err := wallet.ValidateAddress(paymentAddress); err != nil {
 				return orderID, paymentAddress, paymentAmount, fmt.Errorf("vendor provided invalid payment address: %s", err)
 			}
@@ -135,12 +131,31 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 	message.MessageType = npb.Message_ORDER
 	message.Payload = payload
 
-	// Process the order and send the message.
+	// Process the order, add the watched address to the wallet and send the message.
 	err = n.repo.DB().Update(func(tx database.Tx) error {
 		if _, err = n.orderProcessor.ProcessMessage(tx, vendorPeerID, &order); err != nil {
 			return err
 		}
-		return n.messenger.ReliablySendMessage(tx, vendorPeerID, message, nil)
+
+		walletTx, err := wallet.Begin()
+		if err != nil {
+			return err
+		}
+
+		if err := wallet.WatchAddress(walletTx, paymentAddress); err != nil {
+			if err := walletTx.Rollback(); err != nil {
+				log.Errorf("Wallet rollback error: %s", err)
+			}
+			return err
+		}
+
+		if err := n.messenger.ReliablySendMessage(tx, vendorPeerID, message, nil); err != nil {
+			if err := walletTx.Rollback(); err != nil {
+				log.Errorf("Wallet rollback error: %s", err)
+			}
+			return err
+		}
+		return walletTx.Commit()
 	})
 	if err != nil {
 		return
