@@ -21,15 +21,17 @@ var (
 	ErrChangedMessage   = errors.New("different duplicate message")
 )
 
+// OrderProcessor is used to deterministically process orders.
 type OrderProcessor struct {
+	identity    peer.ID
 	db          database.Database
 	messenger   *net.Messenger
 	multiwallet wallet.Multiwallet
 }
 
 // NewOrderProcessor initializes and returns a new OrderProcessor
-func NewOrderProcessor(db database.Database, messenger *net.Messenger, multiwallet wallet.Multiwallet) *OrderProcessor {
-	return &OrderProcessor{db, messenger, multiwallet}
+func NewOrderProcessor(identity peer.ID, db database.Database, messenger *net.Messenger, multiwallet wallet.Multiwallet) *OrderProcessor {
+	return &OrderProcessor{identity, db, messenger, multiwallet}
 }
 
 // ProcessMessage is the main handler for the OrderProcessor. It ingests a new message
@@ -44,46 +46,45 @@ func NewOrderProcessor(db database.Database, messenger *net.Messenger, multiwall
 //
 // If the processing of the message triggers an event to emitted onto the bus, the event is
 // returned.
-func (op *OrderProcessor) ProcessMessage(peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
-	var event interface{}
-	err := op.db.Update(func(tx database.Tx) error {
-		// Load the order if it exists.
-		var (
-			order models.Order
-			err   error
-		)
-		err = tx.Read().Where("order_id = ?", message.OrderID).First(&order).Error
-		if err != nil && !gorm.IsRecordNotFoundError(err) {
-			return err
-		} else if gorm.IsRecordNotFoundError(err) && message.MessageType != npb.OrderMessage_ORDER_OPEN {
-			// Order does not exist in the DB and the message type is not an order open. This can happen
-			// in the case where we download offline messages out of order. In this case we will park
-			// the message so that we can try again later if we receive other messages.
-			log.Warningf("Received %s message from peer %d for an order that does not exist yet", message.MessageType, peer)
-			order.ID = models.OrderID(message.OrderID)
-			if err := order.ParkMessage(message); err != nil {
-				return err
-			}
-			if err := tx.Read().Save(&order).Error; err != nil {
-				return err
-			}
-			return nil
+func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
+	// Load the order if it exists.
+	var (
+		order models.Order
+		event interface{}
+		err   error
+	)
+	err = dbtx.Read().Where("order_id = ?", message.OrderID).First(&order).Error
+	if err != nil && !gorm.IsRecordNotFoundError(err) {
+		return nil, err
+	} else if gorm.IsRecordNotFoundError(err) && message.MessageType != npb.OrderMessage_ORDER_OPEN {
+		// Order does not exist in the DB and the message type is not an order open. This can happen
+		// in the case where we download offline messages out of order. In this case we will park
+		// the message so that we can try again later if we receive other messages.
+		log.Warningf("Received %s message from peer %d for an order that does not exist yet", message.MessageType, peer)
+		order.ID = models.OrderID(message.OrderID)
+		if err := order.ParkMessage(message); err != nil {
+			return nil, err
 		}
+		if err := dbtx.Read().Save(&order).Error; err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
 
-		switch message.MessageType {
-		case npb.OrderMessage_ORDER_OPEN:
-			event, err = op.handleOrderOpenMessage(&order, message)
-		default:
-			return errors.New("unknown order message type")
+	switch message.MessageType {
+	case npb.OrderMessage_ORDER_OPEN:
+		event, err = op.handleOrderOpenMessage(dbtx, &order, peer, message)
+	default:
+		return nil, errors.New("unknown order message type")
+	}
+	if err != nil {
+		if err := order.PutErrorMessage(message); err != nil {
+			return nil, err
 		}
-		if err != nil {
-			return err
-		}
+	}
 
-		// Save changes to the database.
-		return tx.Save(&order)
-	})
-	return event, err
+	// Save changes to the database.
+	return event, dbtx.Save(&order)
 }
 
 // ProcessACK loads the order from the database and sets the ACK for the message type.

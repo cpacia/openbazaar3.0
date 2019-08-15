@@ -396,6 +396,18 @@ func (w *MockWallet) NewAddress() (iwallet.Address, error) {
 	return *addr, nil
 }
 
+// ValidateAddress validates that the serialization of the address is correct
+// for this coin and network. It returns an error if it isn't.
+func (w *MockWallet) ValidateAddress(addr iwallet.Address) error {
+	if len(addr.String()) != 40 {
+		return errors.New("invalid address length")
+	}
+	if addr.CoinType() != iwallet.CtTestnetMock {
+		return errors.New("address's cointype is not CtTestnetMock")
+	}
+	return nil
+}
+
 func (w *MockWallet) newAddress() (iwallet.Address, error) {
 	b := make([]byte, 20)
 	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)

@@ -28,7 +28,7 @@ type PublicData interface {
 	SetFollowing(following models.Following) error
 
 	// GetListing returns the listing for the given slug.
-	GetListing(slug string) (*pb.Listing, error)
+	GetListing(slug string) (*pb.SignedListing, error)
 
 	// SetListing saves the given listing.
 	SetListing(listing *pb.SignedListing) error

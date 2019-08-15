@@ -305,6 +305,19 @@ func (n *ModeratorDisputeExpiryNotification) Type() string {
 	return "ModeratorDisputeExpiryNotification"
 }
 
+// AddressRequestResponseNotification represents a notification which fires
+// in response to the AddressRequst message.
+type AddressRequestResponseNotification struct {
+	PeerID  string `json:"peerID"`
+	Address string `json:"address"`
+	Coin    string `json:"coin"`
+}
+
+func (n *AddressRequestResponseNotification) Type() string {
+	return "AddressRequestResponseNotification"
+}
+
+// TestNotification is a test notification.
 type TestNotification struct{}
 
 func (n *TestNotification) Type() string { return "TestNotification" }

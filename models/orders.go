@@ -18,6 +18,11 @@ func IsMessageNotExistError(err error) bool {
 // OrderID is an OpenBazaar order ID.
 type OrderID string
 
+// String returns the string representation of the ID.
+func (id OrderID) String() string {
+	return string(id)
+}
+
 // Order holds the state of all orders. This model is saved in the
 // database indexed by the order ID.
 type Order struct {

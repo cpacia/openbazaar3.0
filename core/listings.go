@@ -102,8 +102,8 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 		listing.VendorID = &pb.ID{
 			PeerID: n.Identity().Pretty(),
 			Pubkeys: &pb.ID_Pubkeys{
-				Identity:  pubkey,
-				Escrow: n.escrowMasterKey.PubKey().SerializeCompressed(),
+				Identity: pubkey,
+				Escrow:   n.escrowMasterKey.PubKey().SerializeCompressed(),
 			},
 			Sig: sig.Serialize(),
 		}
@@ -264,9 +264,9 @@ func (n *OpenBazaarNode) GetListings(peerID peer.ID, useCache bool) (models.List
 }
 
 // GetMyListingBySlug returns our own listing given the slug.
-func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.Listing, error) {
+func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.SignedListing, error) {
 	var (
-		listing *pb.Listing
+		listing *pb.SignedListing
 		err     error
 	)
 	err = n.repo.DB().View(func(tx database.Tx) error {
@@ -277,9 +277,9 @@ func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.Listing, error) {
 }
 
 // GetMyListingByCID returns our own listing given the cid.
-func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.Listing, error) {
+func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, error) {
 	var (
-		listing *pb.Listing
+		listing *pb.SignedListing
 		err     error
 	)
 	err = n.repo.DB().View(func(tx database.Tx) error {
@@ -300,7 +300,7 @@ func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.Listing, error) {
 // GetListingBySlug returns a listing for node with the given peer ID.
 // If useCache is set it will return the listing from the local cache
 // (if it has one) if listing file is not found on the network.
-func (n *OpenBazaarNode) GetListingBySlug(peerID peer.ID, slug string, useCache bool) (*pb.Listing, error) {
+func (n *OpenBazaarNode) GetListingBySlug(peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error) {
 	pth, err := n.resolve(peerID, useCache)
 	if err != nil {
 		return nil, err
@@ -313,7 +313,7 @@ func (n *OpenBazaarNode) GetListingBySlug(peerID peer.ID, slug string, useCache 
 }
 
 // GetListingByCID fetches the listing from the network given its cid.
-func (n *OpenBazaarNode) GetListingByCID(cid cid.Cid) (*pb.Listing, error) {
+func (n *OpenBazaarNode) GetListingByCID(cid cid.Cid) (*pb.SignedListing, error) {
 	listingBytes, err := n.cat(ipath.IpfsPath(cid))
 	if err != nil {
 		return nil, err
@@ -766,7 +766,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 
 // deserializeAndValidate accepts a byte slice of a serialized SignedListing
 // and deserializes and validates it.
-func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte) (*pb.Listing, error) {
+func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte) (*pb.SignedListing, error) {
 	signedListing := new(pb.SignedListing)
 	if err := jsonpb.UnmarshalString(string(listingBytes), signedListing); err != nil {
 		return nil, err
@@ -774,7 +774,7 @@ func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte) (*pb.Listin
 	if err := n.validateListing(signedListing); err != nil {
 		return nil, err
 	}
-	return signedListing.Listing, nil
+	return signedListing, nil
 }
 
 // validatePhysicalListing validates the part of the listing that is relevant to

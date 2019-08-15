@@ -19,6 +19,8 @@ message Message {
         UNFOLLOW                 = 4;
         STORE                    = 5;
         ORDER                    = 6;
+        ADDRESS_REQUEST          = 7;
+        ADDRESS_RESPONSE         = 8;
     }
 }
 
@@ -69,4 +71,13 @@ message OrderMessage {
 
 message OrderList {
     repeated OrderMessage messages = 1;
+}
+
+message AddressRequestMessage {
+    string coin = 1;
+}
+
+message AddressResponseMessage {
+    string address = 1;
+    string coin    = 2;
 }

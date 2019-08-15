@@ -210,14 +210,24 @@ func (n *OpenBazaarNode) handleOrderMessage(from peer.ID, message *pb.Message) e
 		return err
 	}
 
-	event, err := n.orderProcessor.ProcessMessage(from, order)
+	var event interface{}
+	err := n.repo.DB().Update(func(tx database.Tx) error {
+		var err error
+		event, err = n.orderProcessor.ProcessMessage(tx, from, order)
+		return err
+	})
 	if err != nil {
 		return err
 	}
-	n.eventBus.Emit(event)
+
+	if event != nil {
+		n.eventBus.Emit(event)
+	}
 	return nil
 }
 
+// handleStoreMessage is the handler for the STORE message. It will download and
+// pin any objects sent to it from its followers.
 func (n *OpenBazaarNode) handleStoreMessage(from peer.ID, message *pb.Message) error {
 	if message.MessageType != pb.Message_STORE {
 		return errors.New("message is not type STORE")

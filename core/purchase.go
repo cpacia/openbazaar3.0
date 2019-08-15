@@ -3,15 +3,20 @@ package core
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
+	"fmt"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
+	npb "github.com/cpacia/openbazaar3.0/net/pb"
+	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
+	peer "github.com/libp2p/go-libp2p-peer"
 )
 
 const (
@@ -22,21 +27,132 @@ const (
 // PurchaseListing attempts to purchase the listing using the provided data in the
 // purchase model. It returns the order ID, payment address, payment amount, and
 // an error if the purchase failed.
+//
+// The process here is:
+// 1. Build the order using either the DIRECT or MODERATED payment method.
+// 2. If DIRECT attempt to send the order directly to the vendor and wait for a response.
+// 3. If no response update the payment method to CANCELABLE and send using the messenger.
+// 4. IF MODERATED skip steps 2 and 3 and send the message with the messenger.
 func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID models.OrderID,
 	paymentAddress iwallet.Address, paymentAmount iwallet.Amount, err error) {
 
 	// Create Order object
-	/*order, err := n.createOrder(purchase)
+	orderOpen, err := n.createOrder(purchase)
 	if err != nil {
 		return
-	}*/
+	}
 
-	return
+	// Deserialize Vendor ID
+	vendorPeerID, err := peer.IDB58Decode(orderOpen.Listings[0].Listing.VendorID.PeerID)
+	if err != nil {
+		return
+	}
+
+	paymentAddress = *iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CoinType(normalizeCurrencyCode(orderOpen.Payment.Coin)))
+
+	// If this is a direct payment we will first request an address from the vendor.
+	// If he is online and responds to our request we will update the payment address
+	// in the order with the address he gave us.
+	//
+	// If the vendor does not respond we will set the payment method to CANCELABLE
+	// and use a 1 of 2 multisig address.
+	//
+	// Moderated orders we don't have to do anything else.
+	if orderOpen.Payment.Method == pb.OrderOpen_Payment_DIRECT {
+		address, err := n.RequestAddress(vendorPeerID, iwallet.CoinType(normalizeCurrencyCode(orderOpen.Payment.Coin)))
+		// Vendor failed to respond to address request so we will change the
+		// payment method to CANCELABLE.
+		if err != nil {
+			wallet, err := n.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+			if err != nil {
+				return orderID, paymentAddress, paymentAmount, err
+			}
+
+			escrowWallet, ok := wallet.(iwallet.Escrow)
+			if !ok {
+				return orderID, paymentAddress, paymentAmount, errors.New("selected payment currency does not support escrow transactions")
+			}
+
+			vendorEscrowPubkey, err := btcec.ParsePubKey(orderOpen.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
+			if err != nil {
+				return orderID, paymentAddress, paymentAmount, err
+			}
+			buyerEscrowPubkey := n.escrowMasterKey.PubKey()
+			address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerEscrowPubkey, *vendorEscrowPubkey}, 1)
+			if err != nil {
+				return orderID, paymentAddress, paymentAmount, err
+			}
+
+			escrowFee, err := escrowWallet.EstimateEscrowFee(1, iwallet.FlNormal)
+			if err != nil {
+				return orderID, paymentAddress, paymentAmount, err
+			}
+
+			orderOpen.Payment.Method = pb.OrderOpen_Payment_CANCELABLE
+			orderOpen.Payment.Address = address.String()
+			orderOpen.Payment.AdditionalAddressData = hex.EncodeToString(script)
+			orderOpen.Payment.EscrowReleaseFee = escrowFee.String()
+		} else {
+			wallet, err := n.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+			if err != nil {
+				return orderID, paymentAddress, paymentAmount, err
+			}
+			if err := wallet.ValidateAddress(paymentAddress); err != nil {
+				return orderID, paymentAddress, paymentAmount, fmt.Errorf("vendor provided invalid payment address: %s", err)
+			}
+			orderOpen.Payment.Address = address.String()
+		}
+	}
+
+	orderAny, err := ptypes.MarshalAny(orderOpen)
+	if err != nil {
+		return
+	}
+
+	orderIDBytes := make([]byte, 20)
+	if _, err := rand.Read(orderIDBytes); err != nil {
+		return orderID, paymentAddress, paymentAmount, err
+	}
+
+	order := npb.OrderMessage{
+		OrderID:     base58.Encode(orderIDBytes),
+		MessageType: npb.OrderMessage_ORDER_OPEN,
+		Message:     orderAny,
+	}
+
+	payload, err := ptypes.MarshalAny(&order)
+	if err != nil {
+		return
+	}
+
+	message := newMessageWithID()
+	message.MessageType = npb.Message_ORDER
+	message.Payload = payload
+
+	// Send message and process the order.
+	err = n.repo.DB().Update(func(tx database.Tx) error {
+		if err := n.messenger.ReliablySendMessage(tx, vendorPeerID, message, nil); err != nil {
+			return err
+		}
+
+		_, err = n.orderProcessor.ProcessMessage(tx, vendorPeerID, &order)
+		return err
+	})
+	if err != nil {
+		return
+	}
+
+	return models.OrderID(order.OrderID), paymentAddress, iwallet.NewAmount(orderOpen.Payment.Amount), nil
 }
 
+// createOrder builds and returns an order from the given purchase data. The payment
+// method will either be DIRECT or MODERATED depending on which was selected. It
+// is expected that whichever function uses this returned order will update the
+// payment method to CANCELABLE along with the payment address and additionalAddressData
+// if the vendor is not online to respond to the DIRECT payment request.
 func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, error) {
 	var (
-		listings      []*pb.Listing
+		listings      []*pb.SignedListing
 		items         []*pb.OrderOpen_Item
 		options       []*pb.OrderOpen_Item_Option
 		refundAddress string
@@ -69,26 +185,22 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		return nil, err
 	}
+	if len(purchase.Items) == 0 {
+		return nil, errors.New("no listings selected in purchase")
+	}
 	for _, item := range purchase.Items {
 		c, err := cid.Decode(item.ListingHash)
 		if err != nil {
 			return nil, err
 		}
-		listingBytes, err := n.cat(path.IpfsPath(c))
+		listing, err := n.GetListingByCID(c)
 		if err != nil {
 			return nil, err
 		}
-		listing := new(pb.Listing)
-		if err := proto.Unmarshal(listingBytes, listing); err != nil {
+		if err := n.validateListing(listing); err != nil {
 			return nil, err
 		}
 		listings = append(listings, listing)
-
-		listingHash, err := multihashSha256(listingBytes)
-		if err != nil {
-			return nil, err
-		}
-
 		for _, option := range item.Options {
 			orderOption := &pb.OrderOpen_Item_Option{
 				Name:  option.Name,
@@ -98,7 +210,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		}
 
 		orderItem := &pb.OrderOpen_Item{
-			ListingHash:    listingHash.B58String(),
+			ListingHash:    item.ListingHash,
 			Quantity:       item.Quantity,
 			CouponCodes:    item.Coupons,
 			Memo:           item.Memo,
@@ -112,16 +224,13 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		items = append(items, orderItem)
 	}
 
-	chaincode := make([]byte, 32)
-	rand.Read(chaincode)
-
 	order := &pb.OrderOpen{
 		Timestamp: ptypes.TimestampNow(),
 		BuyerID: &pb.ID{
 			PeerID: n.Identity().Pretty(),
 			Pubkeys: &pb.ID_Pubkeys{
-				Identity:  identityPubkey,
-				Escrow: n.escrowMasterKey.PubKey().SerializeCompressed(),
+				Identity: identityPubkey,
+				Escrow:   n.escrowMasterKey.PubKey().SerializeCompressed(),
 			},
 			Handle: profile.Handle,
 		},
@@ -139,12 +248,76 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		},
 		Version:       orderOpenVersion,
 		RefundAddress: refundAddress,
-		Payment: &pb.OrderOpen_Payment{
-			Moderator: purchase.Moderator,
-			Chaincode: hex.EncodeToString(chaincode),
-			Coin:      purchase.PaymentCoin,
-		},
+		Payment:       &pb.OrderOpen_Payment{},
 	}
+
+	chaincode := make([]byte, 32)
+	if _, err := rand.Read(chaincode); err != nil {
+		return nil, err
+	}
+
+	wallet, err = n.multiwallet.WalletForCurrencyCode(purchase.PaymentCoin)
+	if err != nil {
+		return nil, err
+	}
+
+	escrowWallet, walletSupportsEscrow := wallet.(iwallet.Escrow)
+	if !walletSupportsEscrow && purchase.Moderator != "" {
+		return nil, errors.New("selected payment currency does not support escrow transactions")
+	}
+
+	var (
+		paymentMethod = pb.OrderOpen_Payment_DIRECT
+		escrowFee     iwallet.Amount
+	)
+	if purchase.Moderator != "" {
+		paymentMethod = pb.OrderOpen_Payment_MODERATED
+		escrowFee, err = escrowWallet.EstimateEscrowFee(2, iwallet.FlNormal)
+		if err != nil {
+			return nil, err
+		}
+		order.Payment.Moderator = purchase.Moderator
+		order.Payment.EscrowReleaseFee = escrowFee.String()
+
+		moderatorPeerID, err := peer.IDHexDecode(purchase.Moderator)
+		if err != nil {
+			return nil, err
+		}
+
+		moderatorProfile, err := n.GetProfile(moderatorPeerID, true)
+		if err != nil {
+			return nil, err
+		}
+		moderatorPubkeyBytes, err := hex.DecodeString(moderatorProfile.EscrowPublicKey)
+		if err != nil {
+			return nil, err
+		}
+		moderatorEscrowPubkey, err := btcec.ParsePubKey(moderatorPubkeyBytes, btcec.S256())
+		if err != nil {
+			return nil, err
+		}
+		vendorEscrowPubkey, err := btcec.ParsePubKey(order.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
+		if err != nil {
+			return nil, err
+		}
+		buyerEscrowPubkey := n.escrowMasterKey.PubKey()
+		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerEscrowPubkey, *vendorEscrowPubkey, *moderatorEscrowPubkey}, 2)
+		if err != nil {
+			return nil, err
+		}
+		order.Payment.Address = address.String()
+		order.Payment.AdditionalAddressData = hex.EncodeToString(script)
+	}
+
+	order.Payment.Method = paymentMethod
+	order.Payment.Chaincode = hex.EncodeToString(chaincode)
+	order.Payment.Coin = normalizeCurrencyCode(purchase.PaymentCoin)
+
+	total, err := orders.CalculateOrderTotal(order)
+	if err != nil {
+		return nil, err
+	}
+	order.Payment.Amount = total.String()
 
 	ratingKeys, err := generateRatingPublicKeys(n.ratingMasterKey.PubKey(), len(order.Listings), chaincode)
 	if err != nil {

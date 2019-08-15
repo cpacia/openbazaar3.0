@@ -68,7 +68,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
-	op := orders.NewOrderProcessor(r.DB(), messenger, mw)
+	op := orders.NewOrderProcessor(ipfsNode.Identity, r.DB(), messenger, mw)
 
 	node := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
@@ -160,7 +160,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			return nil, err
 		}
 
-		op := orders.NewOrderProcessor(r.DB(), messenger, mw)
+		op := orders.NewOrderProcessor(ipfsNode.Identity, r.DB(), messenger, mw)
 
 		node := &OpenBazaarNode{
 			ipfsNode:        ipfsNode,

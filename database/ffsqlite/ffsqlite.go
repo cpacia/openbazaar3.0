@@ -1,6 +1,7 @@
 package ffsqlite
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -15,6 +16,8 @@ import (
 const (
 	dbName = "openbazaar.db"
 )
+
+var ErrReadOnly = errors.New("tx is read only")
 
 // FFSqliteDB is an implementation of the Database interface using
 // flat file store for the public data and a sqlite database.
@@ -186,6 +189,9 @@ func (t *tx) Rollback() error {
 // Save will save the passed in model to the database. If it already exists
 // it will be overridden.
 func (t *tx) Save(model interface{}) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	return t.dbtx.Save(model).Error
 }
 
@@ -196,6 +202,9 @@ func (t *tx) Read() *gorm.DB {
 }
 
 func (t *tx) Update(key string, value interface{}, where map[string]interface{}, model interface{}) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	db := t.dbtx.Model(model)
 	for k, v := range where {
 		db = db.Where(k, v)
@@ -206,12 +215,18 @@ func (t *tx) Update(key string, value interface{}, where map[string]interface{},
 // Delete will delete all models of the given type from the database where
 // field == key.
 func (t *tx) Delete(key string, value interface{}, model interface{}) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	return t.dbtx.Where(fmt.Sprintf("%s = ?", key), value).Delete(model).Error
 }
 
 // Migrate will auto-migrate the database to from any previous schema for this
 // model to the current schema.
 func (t *tx) Migrate(model interface{}) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	return t.dbtx.AutoMigrate(model).Error
 }
 
@@ -228,6 +243,9 @@ func (t *tx) GetProfile() (*models.Profile, error) {
 
 // SetProfile sets the profile.
 func (t *tx) SetProfile(profile *models.Profile) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	current, err := t.ffdb.GetProfile()
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -250,6 +268,9 @@ func (t *tx) GetFollowers() (models.Followers, error) {
 
 // SetFollowers sets the followers list.
 func (t *tx) SetFollowers(followers models.Followers) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	current, err := t.ffdb.GetFollowers()
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -272,6 +293,9 @@ func (t *tx) GetFollowing() (models.Following, error) {
 
 // SetFollowing sets the following list.
 func (t *tx) SetFollowing(following models.Following) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	current, err := t.ffdb.GetFollowing()
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -282,11 +306,11 @@ func (t *tx) SetFollowing(following models.Following) error {
 }
 
 // GetListing returns the listing for the given slug.
-func (t *tx) GetListing(slug string) (*pb.Listing, error) {
+func (t *tx) GetListing(slug string) (*pb.SignedListing, error) {
 	for x := len(t.commitCache) - 1; x >= 0; x-- {
 		listing, ok := t.commitCache[x].(*pb.SignedListing)
 		if ok && listing.Listing.Slug == slug {
-			return listing.Listing, nil
+			return listing, nil
 		}
 	}
 	return t.ffdb.GetListing(slug)
@@ -294,6 +318,9 @@ func (t *tx) GetListing(slug string) (*pb.Listing, error) {
 
 // SetListing saves the given listing.
 func (t *tx) SetListing(listing *pb.SignedListing) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	current, err := t.ffdb.getSignedListing(listing.Listing.Slug)
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -305,6 +332,9 @@ func (t *tx) SetListing(listing *pb.SignedListing) error {
 
 // DeleteListing deletes the given listing.
 func (t *tx) DeleteListing(slug string) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	current, err := t.ffdb.getSignedListing(slug)
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -327,6 +357,9 @@ func (t *tx) GetListingIndex() (models.ListingIndex, error) {
 
 // SetListingIndex sets the listing index.
 func (t *tx) SetListingIndex(index models.ListingIndex) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
 	current, err := t.ffdb.GetListingIndex()
 	if err != nil && !os.IsNotExist(err) {
 		return err

@@ -144,7 +144,7 @@ func (fdb *FlatFileDB) SetFollowing(following models.Following) error {
 }
 
 // GetListing loads the listing from disk and returns it.
-func (fdb *FlatFileDB) GetListing(slug string) (*pb.Listing, error) {
+func (fdb *FlatFileDB) GetListing(slug string) (*pb.SignedListing, error) {
 	fdb.mtx.RLock()
 	defer fdb.mtx.RUnlock()
 
@@ -158,7 +158,7 @@ func (fdb *FlatFileDB) GetListing(slug string) (*pb.Listing, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sl.Listing, nil
+	return &sl, nil
 }
 
 // getSignedListing loads the full signed listing from disk and returns it.

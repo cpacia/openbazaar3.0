@@ -128,7 +128,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	erp := wallet.NewExchangeRateProvider(nil, cfg.ExchangeRateProviders) // TODO: wire up proxy
 
-	op := orders.NewOrderProcessor(obRepo.DB(), messenger, mw)
+	op := orders.NewOrderProcessor(ipfsNode.Identity, obRepo.DB(), messenger, mw)
 
 	// Construct our OpenBazaar node.repo object
 	obNode := &OpenBazaarNode{
@@ -187,6 +187,9 @@ func (n *OpenBazaarNode) registerHandlers() {
 	n.networkService.RegisterHandler(pb.Message_FOLLOW, n.handleFollowMessage)
 	n.networkService.RegisterHandler(pb.Message_UNFOLLOW, n.handleUnFollowMessage)
 	n.networkService.RegisterHandler(pb.Message_STORE, n.handleStoreMessage)
+	n.networkService.RegisterHandler(pb.Message_ORDER, n.handleOrderMessage)
+	n.networkService.RegisterHandler(pb.Message_ADDRESS_REQUEST, n.handleAddressRequest)
+	n.networkService.RegisterHandler(pb.Message_ADDRESS_RESPONSE, n.handleAddressResponse)
 }
 
 func (n *OpenBazaarNode) listenNetworkEvents() {

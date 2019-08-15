@@ -7,7 +7,7 @@ import "listing.proto";
 import "common.proto";
 
 message OrderOpen {
-    repeated Listing listings            = 1;
+    repeated SignedListing listings      = 1;
     string refundAddress                 = 2;
     Shipping shipping                    = 3;
     ID buyerID                           = 4;
@@ -68,7 +68,10 @@ message OrderOpen {
     }
 }
 
-message OrderReject {}
+message OrderReject {
+    string reason = 1;
+}
+
 message OrderCancel {}
 message OrderConfirmation {}
 message OrderFulfillment {}
