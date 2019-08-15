@@ -1,7 +1,9 @@
 package orders
 
 import (
+	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/database"
@@ -10,9 +12,10 @@ import (
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/ipfs/go-cid"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/multiformats/go-multihash"
 )
 
 func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
@@ -39,6 +42,7 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 		log.Error("ORDER_OPEN message for order %s from %s failed to validate: %s", order.ID, orderOpen.BuyerID.PeerID, err)
 		if op.identity != peer {
 			reject := pb.OrderReject{
+				Type:   pb.OrderReject_VALIDATION_ERROR,
 				Reason: err.Error(),
 			}
 
@@ -105,22 +109,66 @@ func CalculateOrderTotal(order *pb.OrderOpen) (iwallet.Amount, error) {
 func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpen) error {
 	// TODO
 
-	// Check to make sure we actually have the item for sale.
-	if op.identity.Pretty() != order.BuyerID.PeerID {
-		index, err := dbtx.GetListingIndex()
-		if err != nil {
-			return err
-		}
-		for _, item := range order.Items {
-			c, err := cid.Decode(item.ListingHash)
+	if op.identity.Pretty() != order.BuyerID.PeerID { // If we are vendor.
+		// Check to make sure we actually have the item for sale.
+		for _, listing := range order.Listings {
+			myListing, err := dbtx.GetListing(listing.Listing.Slug)
+			if err != nil {
+				return fmt.Errorf("item %s is not for sale", listing.Listing.Slug)
+			}
+
+			// Zero out the inventory on each listing. We will check
+			// inventory later.
+			for i := range myListing.Listing.Item.Skus {
+				myListing.Listing.Item.Skus[i].Quantity = 0
+			}
+			for i := range listing.Listing.Item.Skus {
+				listing.Listing.Item.Skus[i].Quantity = 0
+			}
+
+			// We can tell if we have the listing for sale if the serialized bytes match
+			// after we've zeroed out the inventory.
+			mySer, err := proto.Marshal(myListing.Listing)
 			if err != nil {
 				return err
 			}
-			_, err = index.GetListingSlug(c)
+
+			theirSer, err := proto.Marshal(listing.Listing)
 			if err != nil {
-				return fmt.Errorf("item %s is not for sale", item.ListingHash)
+				return err
+			}
+
+			if !bytes.Equal(mySer, theirSer) {
+				return fmt.Errorf("item %s is not for sale", listing.Listing.Slug)
 			}
 		}
 	}
+
+	// Let's check to make sure there is a listing for each
+	// item in the order.
+	listingHashes := make(map[string]bool)
+	for _, listing := range order.Listings {
+		ser, err := proto.Marshal(listing)
+		if err != nil {
+			return err
+		}
+		h := sha256.Sum256(ser)
+		encoded, err := multihash.Encode(h[:], multihash.SHA2_256)
+		if err != nil {
+			return err
+		}
+		hash, err := multihash.Cast(encoded)
+		if err != nil {
+			return err
+		}
+		listingHashes[hash.B58String()] = true
+	}
+
+	for _, item := range order.Items {
+		if !listingHashes[item.ListingHash] {
+			return fmt.Errorf("listing not found in order for item %s", item.ListingHash)
+		}
+	}
+
 	return nil
 }

@@ -74,6 +74,8 @@ func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message
 	switch message.MessageType {
 	case npb.OrderMessage_ORDER_OPEN:
 		event, err = op.handleOrderOpenMessage(dbtx, &order, peer, message)
+	case npb.OrderMessage_ORDER_REJECT:
+		event, err = op.handleOrderRejectMessage(dbtx, &order, peer, message)
 	default:
 		return nil, errors.New("unknown order message type")
 	}

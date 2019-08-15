@@ -13,6 +13,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
 	"github.com/jinzhu/gorm"
@@ -188,6 +189,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 	if len(purchase.Items) == 0 {
 		return nil, errors.New("no listings selected in purchase")
 	}
+	addedListings := make(map[string]bool)
 	for _, item := range purchase.Items {
 		c, err := cid.Decode(item.ListingHash)
 		if err != nil {
@@ -200,7 +202,14 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		if err := n.validateListing(listing); err != nil {
 			return nil, err
 		}
-		listings = append(listings, listing)
+		// If we are purchasing the same listing multiple times but with
+		// different options we don't need to include the full listing
+		// multiple times. Once is enough.
+		if !addedListings[item.ListingHash] {
+			listings = append(listings, listing)
+			addedListings[item.ListingHash] = true
+		}
+
 		for _, option := range item.Options {
 			orderOption := &pb.OrderOpen_Item_Option{
 				Name:  option.Name,
@@ -208,9 +217,17 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 			}
 			options = append(options, orderOption)
 		}
+		ser, err := proto.Marshal(listing)
+		if err != nil {
+			return nil, err
+		}
+		listingHash, err := multihashSha256(ser)
+		if err != nil {
+			return nil, err
+		}
 
 		orderItem := &pb.OrderOpen_Item{
-			ListingHash:    item.ListingHash,
+			ListingHash:    listingHash.B58String(),
 			Quantity:       item.Quantity,
 			CouponCodes:    item.Coupons,
 			Memo:           item.Memo,
