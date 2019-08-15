@@ -106,7 +106,7 @@ func (n *MockWalletNetwork) GenerateToAddress(addr iwallet.Address, amount iwall
 			{
 				ID:      prevHashBytes,
 				Amount:  amount,
-				Address: *iwallet.NewAddress(hex.EncodeToString(prevAddrBytes), iwallet.CtTestnetMock),
+				Address: iwallet.NewAddress(hex.EncodeToString(prevAddrBytes), iwallet.CtTestnetMock),
 			},
 		},
 		To: []iwallet.SpendInfo{
@@ -166,7 +166,7 @@ func NewMockWallet() *MockWallet {
 		b := make([]byte, 20)
 		rand.Read(b)
 		addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
-		mw.addrs[*addr] = false
+		mw.addrs[addr] = false
 	}
 
 	return mw
@@ -373,9 +373,10 @@ func (w *MockWallet) CurrentAddress() (iwallet.Address, error) {
 		}
 	}
 	b := make([]byte, 20)
+	rand.Read(b)
 	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
-	w.addrs[*addr] = false
-	return *addr, nil
+	w.addrs[addr] = false
+	return addr, nil
 }
 
 // NewAddress should return a new, never before used address. This is called
@@ -391,9 +392,10 @@ func (w *MockWallet) NewAddress() (iwallet.Address, error) {
 	defer w.mtx.Unlock()
 
 	b := make([]byte, 20)
+	rand.Read(b)
 	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
-	w.addrs[*addr] = false
-	return *addr, nil
+	w.addrs[addr] = false
+	return addr, nil
 }
 
 // ValidateAddress validates that the serialization of the address is correct
@@ -411,8 +413,8 @@ func (w *MockWallet) ValidateAddress(addr iwallet.Address) error {
 func (w *MockWallet) newAddress() (iwallet.Address, error) {
 	b := make([]byte, 20)
 	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
-	w.addrs[*addr] = false
-	return *addr, nil
+	w.addrs[addr] = false
+	return addr, nil
 }
 
 // Balance should return the confirmed and unconfirmed balance for the wallet.
@@ -764,7 +766,7 @@ func (w *MockWallet) CreateMultisigAddress(keys []btcec.PublicKey, threshold int
 
 	h := sha256.Sum256(redeemScript)
 	addr := iwallet.NewAddress(hex.EncodeToString(h[:]), iwallet.CtTestnetMock)
-	return *addr, redeemScript, nil
+	return addr, redeemScript, nil
 }
 
 // CreateMultisigWithTimeout is the same as CreateMultisigAddress but it adds
@@ -784,7 +786,7 @@ func (w *MockWallet) CreateMultisigWithTimeout(keys []btcec.PublicKey, threshold
 
 	h := sha256.Sum256(redeemScript)
 	addr := iwallet.NewAddress(hex.EncodeToString(h[:]), iwallet.CtTestnetMock)
-	return *addr, redeemScript, nil
+	return addr, redeemScript, nil
 }
 
 // SignMultisigTransaction should use the provided key to create a signature for

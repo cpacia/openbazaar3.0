@@ -22,6 +22,16 @@ func (op *OrderProcessor) handleOrderRejectMessage(dbtx database.Tx, order *mode
 		return nil, nil
 	}
 
+	if order.SerializedOrderConfirmation != nil {
+		log.Error("Received ORDER_REJECT message for order %s after ORDER_CONFIRMATION", order.ID)
+		return nil, ErrUnexpectedMessage
+	}
+
+	if order.SerializedOrderCancel != nil {
+		log.Error("Received ORDER_REJECT message for order %s after ORDER_CANCEL", order.ID)
+		return nil, ErrUnexpectedMessage
+	}
+
 	orderOpen, err := order.OrderOpenMessage()
 	if models.IsMessageNotExistError(err) {
 		return nil, order.ParkMessage(message)

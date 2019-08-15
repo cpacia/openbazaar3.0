@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	log                 = logging.MustGetLogger("ORDR")
-	ErrDuplicateMessage = errors.New("duplicate message")
-	ErrChangedMessage   = errors.New("different duplicate message")
+	log                  = logging.MustGetLogger("ORDR")
+	ErrChangedMessage    = errors.New("different duplicate message")
+	ErrUnexpectedMessage = errors.New("unexpected message")
 )
 
 // OrderProcessor is used to deterministically process orders.

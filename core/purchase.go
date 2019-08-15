@@ -31,11 +31,11 @@ const (
 //
 // The process here is:
 // 1. Build the order using either the DIRECT or MODERATED payment method.
-// 2. If DIRECT attempt to send the order directly to the vendor and wait for a response.
+// 2. If DIRECT attempt to send the address request directly to the vendor and wait for a response.
 // 3. If no response update the payment method to CANCELABLE and send using the messenger.
 // 4. IF MODERATED skip steps 2 and 3 and send the message with the messenger.
 func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID models.OrderID,
-	paymentAddress iwallet.Address, paymentAmount iwallet.Amount, err error) {
+	paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error) {
 
 	// Create Order object
 	orderOpen, err := n.createOrder(purchase)
@@ -49,7 +49,12 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 		return
 	}
 
-	paymentAddress = *iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CoinType(normalizeCurrencyCode(orderOpen.Payment.Coin)))
+	paymentAddress = iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CoinType(normalizeCurrencyCode(orderOpen.Payment.Coin)))
+	currency, err := models.CurrencyDefinitions.Lookup(orderOpen.Payment.Coin)
+	if err != nil {
+		return
+	}
+	paymentAmount = *models.NewCurrencyValue(orderOpen.Payment.Amount, currency)
 
 	// If this is a direct payment we will first request an address from the vendor.
 	// If he is online and responds to our request we will update the payment address
@@ -130,20 +135,34 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 	message.MessageType = npb.Message_ORDER
 	message.Payload = payload
 
-	// Send message and process the order.
+	// Process the order and send the message.
 	err = n.repo.DB().Update(func(tx database.Tx) error {
-		if err := n.messenger.ReliablySendMessage(tx, vendorPeerID, message, nil); err != nil {
+		if _, err = n.orderProcessor.ProcessMessage(tx, vendorPeerID, &order); err != nil {
 			return err
 		}
-
-		_, err = n.orderProcessor.ProcessMessage(tx, vendorPeerID, &order)
-		return err
+		return n.messenger.ReliablySendMessage(tx, vendorPeerID, message, nil)
 	})
 	if err != nil {
 		return
 	}
 
-	return models.OrderID(order.OrderID), paymentAddress, iwallet.NewAmount(orderOpen.Payment.Amount), nil
+	return models.OrderID(order.OrderID), paymentAddress, paymentAmount, nil
+}
+
+// EstimateOrderSubtotal estimates the total for the order given the provided
+// purchase details. This is only an estimate because it may be based on the
+// current exchange rates which may change by the time the order is placed.
+func (n *OpenBazaarNode) EstimateOrderSubtotal(purchase *models.Purchase) (*models.CurrencyValue, error) {
+	orderOpen, err := n.createOrder(purchase)
+	if err != nil {
+		return nil, err
+	}
+	currency, err := models.CurrencyDefinitions.Lookup(orderOpen.Payment.Coin)
+	if err != nil {
+		return nil, err
+	}
+	cv := models.NewCurrencyValue(orderOpen.Payment.Amount, currency)
+	return cv, nil
 }
 
 // createOrder builds and returns an order from the given purchase data. The payment

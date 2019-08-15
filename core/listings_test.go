@@ -106,8 +106,8 @@ func TestOpenBazaarNode_ListingsGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if listing2.Slug != listing.Slug {
-		t.Errorf("Incorrect slug returned. Expected %s, got %s", listing.Slug, listing2.Slug)
+	if listing2.Listing.Slug != listing.Slug {
+		t.Errorf("Incorrect slug returned. Expected %s, got %s", listing.Slug, listing2.Listing.Slug)
 	}
 
 	index, err := network.Nodes()[1].GetListings(network.Nodes()[0].Identity(), false)
@@ -128,8 +128,8 @@ func TestOpenBazaarNode_ListingsGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if listing2.Slug != listing.Slug {
-		t.Errorf("Incorrect slug returned. Expected %s, got %s", listing.Slug, listing2.Slug)
+	if listing2.Listing.Slug != listing.Slug {
+		t.Errorf("Incorrect slug returned. Expected %s, got %s", listing.Slug, listing2.Listing.Slug)
 	}
 }
 
