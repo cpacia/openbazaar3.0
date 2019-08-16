@@ -19,27 +19,27 @@ import (
 )
 
 func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
-	dup, err := isDuplicate(message, order.SerializedOrderOpen)
+	orderOpen := new(pb.OrderOpen)
+	if err := ptypes.UnmarshalAny(message.Message, orderOpen); err != nil {
+		return nil, err
+	}
+
+	dup, err := isDuplicate(orderOpen, order.SerializedOrderOpen)
 	if err != nil {
 		return nil, err
 	}
 	if order.SerializedOrderOpen != nil && !dup {
-		log.Error("Duplicate ORDER_OPEN message does not match original for order: %s", order.ID)
+		log.Errorf("Duplicate ORDER_OPEN message does not match original for order: %s", order.ID)
 		return nil, ErrChangedMessage
 	} else if dup {
 		return nil, nil
-	}
-
-	orderOpen := new(pb.OrderOpen)
-	if err := ptypes.UnmarshalAny(message.Message, orderOpen); err != nil {
-		return nil, err
 	}
 
 	var validationError bool
 	// If the validation fails and we are the vendor, we send a REJECT message back
 	// to the buyer. The reject message also gets saved with this order.
 	if err := op.validateOrderOpen(dbtx, orderOpen); err != nil {
-		log.Error("ORDER_OPEN message for order %s from %s failed to validate: %s", order.ID, orderOpen.BuyerID.PeerID, err)
+		log.Errorf("ORDER_OPEN message for order %s from %s failed to validate: %s", order.ID, orderOpen.BuyerID.PeerID, err)
 		if op.identity != peer {
 			reject := pb.OrderReject{
 				Type:   pb.OrderReject_VALIDATION_ERROR,

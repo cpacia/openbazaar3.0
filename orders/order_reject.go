@@ -11,24 +11,28 @@ import (
 )
 
 func (op *OrderProcessor) handleOrderRejectMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
-	dup, err := isDuplicate(message, order.SerializedOrderReject)
+	orderReject := new(pb.OrderReject)
+	if err := ptypes.UnmarshalAny(message.Message, orderReject); err != nil {
+		return nil, err
+	}
+	dup, err := isDuplicate(orderReject, order.SerializedOrderReject)
 	if err != nil {
 		return nil, err
 	}
 	if order.SerializedOrderReject != nil && !dup {
-		log.Error("Duplicate ORDER_REJECT message does not match original for order: %s", order.ID)
+		log.Errorf("Duplicate ORDER_REJECT message does not match original for order: %s", order.ID)
 		return nil, ErrChangedMessage
 	} else if dup {
 		return nil, nil
 	}
 
 	if order.SerializedOrderConfirmation != nil {
-		log.Error("Received ORDER_REJECT message for order %s after ORDER_CONFIRMATION", order.ID)
+		log.Errorf("Received ORDER_REJECT message for order %s after ORDER_CONFIRMATION", order.ID)
 		return nil, ErrUnexpectedMessage
 	}
 
 	if order.SerializedOrderCancel != nil {
-		log.Error("Received ORDER_REJECT message for order %s after ORDER_CANCEL", order.ID)
+		log.Errorf("Received ORDER_REJECT message for order %s after ORDER_CANCEL", order.ID)
 		return nil, ErrUnexpectedMessage
 	}
 
@@ -37,11 +41,6 @@ func (op *OrderProcessor) handleOrderRejectMessage(dbtx database.Tx, order *mode
 		return nil, order.ParkMessage(message)
 	}
 	if err != nil {
-		return nil, err
-	}
-
-	orderReject := new(pb.OrderReject)
-	if err := ptypes.UnmarshalAny(message.Message, orderReject); err != nil {
 		return nil, err
 	}
 

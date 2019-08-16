@@ -26,6 +26,6 @@ func TestOpenBazaarNode_RequestAddress(t *testing.T) {
 
 	_, err = network.Nodes()[0].RequestAddress(network.Nodes()[1].Identity(), iwallet.CtBitcoin)
 	if err == nil {
-		t.Error("Expected request for unknown address to error")
+		t.Error("Expected request for unknown cointype to error")
 	}
 }
