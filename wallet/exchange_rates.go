@@ -193,7 +193,7 @@ func (b *openBazaarAPI) fetchRates(base models.CurrencyCode) (map[models.Currenc
 
 		convertedFloat := new(big.Float).Mul(rateFloat, conversionFloat)
 		convertedInt, _ := convertedFloat.Int(nil)
-		baseMap[models.CurrencyCode(cc)] = iwallet.NewAmount(convertedInt)
+		baseMap[cc] = iwallet.NewAmount(convertedInt)
 	}
 
 	return baseMap, nil

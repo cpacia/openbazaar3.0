@@ -54,7 +54,7 @@ func TestExchangeRateProvider_GetRate(t *testing.T) {
 	}
 	obAPI.client = &mockedHTTPClient
 
-	rate, err := provider.GetRate(models.CurrencyCode("BTC"), models.CurrencyCode("USD"), true)
+	rate, err := provider.GetRate("BTC", "USD", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestExchangeRateProvider_GetRate(t *testing.T) {
 		t.Errorf("Returned incorrect rate. Expected %s, got %s", expectedBTCUSD, rate)
 	}
 
-	rate, err = provider.GetRate(models.CurrencyCode("BCH"), models.CurrencyCode("USD"), true)
+	rate, err = provider.GetRate("BCH", "USD", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,13 +95,13 @@ func TestExchangeRateProvider_GetAllRates(t *testing.T) {
 	}
 	obAPI.client = &mockedHTTPClient
 
-	btcRates, err := provider.GetAllRates(models.CurrencyCode("BTC"), true)
+	btcRates, err := provider.GetAllRates("BTC", true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for cc, expected := range expectedBTCRates {
-		rate, ok := btcRates[models.CurrencyCode(cc)]
+		rate, ok := btcRates[cc]
 		if !ok {
 			t.Fatalf("Currency %s not in returned map", cc)
 		}
@@ -111,13 +111,13 @@ func TestExchangeRateProvider_GetAllRates(t *testing.T) {
 		}
 	}
 
-	bchRates, err := provider.GetAllRates(models.CurrencyCode("BCH"), true)
+	bchRates, err := provider.GetAllRates("BCH", true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for cc, expected := range expectedBCHRates {
-		rate, ok := bchRates[models.CurrencyCode(cc)]
+		rate, ok := bchRates[cc]
 		if !ok {
 			t.Fatalf("Currency %s not in returned map", cc)
 		}
@@ -146,13 +146,13 @@ func TestExchangeRateProvider_openBazaarAPI(t *testing.T) {
 		},
 	)
 
-	btcRates, err := api.fetchRates(models.CurrencyCode("BTC"))
+	btcRates, err := api.fetchRates("BTC")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for cc, expected := range expectedBTCRates {
-		rate, ok := btcRates[models.CurrencyCode(cc)]
+		rate, ok := btcRates[cc]
 		if !ok {
 			t.Fatalf("Currency %s not in returned map", cc)
 		}
@@ -162,13 +162,13 @@ func TestExchangeRateProvider_openBazaarAPI(t *testing.T) {
 		}
 	}
 
-	bchRates, err := api.fetchRates(models.CurrencyCode("BCH"))
+	bchRates, err := api.fetchRates("BCH")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for cc, expected := range expectedBCHRates {
-		rate, ok := bchRates[models.CurrencyCode(cc)]
+		rate, ok := bchRates[cc]
 		if !ok {
 			t.Fatalf("Currency %s not in returned map", cc)
 		}

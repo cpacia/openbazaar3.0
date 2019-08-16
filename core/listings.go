@@ -612,6 +612,10 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	if len(sl.Listing.Item.Price) > SentenceMaxCharacters {
 		return ErrTooManyCharacters{"item.price", strconv.Itoa(SentenceMaxCharacters)}
 	}
+	_, ok := new(big.Int).SetString(sl.Listing.Item.Price, 10)
+	if !ok {
+		return errors.New("invalid item price")
+	}
 
 	// Taxes
 	if len(sl.Listing.Taxes) > MaxListItems {
@@ -656,7 +660,10 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 			if len(discountVal) > SentenceMaxCharacters {
 				return ErrTooManyCharacters{"coupons.pricediscount", strconv.Itoa(SentenceMaxCharacters)}
 			}
-			discount0, _ := new(big.Int).SetString(discountVal, 10)
+			discount0, ok := new(big.Int).SetString(discountVal, 10)
+			if !ok {
+				return errors.New("invalid price discount")
+			}
 			if n.Cmp(discount0) < 0 {
 				return errors.New("price discount cannot be greater than the item price")
 			}

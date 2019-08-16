@@ -258,7 +258,7 @@ type CurrencyCode string
 
 // String returns a readable representation of CurrencyCode
 func (c CurrencyCode) String() string {
-	return string(c)
+	return strings.ToUpper(string(c))
 }
 
 // Currency defines the characteristics of a currency
@@ -290,7 +290,9 @@ func (c *Currency) Equal(other *Currency) bool {
 	if c == nil || other == nil {
 		return false
 	}
-	if c.Code != other.Code {
+	code := strings.TrimPrefix(c.Code.String(), "T")
+	otherCode := strings.TrimPrefix(other.Code.String(), "T")
+	if code != otherCode {
 		return false
 	}
 	if c.Divisibility != other.Divisibility {

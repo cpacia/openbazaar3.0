@@ -363,6 +363,34 @@ func TestCurrencyValuesConvertCorrectly(t *testing.T) {
 				},
 				expectedErr: nil,
 			},
+			{ // handles conversions between different divisibility w/ exchange rate > 1
+				value: &CurrencyValue{
+					Amount: iwallet.NewAmount("1000"),
+					Currency: &Currency{
+						Name:         "United States Dollar",
+						Code:         "USD",
+						Divisibility: 2,
+						CurrencyType: CurrencyTypeFiat,
+					},
+				},
+				convertTo: &Currency{
+					Name:         "SimpleCoin",
+					Code:         "SPC",
+					Divisibility: 8,
+					CurrencyType: CurrencyTypeFiat,
+				},
+				exchangeRate: 0.002455796,
+				expected: &CurrencyValue{
+					Amount: iwallet.NewAmount("2455796"),
+					Currency: &Currency{
+						Name:         "SimpleCoin",
+						Code:         "SPC",
+						Divisibility: 8,
+						CurrencyType: CurrencyTypeFiat,
+					},
+				},
+				expectedErr: nil,
+			},
 			{ // handles conversions between different
 				// divisibility w inverse rate
 				value: &CurrencyValue{
