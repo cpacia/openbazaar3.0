@@ -890,13 +890,14 @@ func NewMockExchangeRates() (*ExchangeRateProvider, error) {
 
 // MockExchangeRateResponse is a mock response from an exchange rate API.
 var MockExchangeRateResponse = map[string]apiRate{
-	"BTC": apiRate{Last: 1},
-	"BCH": apiRate{Last: 31.588915},
-	"LTC": apiRate{Last: 112.163246},
-	"ZEC": apiRate{Last: 128.77109},
-	"ETH": apiRate{Last: 42.35316},
-	"USD": apiRate{Last: 12863.08},
-	"EUR": apiRate{Last: 11444.58},
-	"JPY": apiRate{Last: 1398311.17},
-	"CNY": apiRate{Last: 88439.82},
+	"BTC": {Last: 1},
+	"BCH": {Last: 31.588915},
+	"LTC": {Last: 112.163246},
+	"ZEC": {Last: 128.77109},
+	"ETH": {Last: 42.35316},
+	"USD": {Last: 12863.08},
+	"EUR": {Last: 11444.58},
+	"JPY": {Last: 1398311.17},
+	"CNY": {Last: 88439.82},
+	"MCK": {Last: 500},
 }

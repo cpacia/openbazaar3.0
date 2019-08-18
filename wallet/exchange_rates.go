@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -59,6 +60,7 @@ func (e *ExchangeRateProvider) GetRate(base models.CurrencyCode, to models.Curre
 	e.mtx.Lock()
 	defer e.mtx.Unlock()
 
+	base = models.CurrencyCode(strings.TrimPrefix(strings.ToUpper(base.String()), "T"))
 	lastQueried := e.lastQueried[base]
 
 	rates, ok := e.cache[base]
@@ -66,7 +68,7 @@ func (e *ExchangeRateProvider) GetRate(base models.CurrencyCode, to models.Curre
 		var err error
 		rates, err = e.fetchRatesFromProviders(base)
 		if err != nil {
-			return iwallet.NewAmount(""), err
+			return iwallet.NewAmount(0), err
 		}
 		e.cache[base] = rates
 		e.lastQueried[base] = time.Now()

@@ -6,7 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	ggio "github.com/gogo/protobuf/io"
 	inet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peer"
 	"sync"
 	"time"
 )

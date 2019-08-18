@@ -104,143 +104,6 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 	return event, nil
 }
 
-// CalculateOrderTotal calculates and returns the total for the order with all
-// the provided options.
-func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) (iwallet.Amount, error) {
-	var (
-		orderTotal         iwallet.Amount
-		physicalGoods = make(map[string]*pb.Listing)
-	)
-
-	// Calculate the price of each item
-	for _, item := range order.Items {
-		// Step one is we just want to get the price, in the payment currency,
-		// for the listing.
-		var (
-			itemTotal    iwallet.Amount
-			itemQuantity = item.Quantity
-		)
-
-		listing, err := extractListing(item.ListingHash, order.Listings)
-		if err != nil {
-			return orderTotal, fmt.Errorf("listing not found in contract for item %s", item.ListingHash)
-		}
-
-		if listing.Metadata.ContractType == pb.Listing_Metadata_PHYSICAL_GOOD {
-			physicalGoods[item.ListingHash] = listing
-		}
-
-		pricingCurrency, err := models.CurrencyDefinitions.Lookup(listing.Metadata.PricingCurrency.Code)
-		if err != nil {
-			return orderTotal, err
-		}
-		paymentCurrency, err := models.CurrencyDefinitions.Lookup(order.Payment.Coin)
-		if err != nil {
-			return orderTotal, err
-		}
-
-		if listing.Metadata.Format == pb.Listing_Metadata_MARKET_PRICE {
-			// To calculate the market price we just use the exchange rate between
-			// the two coins. However in this case we use the item quantity being
-			// purchased as the amount as we want to find the exchange rate of
-			// the given quantity.
-			price := models.NewCurrencyValueFromUint(itemQuantity, pricingCurrency)
-			itemTotal, err = convertCurrencyAmount(price, paymentCurrency, erp)
-			if err != nil {
-				return orderTotal, err
-			}
-
-			// Now we add or subtract the price modifier.
-			f, _ := new(big.Float).SetString(itemTotal.String())
-			f.Mul(f, big.NewFloat(float64(listing.Metadata.PriceModifier / 100)))
-			priceMod, _ := f.Int(nil)
-			itemTotal = itemTotal.Add(iwallet.NewAmount(priceMod))
-
-			// Since we already used the quantity to calculate the price we can
-			// just set this to 1 to avoid multiplying by the quantity again below.
-			itemQuantity = 1
-		} else {
-			price := models.NewCurrencyValue(listing.Item.Price, pricingCurrency)
-			itemTotal, err = convertCurrencyAmount(price, paymentCurrency, erp)
-			if err != nil {
-				return orderTotal, err
-			}
-		}
-
-		// Add or subtract any surcharge on the selected sku
-		sku, err := getSelectedSku(listing, item.Options)
-		if err != nil {
-			return orderTotal, err
-		}
-		surcharge := iwallet.NewAmount(sku.Surcharge)
-		surchargeValue := models.NewCurrencyValue(surcharge.String(), pricingCurrency)
-		convertedSurcharge, err := convertCurrencyAmount(surchargeValue, paymentCurrency, erp)
-		if err != nil {
-			return orderTotal, err
-		}
-		itemTotal.Add(convertedSurcharge)
-
-		// Subtract any coupons
-		for _, couponCode := range item.CouponCodes {
-			h := sha256.Sum256([]byte(couponCode))
-			encoded, err := multihash.Encode(h[:], multihash.SHA2_256)
-			if err != nil {
-				return orderTotal, err
-			}
-			couponHash, err := multihash.Cast(encoded)
-			if err != nil {
-				return orderTotal, err
-			}
-			for _, vendorCoupon := range listing.Coupons {
-				if couponHash.B58String() == vendorCoupon.GetHash() {
-					if discount := vendorCoupon.GetPriceDiscount(); iwallet.NewAmount(discount).Cmp(iwallet.NewAmount(0)) > 0 {
-						price := models.NewCurrencyValue(discount, pricingCurrency)
-						discountAmount, err := convertCurrencyAmount(price, paymentCurrency, erp)
-						if err != nil {
-							return orderTotal, err
-						}
-						itemTotal = itemTotal.Sub(discountAmount)
-					} else if discount := vendorCoupon.GetPercentDiscount(); discount > 0 {
-						f, _ := new(big.Float).SetString(itemTotal.String())
-						f.Mul(f, big.NewFloat(float64(-discount / 100)))
-						discountAmount, _ := f.Int(nil)
-						itemTotal = itemTotal.Add(iwallet.NewAmount(discountAmount))
-					}
-				}
-			}
-		}
-		// Apply tax
-		for _, tax := range listing.Taxes {
-			for _, taxRegion := range tax.TaxRegions {
-				if order.Shipping.Country == taxRegion {
-					f, _ := new(big.Float).SetString(itemTotal.String())
-					f.Mul(f, big.NewFloat(float64(tax.Percentage / 100)))
-					govTheft, _ := f.Int(nil)
-					itemTotal = itemTotal.Add(iwallet.NewAmount(govTheft))
-					break
-				}
-			}
-		}
-
-		// Multiply the item total by the quantity being purchased
-		// In the case of a crypto listing, itemQuantity was set to
-		// one above so this should have no effect.
-		itemTotal = itemTotal.Mul(iwallet.NewAmount(itemQuantity))
-
-		// Finally add the item total to the order total.
-		orderTotal = orderTotal.Add(itemTotal)
-	}
-
-	// Add in shipping
-	shippingTotal, err := calculateShippingTotalForListings(order, physicalGoods, erp)
-	if err != nil {
-		return orderTotal, err
-	}
-	orderTotal = orderTotal.Add(shippingTotal)
-
-	return orderTotal, nil
-}
-
 func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpen) error {
 	// TODO
 
@@ -308,6 +171,142 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	return nil
 }
 
+// CalculateOrderTotal calculates and returns the total for the order with all
+// the provided options.
+func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) (iwallet.Amount, error) {
+	var (
+		orderTotal    iwallet.Amount
+		physicalGoods = make(map[string]*pb.Listing)
+	)
+
+	// Calculate the price of each item
+	for _, item := range order.Items {
+		// Step one is we just want to get the price, in the payment currency,
+		// for the listing.
+		var (
+			itemTotal    iwallet.Amount
+			itemQuantity = item.Quantity
+		)
+
+		listing, err := extractListing(item.ListingHash, order.Listings)
+		if err != nil {
+			return orderTotal, fmt.Errorf("listing not found in contract for item %s", item.ListingHash)
+		}
+
+		if listing.Metadata.ContractType == pb.Listing_Metadata_PHYSICAL_GOOD {
+			physicalGoods[item.ListingHash] = listing
+		}
+
+		pricingCurrency, err := models.CurrencyDefinitions.Lookup(listing.Metadata.PricingCurrency.Code)
+		if err != nil {
+			return orderTotal, err
+		}
+		paymentCurrency, err := models.CurrencyDefinitions.Lookup(order.Payment.Coin)
+		if err != nil {
+			return orderTotal, err
+		}
+
+		if listing.Metadata.Format == pb.Listing_Metadata_MARKET_PRICE {
+			// To calculate the market price we just use the exchange rate between
+			// the two coins. However in this case we use the item quantity being
+			// purchased as the amount as we want to find the exchange rate of
+			// the given quantity.
+			price := models.NewCurrencyValueFromUint(itemQuantity, pricingCurrency)
+			itemTotal, err = convertCurrencyAmount(price, paymentCurrency, erp)
+			if err != nil {
+				return orderTotal, err
+			}
+
+			// Now we add or subtract the price modifier.
+			f, _ := new(big.Float).SetString(itemTotal.String())
+			f.Mul(f, big.NewFloat(float64(listing.Metadata.PriceModifier/100)))
+			priceMod, _ := f.Int(nil)
+			itemTotal = itemTotal.Add(iwallet.NewAmount(priceMod))
+
+			// Since we already used the quantity to calculate the price we can
+			// just set this to 1 to avoid multiplying by the quantity again below.
+			itemQuantity = 1
+		} else {
+			price := models.NewCurrencyValue(listing.Item.Price, pricingCurrency)
+			itemTotal, err = convertCurrencyAmount(price, paymentCurrency, erp)
+			if err != nil {
+				return orderTotal, err
+			}
+		}
+
+		// Add or subtract any surcharge on the selected sku
+		sku, err := getSelectedSku(listing, item.Options)
+		if err != nil {
+			return orderTotal, err
+		}
+		surcharge := iwallet.NewAmount(sku.Surcharge)
+		surchargeValue := models.NewCurrencyValue(surcharge.String(), pricingCurrency)
+		convertedSurcharge, err := convertCurrencyAmount(surchargeValue, paymentCurrency, erp)
+		if err != nil {
+			return orderTotal, err
+		}
+		itemTotal.Add(convertedSurcharge)
+
+		// Subtract any coupons
+		for _, couponCode := range item.CouponCodes {
+			h := sha256.Sum256([]byte(couponCode))
+			encoded, err := multihash.Encode(h[:], multihash.SHA2_256)
+			if err != nil {
+				return orderTotal, err
+			}
+			couponHash, err := multihash.Cast(encoded)
+			if err != nil {
+				return orderTotal, err
+			}
+			for _, vendorCoupon := range listing.Coupons {
+				if couponHash.B58String() == vendorCoupon.GetHash() {
+					if discount := vendorCoupon.GetPriceDiscount(); iwallet.NewAmount(discount).Cmp(iwallet.NewAmount(0)) > 0 {
+						price := models.NewCurrencyValue(discount, pricingCurrency)
+						discountAmount, err := convertCurrencyAmount(price, paymentCurrency, erp)
+						if err != nil {
+							return orderTotal, err
+						}
+						itemTotal = itemTotal.Sub(discountAmount)
+					} else if discount := vendorCoupon.GetPercentDiscount(); discount > 0 {
+						f, _ := new(big.Float).SetString(itemTotal.String())
+						f.Mul(f, big.NewFloat(float64(-discount/100)))
+						discountAmount, _ := f.Int(nil)
+						itemTotal = itemTotal.Add(iwallet.NewAmount(discountAmount))
+					}
+				}
+			}
+		}
+		// Apply tax
+		for _, tax := range listing.Taxes {
+			for _, taxRegion := range tax.TaxRegions {
+				if order.Shipping.Country == taxRegion {
+					f, _ := new(big.Float).SetString(itemTotal.String())
+					f.Mul(f, big.NewFloat(float64(tax.Percentage/100)))
+					govTheft, _ := f.Int(nil)
+					itemTotal = itemTotal.Add(iwallet.NewAmount(govTheft))
+					break
+				}
+			}
+		}
+
+		// Multiply the item total by the quantity being purchased
+		// In the case of a crypto listing, itemQuantity was set to
+		// one above so this should have no effect.
+		itemTotal = itemTotal.Mul(iwallet.NewAmount(itemQuantity))
+
+		// Finally add the item total to the order total.
+		orderTotal = orderTotal.Add(itemTotal)
+	}
+
+	// Add in shipping
+	shippingTotal, err := calculateShippingTotalForListings(order, physicalGoods, erp)
+	if err != nil {
+		return orderTotal, err
+	}
+	orderTotal = orderTotal.Add(shippingTotal)
+
+	return orderTotal, nil
+}
 
 func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]*pb.Listing, erp *wallet.ExchangeRateProvider) (iwallet.Amount, error) {
 	type itemShipping struct {
@@ -382,11 +381,13 @@ func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]
 
 		// Convert additional item price
 		secondaryTotal := iwallet.NewAmount(0)
-		if iwallet.NewAmount(service.AdditionalItemPrice).Cmp(iwallet.NewAmount(0)) > 0 {
-			secondaryPrice := models.NewCurrencyValue(service.AdditionalItemPrice, pricingCurrency)
-			secondaryTotal, err = convertCurrencyAmount(secondaryPrice, paymentCurrency, erp)
-			if err != nil {
-				return shippingTotal, err
+		if service.AdditionalItemPrice != "" {
+			if iwallet.NewAmount(service.AdditionalItemPrice).Cmp(iwallet.NewAmount(0)) > 0 {
+				secondaryPrice := models.NewCurrencyValue(service.AdditionalItemPrice, pricingCurrency)
+				secondaryTotal, err = convertCurrencyAmount(secondaryPrice, paymentCurrency, erp)
+				if err != nil {
+					return shippingTotal, err
+				}
 			}
 		}
 
@@ -422,7 +423,7 @@ func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]
 		shippingTotal = shippingTotal.Add(is[0].primary)
 		shippingTotal = shippingTotal.Add(calculateShippingTax(is[0].shippingTaxPercentage, is[0].primary))
 		if is[0].quantity > 1 {
-			shippingTotal = shippingTotal.Add(is[0].secondary.Mul(iwallet.NewAmount(is[0].quantity-1)))
+			shippingTotal = shippingTotal.Add(is[0].secondary.Mul(iwallet.NewAmount(is[0].quantity - 1)))
 			shippingTotal = shippingTotal.Add(calculateShippingTax(is[0].shippingTaxPercentage, is[0].secondary.Mul(iwallet.NewAmount(is[0].quantity-1))))
 		}
 		return shippingTotal, nil
@@ -454,13 +455,15 @@ func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]
 	return shippingTotal, nil
 }
 
+// calculateShippingTax is a helper function to calculate the tax given the shipping rate and tax rate.
 func calculateShippingTax(shippingTaxPercentage float32, shippingRate iwallet.Amount) iwallet.Amount {
 	f, _ := new(big.Float).SetString(shippingRate.String())
-	f.Mul(f, big.NewFloat(float64(shippingTaxPercentage / 100)))
-	govTheft, _ := f.Int(nil)
-	return iwallet.NewAmount(govTheft)
+	f.Mul(f, big.NewFloat(float64(shippingTaxPercentage/100)))
+	governmentTheft, _ := f.Int(nil)
+	return iwallet.NewAmount(governmentTheft)
 }
 
+// convertCurrencyAmount converts the value of one currency into another using the exchange rate.
 func convertCurrencyAmount(value *models.CurrencyValue, paymentCurrency *models.Currency, erp *wallet.ExchangeRateProvider) (iwallet.Amount, error) {
 	// If both currency types are the same then just return the value.
 	if value.Currency.Equal(paymentCurrency) {
@@ -521,11 +524,11 @@ func extractListing(hash string, listings []*pb.SignedListing) (*pb.Listing, err
 func getSelectedSku(listing *pb.Listing, options []*pb.OrderOpen_Item_Option) (*pb.Listing_Item_Sku, error) {
 	opts := make(map[string]string)
 	for _, option := range options {
-		opts[option.Name] = option.Value
+		opts[strings.ToLower(option.Name)] = strings.ToLower(option.Value)
 	}
 	for _, sku := range listing.Item.Skus {
 		for _, sel := range sku.Selections {
-			if opts[sel.Option] == sel.Variant {
+			if opts[strings.ToLower(sel.Option)] == strings.ToLower(sel.Variant) {
 				return sku, nil
 			}
 		}

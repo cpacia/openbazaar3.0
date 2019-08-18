@@ -32,7 +32,7 @@ func NewPhysicalListing(slug string) *pb.Listing {
 					Name:        "Size",
 					Description: "What size do you want your shirt?",
 					Variants: []*pb.Listing_Item_Option_Variant{
-						{Name: "Small", Image: NewImage()},
+						{Name: "Small", Image: NewImage(), },
 						{Name: "Large", Image: NewImage()},
 					},
 				},
