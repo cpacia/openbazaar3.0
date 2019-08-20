@@ -78,12 +78,96 @@ func Test_convertCurrencyAmount(t *testing.T) {
 
 func TestCalculateOrderTotal(t *testing.T) {
 	tests := []struct {
-		transform     func(order *pb.OrderOpen)
+		transform     func(order *pb.OrderOpen) error
 		expectedTotal iwallet.Amount
 	}{
-		{
-			transform:     func(order *pb.OrderOpen) {},
-			expectedTotal: iwallet.NewAmount("4938333"),
+		{ // Normal
+			transform:     func(order *pb.OrderOpen) error { return nil },
+			expectedTotal: iwallet.NewAmount("4992221"),
+		},
+		{ // Quantity 2
+			transform: func(order *pb.OrderOpen) error {
+				order.Items[0].Quantity = 2
+				return nil
+			},
+			expectedTotal: iwallet.NewAmount("9152406"),
+		},
+		{ // Additional item shipping
+			transform: func(order *pb.OrderOpen) error {
+				order.Listings[0].Listing.ShippingOptions[0].Services[0].AdditionalItemPrice = "20"
+				hash, err := hashListing(order.Listings[0])
+				if err != nil {
+					return err
+				}
+				order.Items[0].Quantity = 2
+				order.Items[0].ListingHash = hash.B58String()
+				return nil
+			},
+			expectedTotal: iwallet.NewAmount("9984442"),
+		},
+		{ // Multiple items
+			transform: func(order *pb.OrderOpen) error {
+				order.Listings = append(order.Listings, order.Listings[0])
+				order.Listings[1].Listing.Item.Title = "abc"
+				order.Listings[1].Listing.ShippingOptions[0].Services[0].Price = "30"
+				hash, err := hashListing(order.Listings[1])
+				if err != nil {
+					return err
+				}
+				order.Items = append(order.Items, order.Items[0])
+				order.Items[1].ListingHash = hash.B58String()
+				return nil
+			},
+			expectedTotal: iwallet.NewAmount("9568425"),
+		},
+		{ // Coupons
+			transform: func(order *pb.OrderOpen) error {
+				order.Items[0].CouponCodes = []string{
+					"insider",
+				}
+				return nil
+			},
+			expectedTotal: iwallet.NewAmount("4784212"),
+		},
+		{ // Price Discount
+			transform: func(order *pb.OrderOpen) error {
+				order.Listings = append(order.Listings, order.Listings[0])
+				order.Listings[1].Listing.Item.Title = "abc"
+				order.Listings[1].Listing.Coupons[0].Discount = &pb.Listing_Coupon_PriceDiscount{PriceDiscount: "5"}
+				hash, err := hashListing(order.Listings[1])
+				if err != nil {
+					return err
+				}
+				order.Items[0].ListingHash = hash.B58String()
+				order.Items[0].CouponCodes = []string{
+					"insider",
+				}
+				return nil
+			},
+			expectedTotal: iwallet.NewAmount("4784212"),
+		},
+		{ // Market price listing
+			transform: func(order *pb.OrderOpen) error {
+				order.Listings[0].Listing.Metadata.ContractType = pb.Listing_Metadata_CRYPTOCURRENCY
+				order.Listings[0].Listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
+				order.Listings[0].Listing.Metadata.PricingCurrency = &pb.Currency{
+					Code:         "BTC",
+					Divisibility: 8,
+					Name:         "Bitcoin Cash",
+					CurrencyType: "Crypto",
+				}
+				order.Listings[0].Listing.ShippingOptions = nil
+				order.Listings[0].Listing.Taxes = nil
+				hash, err := hashListing(order.Listings[0])
+				if err != nil {
+					return err
+				}
+				order.Items[0].ListingHash = hash.B58String()
+				order.Items[0].Quantity = 10000
+				order.Items[0].ShippingOption = nil
+				return nil
+			},
+			expectedTotal: iwallet.NewAmount("5000025"),
 		},
 	}
 
@@ -96,7 +180,10 @@ func TestCalculateOrderTotal(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		test.transform(order)
+		if err := test.transform(order); err != nil {
+			t.Errorf("Error transforming listing in test %d: %s", i, err)
+			continue
+		}
 		total, err := CalculateOrderTotal(order, erp)
 		if err != nil {
 			t.Errorf("Error calculating total for test %d: %s", i, err)

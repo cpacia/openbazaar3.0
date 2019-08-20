@@ -51,7 +51,6 @@ func NewOrder() (*pb.OrderOpen, *crypto.PrivKey, error) {
 		return nil, nil, err
 	}
 
-
 	order := &pb.OrderOpen{
 		Listings: []*pb.SignedListing{
 			listing,
@@ -78,31 +77,31 @@ func NewOrder() (*pb.OrderOpen, *crypto.PrivKey, error) {
 		Timestamp: ptypes.TimestampNow(),
 		Items: []*pb.OrderOpen_Item{
 			{
-				ListingHash:    listingHash.B58String(),
-				Quantity:       1,
-				Options:        []*pb.OrderOpen_Item_Option{
+				ListingHash: listingHash.B58String(),
+				Quantity:    1,
+				Options: []*pb.OrderOpen_Item_Option{
 					{
-						Name:                 "size",
-						Value:                "large",
+						Name:  "size",
+						Value: "large",
 					},
 					{
-						Name:                 "color",
-						Value:                "red",
+						Name:  "color",
+						Value: "red",
 					},
 				},
 				ShippingOption: &pb.OrderOpen_Item_ShippingOption{
-					Name:                 "usps",
-					Service:              "standard",
+					Name:    "usps",
+					Service: "standard",
 				},
 			},
 		},
 		Payment: &pb.OrderOpen_Payment{
-			Method:                pb.OrderOpen_Payment_DIRECT,
-			Amount:                "466454170",
-			Address:               "068885193265b763a7510377a61176192622be07",
-			Coin:                  "TMCK",
+			Method:  pb.OrderOpen_Payment_DIRECT,
+			Amount:  "466454170",
+			Address: "068885193265b763a7510377a61176192622be07",
+			Coin:    "TMCK",
 		},
-		RatingKeys: [][]byte{ratingKey},
+		RatingKeys:           [][]byte{ratingKey},
 		AlternateContactInfo: "peter@familyguy.net",
 		Version:              1,
 	}

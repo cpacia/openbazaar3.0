@@ -32,7 +32,7 @@ func NewPhysicalListing(slug string) *pb.Listing {
 					Name:        "Size",
 					Description: "What size do you want your shirt?",
 					Variants: []*pb.Listing_Item_Option_Variant{
-						{Name: "Small", Image: NewImage(), },
+						{Name: "Small", Image: NewImage()},
 						{Name: "Large", Image: NewImage()},
 					},
 				},
@@ -196,12 +196,13 @@ func NewSignedListing() *pb.SignedListing {
     "listing": {
         "slug": "ron-swanson-shirt",
         "vendorID": {
-            "peerID": "QmVuxKiPHHvWSTYs81QnD7Gax6fSKXezWoriUiMbHptjx3",
+            "peerID": "12D3KooWNGaua3tvyZh9EU8jR68XUohUmpXk8AUvjrCWQV3RyVnK",
+            "handle": "",
             "pubkeys": {
-                "identity": "CAASogEwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALDcjysiMNE+XN0ZEdbXt6G/2uqghbOaYnX1InnJMl2Fsrhkdig4b27yPB/3PKQzvXnQoGAFgLkPtuc3VbWRutj7b1MoBTIo2llJ1r6HxGimbEpa1XpPWWrnTuzVWCOTTou7v2Bf1xdIgkFFVEYiGogkOzriac2vwfUIYnBoWCtbAgMBAAE=",
-                "escrow": "A9ggvaQogAYipQ1E1WSn+U585Vq+jSz8Wk61g8etNzAQ"
+                "identity": "CAESILkDv1tUwzqB20K9jxJ+RqeTM40YbYvqVwTgwQPIebc0",
+                "escrow": "A71fXMWY0Vl0H+78SiSd8EuVKPahPo4cHftAEVoQ1Hkk"
             },
-            "sig": "MEUCIQDFNSHt11ODTf9ck4wf0GczfhHbmUpEibAVmc/iBwJQ6wIgX/XKUP40bCRPjJgukAvVYtTOYqXaa968w+w0ma6K/wk="
+            "sig": "MEQCIAL0roNWGzOSFOmQsKjzknKQRI0Ldpg2VuVhiZkUwQzFAiBw0Fze9gkNZQBY7snuEY9vyPYERwXQYeq8dCVNfdlrJw=="
         },
         "metadata": {
             "version": 4,
@@ -211,7 +212,9 @@ func NewSignedListing() *pb.SignedListing {
             "acceptedCurrencies": [
                 "TMCK"
             ],
+            "language": "",
             "escrowTimeoutHours": 1080,
+            "priceModifier": 0,
             "pricingCurrency": {
                 "code": "USD",
                 "divisibility": 2,
@@ -223,6 +226,7 @@ func NewSignedListing() *pb.SignedListing {
             "title": "Ron Swanson Tshirt",
             "description": "Example item",
             "processingTime": "3 days",
+            "nsfw": false,
             "tags": [
                 "tshirts"
             ],
@@ -352,7 +356,8 @@ func NewSignedListing() *pb.SignedListing {
                     {
                         "name": "standard",
                         "estimatedDelivery": "3 days",
-                        "price": "20"
+                        "price": "20",
+                        "additionalItemPrice": ""
                     }
                 ]
             }
@@ -377,7 +382,8 @@ func NewSignedListing() *pb.SignedListing {
         "termsAndConditions": "Sample Terms and Conditions",
         "refundPolicy": "Sample Refund policy"
     },
-    "signature": "lQ8CqetSEJ7PIBBEvDa/rWCQqEN0JHww0O+PNwG3obyWsI/gXnx+CgOxWJ9T4jPx3pCPGJ1RsXC8EL0SqHqOoJrn6xb9yRBMARSa6jVfhScc/O/GQY2nKm7MBVZIK87C0kEiYJP0/WdWGFUBT9VgAormcxNV9azhRasFpqotJhg="
+    "cid": "",
+    "signature": "69HHKFIHE5jfPW4hHciBPZqD/froguHS92jruCg4zuZuM8TcsSn7Mprn4bcYT/S2/EaoYShI3147zOhc9VmfBg=="
 }`
 	sl := new(pb.SignedListing)
 	jsonpb.UnmarshalString(j, sl)

@@ -364,7 +364,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 	order.Payment.Chaincode = hex.EncodeToString(chaincode)
 	order.Payment.Coin = normalizeCurrencyCode(purchase.PaymentCoin)
 
-	total, err := orders.CalculateOrderTotal(order)
+	total, err := orders.CalculateOrderTotal(order, n.exchangeRates)
 	if err != nil {
 		return nil, err
 	}

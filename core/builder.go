@@ -128,7 +128,13 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	erp := wallet.NewExchangeRateProvider(nil, cfg.ExchangeRateProviders) // TODO: wire up proxy
 
-	op := orders.NewOrderProcessor(ipfsNode.Identity, obRepo.DB(), messenger, mw)
+	op := orders.NewOrderProcessor(&orders.Config{
+		Identity:             ipfsNode.Identity,
+		Db:                   obRepo.DB(),
+		Messenger:            messenger,
+		Multiwallet:          mw,
+		ExchangeRateProvider: erp,
+	})
 
 	// Construct our OpenBazaar node.repo object
 	obNode := &OpenBazaarNode{

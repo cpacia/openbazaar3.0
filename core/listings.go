@@ -1,6 +1,7 @@
 package core
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -95,7 +96,8 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 			return err
 		}
 
-		sig, err := n.escrowMasterKey.Sign([]byte(n.Identity().Pretty()))
+		idHash := sha256.Sum256([]byte(n.Identity().Pretty()))
+		sig, err := n.escrowMasterKey.Sign(idHash[:])
 		if err != nil {
 			return err
 		}
@@ -750,7 +752,8 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	if err != nil {
 		return err
 	}
-	valid := sig.Verify([]byte(sl.Listing.VendorID.PeerID), ecPubkey)
+	idHash := sha256.Sum256([]byte(sl.Listing.VendorID.PeerID))
+	valid := sig.Verify(idHash[:], ecPubkey)
 	if !valid {
 		return errors.New("invalid secp256k1 signature on vendor identity key")
 	}

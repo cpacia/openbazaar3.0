@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -16,6 +17,7 @@ import (
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/multiformats/go-multihash"
 	"math"
@@ -105,7 +107,24 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 }
 
 func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpen) error {
-	// TODO
+	if order.Listings == nil {
+		return errors.New("listings field is nil")
+	}
+	if order.Payment == nil {
+		return errors.New("payment field is nil")
+	}
+	if order.Items == nil {
+		return errors.New("items field is nil")
+	}
+	if order.Timestamp == nil {
+		return errors.New("timestamp field is nil")
+	}
+	if order.BuyerID == nil {
+		return errors.New("buyer ID field is nil")
+	}
+	if order.RatingKeys == nil {
+		return errors.New("rating keys field is nil")
+	}
 
 	if op.identity.Pretty() != order.BuyerID.PeerID { // If we are vendor.
 		// Check to make sure we actually have the item for sale.
@@ -142,30 +161,193 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		}
 	}
 
-	// Let's check to make sure there is a listing for each
-	// item in the order.
-	listingHashes := make(map[string]bool)
-	for _, listing := range order.Listings {
-		ser, err := proto.Marshal(listing)
+	for i, item := range order.Items {
+		// Let's check to make sure there is a listing for each
+		// item in the order.
+		listing, err := extractListing(item.ListingHash, order.Listings)
 		if err != nil {
-			return err
-		}
-		h := sha256.Sum256(ser)
-		encoded, err := multihash.Encode(h[:], multihash.SHA2_256)
-		if err != nil {
-			return err
-		}
-		hash, err := multihash.Cast(encoded)
-		if err != nil {
-			return err
-		}
-		listingHashes[hash.B58String()] = true
-	}
-
-	for _, item := range order.Items {
-		if !listingHashes[item.ListingHash] {
 			return fmt.Errorf("listing not found in order for item %s", item.ListingHash)
 		}
+
+		// Validate shipping is provided if physical good.
+		if listing.Metadata == nil {
+			return fmt.Errorf("listing %d metadata is nil", i)
+		}
+		if listing.Metadata.ContractType == pb.Listing_Metadata_PHYSICAL_GOOD && item.ShippingOption == nil {
+			return fmt.Errorf("item %d shipping option is nil", i)
+		}
+
+		// Validate pricing currency is not nil
+		if listing.Metadata.PricingCurrency == nil {
+			return fmt.Errorf("listing %d pricing currency is nil", i)
+		}
+
+		// Validate listing item is not nil
+		if listing.Item == nil {
+			return fmt.Errorf("listing %d item is nil", i)
+		}
+
+		// Validate the rest of the item
+		if listing.Metadata.ContractType == pb.Listing_Metadata_CRYPTOCURRENCY && item.PaymentAddress == "" {
+			return fmt.Errorf("payment address for cryptocurrency item %d is empty", i)
+		}
+		if item.Quantity == 0 {
+			return fmt.Errorf("item %d quantity is zero", i)
+		}
+
+		// Validate selected options
+		if len(item.Options) != len(listing.Item.Options) {
+			return fmt.Errorf("item %d not all options selected", i)
+		}
+		optionMap := make(map[string]string)
+		for _, option := range item.Options {
+			optionMap[option.Name] = option.Value
+		}
+		for _, opt := range listing.Item.Options {
+			val, ok := optionMap[opt.Name]
+			if !ok {
+				return fmt.Errorf("item %d option %s not found in listing", i, opt.Name)
+			}
+			valExists := false
+			for _, variant := range opt.Variants {
+				if variant.Name == val {
+					valExists = true
+					break
+				}
+			}
+			if !valExists {
+				return fmt.Errorf("item %d variant %s not found in listing option", i, val)
+			}
+		}
+		for x, sku := range listing.Item.Skus {
+			if sku.Surcharge == "" {
+				return fmt.Errorf("item %d listing sku %d surcharge not set", i, x)
+			}
+			if ok := validateBigString(sku.Surcharge); !ok {
+				return fmt.Errorf("item %d listing sku %d surcharge not valid", i, x)
+			}
+		}
+
+		// Validate shipping option
+		if item.ShippingOption != nil {
+			shippingOpts := make(map[string][]*pb.Listing_ShippingOption_Service)
+			for _, option := range listing.ShippingOptions {
+				shippingOpts[option.Name] = option.Services
+			}
+			services, ok := shippingOpts[item.ShippingOption.Name]
+			if !ok {
+				return fmt.Errorf("item %d shipping option %s not found in listing", i, item.ShippingOption.Name)
+			}
+			serviceExists := false
+			for x, service := range services {
+				if service.Name == item.ShippingOption.Service {
+					serviceExists = true
+				}
+				if service.Price == "" {
+					return fmt.Errorf("item %d shipping service %d price not set", i, x)
+				}
+				if ok := validateBigString(service.Price); !ok {
+					return fmt.Errorf("item %d shipping service %d price not valid", i, x)
+				}
+			}
+			if !serviceExists {
+				return fmt.Errorf("item %d shipping service %s not found in listing option", i, item.ShippingOption.Service)
+			}
+		}
+
+		// Validate coupon discount price
+		for _, coupon := range listing.Coupons {
+			if coupon.GetPriceDiscount() != "" {
+				if ok := validateBigString(coupon.GetPriceDiscount()); !ok {
+					return fmt.Errorf("item %d listing coupon price discount not valid", i)
+				}
+			}
+		}
+
+		// Validate listing item price
+		if listing.Item.Price == "" {
+			return fmt.Errorf("item %d listing price not set", i)
+		}
+		if ok := validateBigString(listing.Item.Price); !ok {
+			return fmt.Errorf("item %d listing price not valid", i)
+		}
+	}
+
+	// Validate payment
+	if order.Payment.Amount == "" {
+		return errors.New("payment amount not set")
+	}
+	if ok := validateBigString(order.Payment.Amount); !ok {
+		return errors.New("payment amount not valid")
+	}
+	if order.Payment.Address == "" {
+		return errors.New("order payment address is empty")
+	}
+	_, err := models.CurrencyDefinitions.Lookup(order.Payment.Coin)
+	if err != nil {
+		return errors.New("unknown payment currency")
+	}
+	if order.Payment.Method != pb.OrderOpen_Payment_DIRECT {
+		if order.Payment.EscrowReleaseFee == "" {
+			return errors.New("escrow release fee is empty")
+		}
+		if ok := validateBigString(order.Payment.EscrowReleaseFee); !ok {
+			return errors.New("escrow release fee not valid")
+		}
+	}
+	if order.Payment.Method == pb.OrderOpen_Payment_MODERATED {
+		_, err := peer.IDB58Decode(order.Payment.Moderator)
+		if err != nil {
+			return errors.New("invalid moderator selection")
+		}
+		if order.Payment.ModeratorKey == nil {
+			return errors.New("moderator key not set")
+		}
+	}
+
+	// Validate rating keys
+	for _, key := range order.RatingKeys {
+		if _, err := btcec.ParsePubKey(key, btcec.S256()); err != nil {
+			return errors.New("invalid rating pubkey")
+		}
+	}
+
+	// Validate buyer ID
+	if order.BuyerID.Pubkeys == nil {
+		return errors.New("buyer id pubkeys is nil")
+	}
+	idPubkey, err := crypto.UnmarshalEd25519PublicKey(order.BuyerID.Pubkeys.Identity)
+	if err != nil {
+		return fmt.Errorf("invalid buyer ID pubkey: %s", err)
+	}
+	pid, err := peer.IDFromPublicKey(idPubkey)
+	if err != nil {
+		return fmt.Errorf("invalid buyer ID pubkey: %s", err)
+	}
+	if pid.Pretty() != order.BuyerID.PeerID {
+		return errors.New("buyer ID does not match pubkey")
+	}
+	escrowPubkey, err := btcec.ParsePubKey(order.BuyerID.Pubkeys.Escrow, btcec.S256())
+	if err != nil {
+		return errors.New("invalid buyer escrow pubkey")
+	}
+	sig, err := btcec.ParseSignature(order.BuyerID.Sig, btcec.S256())
+	if err != nil {
+		return errors.New("invalid buyer ID signature")
+	}
+	idHash := sha256.Sum256([]byte(order.BuyerID.PeerID))
+	valid := sig.Verify(idHash[:], escrowPubkey)
+	if !valid {
+		return errors.New("invalid buyer ID signature")
+	}
+
+	// Make sure the provided total is the same as what we calculate.
+	total, err := CalculateOrderTotal(order, op.erp)
+	if err != nil {
+		return err
+	}
+	if total.Cmp(iwallet.NewAmount(order.Payment.Amount)) != 0 {
+		return fmt.Errorf("invalid payment amount: expected %s, got %s", total, order.Payment.Amount)
 	}
 
 	return nil
@@ -260,7 +442,7 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 			}
 			for _, vendorCoupon := range listing.Coupons {
 				if couponHash.B58String() == vendorCoupon.GetHash() {
-					if discount := vendorCoupon.GetPriceDiscount(); iwallet.NewAmount(discount).Cmp(iwallet.NewAmount(0)) > 0 {
+					if discount := vendorCoupon.GetPriceDiscount(); discount != "" && iwallet.NewAmount(discount).Cmp(iwallet.NewAmount(0)) > 0 {
 						price := models.NewCurrencyValue(discount, pricingCurrency)
 						discountAmount, err := convertCurrencyAmount(price, paymentCurrency, erp)
 						if err != nil {
@@ -450,7 +632,7 @@ func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]
 	shippingTotal = shippingTotal.Sub(calculateShippingTax(is[i].shippingTaxPercentage, is[i].secondary))
 
 	shippingTotal = shippingTotal.Add(is[i].primary)
-	shippingTotal = shippingTotal.Sub(calculateShippingTax(is[i].shippingTaxPercentage, is[i].primary))
+	shippingTotal = shippingTotal.Add(calculateShippingTax(is[i].shippingTaxPercentage, is[i].primary))
 
 	return shippingTotal, nil
 }
@@ -458,7 +640,7 @@ func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]
 // calculateShippingTax is a helper function to calculate the tax given the shipping rate and tax rate.
 func calculateShippingTax(shippingTaxPercentage float32, shippingRate iwallet.Amount) iwallet.Amount {
 	f, _ := new(big.Float).SetString(shippingRate.String())
-	f.Mul(f, big.NewFloat(float64(shippingTaxPercentage/100)))
+	f.Mul(f, big.NewFloat(float64(shippingTaxPercentage)))
 	governmentTheft, _ := f.Int(nil)
 	return iwallet.NewAmount(governmentTheft)
 }
@@ -483,8 +665,8 @@ func convertCurrencyAmount(value *models.CurrencyValue, paymentCurrency *models.
 	if !ok {
 		return value.Amount, errors.New("error converting exchange rate to float")
 	}
-	div := new(big.Float).Quo(rateFloat, big.NewFloat(float64(math.Pow10(int(value.Currency.Divisibility)))))
 
+	div := new(big.Float).Quo(rateFloat, big.NewFloat(float64(math.Pow10(int(value.Currency.Divisibility)))))
 	div.Quo(big.NewFloat(1), div)
 
 	v, _ := div.Float64()
@@ -500,16 +682,7 @@ func convertCurrencyAmount(value *models.CurrencyValue, paymentCurrency *models.
 // slice of listings if it exists.
 func extractListing(hash string, listings []*pb.SignedListing) (*pb.Listing, error) {
 	for _, sl := range listings {
-		ser, err := proto.Marshal(sl)
-		if err != nil {
-			return nil, err
-		}
-		h := sha256.Sum256(ser)
-		encoded, err := multihash.Encode(h[:], multihash.SHA2_256)
-		if err != nil {
-			return nil, err
-		}
-		mh, err := multihash.Cast(encoded)
+		mh, err := hashListing(sl)
 		if err != nil {
 			return nil, err
 		}
@@ -522,16 +695,46 @@ func extractListing(hash string, listings []*pb.SignedListing) (*pb.Listing, err
 
 // getSelectedSku returns the SKU from the listing which matches the provided options.
 func getSelectedSku(listing *pb.Listing, options []*pb.OrderOpen_Item_Option) (*pb.Listing_Item_Sku, error) {
+	if len(listing.Item.Options) == 0 {
+		return &pb.Listing_Item_Sku{Surcharge: "0"}, nil
+	}
 	opts := make(map[string]string)
 	for _, option := range options {
 		opts[strings.ToLower(option.Name)] = strings.ToLower(option.Value)
 	}
 	for _, sku := range listing.Item.Skus {
+		matches := true
 		for _, sel := range sku.Selections {
-			if opts[strings.ToLower(sel.Option)] == strings.ToLower(sel.Variant) {
-				return sku, nil
+			if opts[strings.ToLower(sel.Option)] != strings.ToLower(sel.Variant) {
+				matches = false
 			}
+		}
+		if matches {
+			return sku, nil
 		}
 	}
 	return nil, errors.New("selected sku not found in listing")
+}
+
+func hashListing(listing *pb.SignedListing) (multihash.Multihash, error) {
+	ser, err := proto.Marshal(listing)
+	if err != nil {
+		return nil, err
+	}
+	h := sha256.Sum256(ser)
+	encoded, err := multihash.Encode(h[:], multihash.SHA2_256)
+	if err != nil {
+		return nil, err
+	}
+	mh, err := multihash.Cast(encoded)
+	if err != nil {
+		return nil, err
+	}
+	return mh, nil
+}
+
+// validateBigString validates that the string is a base10 big number.
+func validateBigString(s string) bool {
+	_, ok := new(big.Int).SetString(s, 10)
+	return ok
 }

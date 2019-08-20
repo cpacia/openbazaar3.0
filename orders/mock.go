@@ -33,14 +33,20 @@ func newMockOrderProcessor() (*OrderProcessor, error) {
 
 	messenger := net.NewMessenger(service, r.DB())
 
-	repo, err := repo.MockRepo()
-	if err != nil {
-		return nil, err
-	}
-
 	wal := wallet.NewMockWallet()
 	mw := make(wallet.Multiwallet)
 	mw[iwallet.CtTestnetMock] = wal
 
-	return NewOrderProcessor(ipfsNode.Identity, repo.DB(), messenger, mw), nil
+	erp, err := wallet.NewMockExchangeRates()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewOrderProcessor(&Config{
+		Identity:             ipfsNode.Identity,
+		Db:                   r.DB(),
+		Messenger:            messenger,
+		Multiwallet:          mw,
+		ExchangeRateProvider: erp,
+	}), nil
 }

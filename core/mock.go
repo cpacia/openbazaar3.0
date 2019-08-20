@@ -68,7 +68,13 @@ func MockNode() (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
-	op := orders.NewOrderProcessor(ipfsNode.Identity, r.DB(), messenger, mw)
+	op := orders.NewOrderProcessor(&orders.Config{
+		Identity:             ipfsNode.Identity,
+		Db:                   r.DB(),
+		Messenger:            messenger,
+		Multiwallet:          mw,
+		ExchangeRateProvider: erp,
+	})
 
 	node := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
@@ -160,7 +166,13 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			return nil, err
 		}
 
-		op := orders.NewOrderProcessor(ipfsNode.Identity, r.DB(), messenger, mw)
+		op := orders.NewOrderProcessor(&orders.Config{
+			Identity:             ipfsNode.Identity,
+			Db:                   r.DB(),
+			Messenger:            messenger,
+			Multiwallet:          mw,
+			ExchangeRateProvider: erp,
+		})
 
 		node := &OpenBazaarNode{
 			ipfsNode:        ipfsNode,

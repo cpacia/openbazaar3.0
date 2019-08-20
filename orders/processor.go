@@ -21,17 +21,27 @@ var (
 	ErrUnexpectedMessage = errors.New("unexpected message")
 )
 
+// Config holds the objects needed to instantiate a new OrderProcessor.
+type Config struct {
+	Identity             peer.ID
+	Db                   database.Database
+	Messenger            *net.Messenger
+	Multiwallet          wallet.Multiwallet
+	ExchangeRateProvider *wallet.ExchangeRateProvider
+}
+
 // OrderProcessor is used to deterministically process orders.
 type OrderProcessor struct {
 	identity    peer.ID
 	db          database.Database
 	messenger   *net.Messenger
 	multiwallet wallet.Multiwallet
+	erp         *wallet.ExchangeRateProvider
 }
 
 // NewOrderProcessor initializes and returns a new OrderProcessor
-func NewOrderProcessor(identity peer.ID, db database.Database, messenger *net.Messenger, multiwallet wallet.Multiwallet) *OrderProcessor {
-	return &OrderProcessor{identity, db, messenger, multiwallet}
+func NewOrderProcessor(cfg *Config) *OrderProcessor {
+	return &OrderProcessor{cfg.Identity, cfg.Db, cfg.Messenger, cfg.Multiwallet, cfg.ExchangeRateProvider}
 }
 
 // ProcessMessage is the main handler for the OrderProcessor. It ingests a new message
