@@ -38,7 +38,8 @@ func NewMessenger(ns *NetworkService, db database.Database) *Messenger {
 	return m
 }
 
-// Stop shuts down the Messenger.
+// Stop shuts down the Messenger and blocks until all message
+// attempts are finished.
 func (m *Messenger) Stop() {
 	close(m.done)
 	m.wg.Wait()
@@ -87,7 +88,7 @@ func (m *Messenger) ProcessACK(tx database.Tx, ack *pb.AckMessage) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	return tx.Read().Where("id = ?", ack.AckedMessageID).Delete(&models.OutgoingMessage{}).Error
+	return tx.Delete("id", ack.AckedMessageID, &models.OutgoingMessage{})
 }
 
 // SendACK sends an ACK for the message with the given ID to the provided
@@ -188,7 +189,6 @@ func (m *Messenger) retryAllMessages() {
 	m.mtx.RUnlock()
 
 	for _, message := range messages {
-
 		pmes := new(pb.Message)
 		if err := proto.Unmarshal(message.SerializedMessage, pmes); err != nil {
 			log.Error("Error unmarshalling outgoing message: %s", err)
