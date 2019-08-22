@@ -100,6 +100,8 @@ func (m *Messenger) ProcessACK(tx database.Tx, ack *pb.AckMessage) error {
 func (m *Messenger) SendACK(messageID string, peer peer.ID) {
 	log.Debugf("Sending ACK for message ID: %s", messageID)
 
+	m.wg.Add(1)
+
 	ack := &pb.AckMessage{
 		AckedMessageID: messageID,
 	}

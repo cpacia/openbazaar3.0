@@ -36,9 +36,8 @@ func TestMessenger(t *testing.T) {
 	}
 	defer db2.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	messenger1 := &Messenger{service1, db1, ctx, cancel, sync.RWMutex{}}
-	messenger2 := &Messenger{service2, db2, ctx, cancel, sync.RWMutex{}}
+	messenger1 := &Messenger{service1, db1, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
+	messenger2 := &Messenger{service2, db2, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
 
 	ch := make(chan struct{})
 	service2.RegisterHandler(pb.Message_PING, func(p peer.ID, msg *pb.Message) error {
@@ -115,8 +114,7 @@ func TestMessenger_retryAllMessages(t *testing.T) {
 	}
 	defer db1.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	messenger := &Messenger{service1, db1, ctx, cancel, sync.RWMutex{}}
+	messenger := &Messenger{service1, db1, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
 
 	err = db1.Update(func(tx database.Tx) error {
 		ping := &pb.Message{
