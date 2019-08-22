@@ -106,6 +106,8 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 	return event, nil
 }
 
+// validateOrderOpen checks all the fields in the order to make sure they are
+// properly formatted.
 func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpen) error {
 	if order.Listings == nil {
 		return errors.New("listings field is nil")
@@ -180,6 +182,10 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		// Validate pricing currency is not nil
 		if listing.Metadata.PricingCurrency == nil {
 			return fmt.Errorf("listing %d pricing currency is nil", i)
+		}
+		_, err = models.CurrencyDefinitions.Lookup(listing.Metadata.PricingCurrency.Code)
+		if err != nil {
+			return fmt.Errorf("item %d unknown pricing currency for listing", i)
 		}
 
 		// Validate listing item is not nil

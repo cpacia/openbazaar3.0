@@ -17,7 +17,7 @@ import (
 // RetryInterval is the interval at which retry sending messages
 // that haven't yet been ACKed.
 const (
-	RetryInterval = time.Minute * 10
+	RetryInterval = time.Minute * 1
 	SendTimeout   = time.Minute
 )
 
@@ -25,23 +25,23 @@ const (
 // New messages are saved to the database and continually retried
 // until the recipient receives it.
 type Messenger struct {
-	ns        *NetworkService
-	db        database.Database
-	ctx       context.Context
-	ctxCancel context.CancelFunc
-	mtx       sync.RWMutex
+	ns   *NetworkService
+	db   database.Database
+	done chan struct{}
+	mtx  sync.RWMutex
+	wg   sync.WaitGroup
 }
 
 // NewMessenger returns a Messenger and starts the retry service.
 func NewMessenger(ns *NetworkService, db database.Database) *Messenger {
-	ctx, cancel := context.WithCancel(context.Background())
-	m := &Messenger{ns, db, ctx, cancel, sync.RWMutex{}}
+	m := &Messenger{ns, db, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
 	return m
 }
 
 // Stop shuts down the Messenger.
 func (m *Messenger) Stop() {
-	m.ctxCancel()
+	close(m.done)
+	m.wg.Wait()
 }
 
 // ReliablySendMessage persists the message to the database before sending, then continually retries
@@ -50,8 +50,11 @@ func (m *Messenger) ReliablySendMessage(tx database.Tx, peer peer.ID, message *p
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
+	m.wg.Add(1)
+
 	ser, err := proto.Marshal(message)
 	if err != nil {
+		m.wg.Done()
 		return err
 	}
 
@@ -67,6 +70,7 @@ func (m *Messenger) ReliablySendMessage(tx database.Tx, peer peer.ID, message *p
 		LastAttempt:       time.Now(),
 	})
 	if err != nil {
+		m.wg.Done()
 		return err
 	}
 
@@ -127,7 +131,7 @@ func (m *Messenger) Start() {
 	ticker := time.NewTicker(RetryInterval)
 	for range ticker.C {
 		select {
-		case <-m.ctx.Done():
+		case <-m.done:
 			ticker.Stop()
 			return
 		default:
@@ -144,6 +148,7 @@ func (m *Messenger) trySendMessage(peer peer.ID, message *pb.Message, done chan<
 		if done != nil {
 			close(done)
 		}
+		m.wg.Done()
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), SendTimeout)
@@ -161,8 +166,13 @@ func (m *Messenger) trySendMessage(peer peer.ID, message *pb.Message, done chan<
 }
 
 // retryAllMessages loads all un-ACKed messages from the database and
-// tries to send them again.
+// tries to send them again using an exponential backoff.
 func (m *Messenger) retryAllMessages() {
+	// Increment the waitgroup to make sure we don't shutdown before
+	// this process finishes.
+	m.wg.Add(1)
+	defer m.wg.Done()
+
 	m.mtx.RLock()
 	var messages []models.OutgoingMessage
 	err := m.db.View(func(tx database.Tx) error {
@@ -176,6 +186,7 @@ func (m *Messenger) retryAllMessages() {
 	m.mtx.RUnlock()
 
 	for _, message := range messages {
+
 		pmes := new(pb.Message)
 		if err := proto.Unmarshal(message.SerializedMessage, pmes); err != nil {
 			log.Error("Error unmarshalling outgoing message: %s", err)
@@ -186,14 +197,55 @@ func (m *Messenger) retryAllMessages() {
 			log.Error("Error parsing peer ID in outgoing message: %s", err)
 			continue
 		}
-		go m.trySendMessage(pid, pmes, nil)
+		if shouldWeRetry(message.Timestamp, message.LastAttempt) {
+			m.wg.Add(1)
+			go m.trySendMessage(pid, pmes, nil)
 
-		err = m.db.Update(func(tx database.Tx) error {
-			return tx.Update("last_attempt", time.Now(), nil, &message)
-		})
-		if err != nil {
-			log.Error("Error updating last attempt for outgoing message: %s", err)
+			err = m.db.Update(func(tx database.Tx) error {
+				return tx.Update("last_attempt", time.Now(), nil, &message)
+			})
+			if err != nil {
+				log.Error("Error updating last attempt for outgoing message: %s", err)
+			}
 		}
-
 	}
+}
+
+// shouldWeRetry calculates an exponential backoff for message retries based
+// on how old the message is and how long since our last attempt.
+func shouldWeRetry(messageTimestamp time.Time, lastTry time.Time) bool {
+	timeSinceMessage := time.Since(messageTimestamp)
+	timeSinceLastTry := time.Since(lastTry)
+
+	switch t := timeSinceMessage; {
+	// Less than 15 minute old message, retry every minute.
+	case t < time.Minute*15 && timeSinceLastTry > time.Minute*1:
+		return true
+	// Less than 1 hour old message, retry every five minutes.
+	case t < time.Hour && timeSinceLastTry > time.Minute*5:
+		return true
+	// Less than 1 day old message, retry every ten minutes.
+	case t < time.Hour*24 && timeSinceLastTry > time.Minute*10:
+		return true
+	// Less than 1 week old message, retry every fifteen minutes.
+	case t < time.Hour*24*7 && timeSinceLastTry > time.Minute*15:
+		return true
+	// Less than 1 month old message, retry every thirty minutes.
+	case t < time.Hour*24*30 && timeSinceLastTry > time.Minute*30:
+		return true
+	// Less than 3 month old message, retry every hour.
+	case t < time.Hour*24*30*3 && timeSinceLastTry > time.Hour:
+		return true
+	// Less than 6 month old message, retry every three hours.
+	case t < time.Hour*24*30*6 && timeSinceLastTry > time.Hour*3:
+		return true
+	// Less than 1 year old message, retry every day.
+	case t < time.Hour*24*30*12 && timeSinceLastTry > time.Hour*24:
+		return true
+	// Older than 1 year old message, retry every week.
+	case t >= time.Hour*24*30*12 && timeSinceLastTry > time.Hour*24*7:
+		return true
+	}
+
+	return false
 }

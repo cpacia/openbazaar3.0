@@ -38,7 +38,7 @@ var (
 type Config struct {
 	ShowVersion           bool     `short:"v" long:"version" description:"Display version information and exit"`
 	ConfigFile            string   `short:"C" long:"configfile" description:"Path to configuration file"`
-	DataDir               string   `short:"b" long:"datadir" description:"Directory to store data"`
+	DataDir               string   `short:"d" long:"datadir" description:"Directory to store data"`
 	LogDir                string   `long:"logdir" description:"Directory to log output."`
 	LogLevel              string   `short:"l" long:"loglevel" description:"set the logging level [debug, info, notice, warning, error, critical]" default:"info"`
 	BoostrapAddrs         []string `long:"bootstrapaddr" description:"Override the default bootstrap addresses with the provided values"`

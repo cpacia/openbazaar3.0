@@ -29,11 +29,27 @@ var (
 		"MCK": {Name: "Mock", Code: CurrencyCode("MCK"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8},
 
 		// Crypto
-		"BTC": {Name: "Bitcoin", Code: CurrencyCode("BTC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8},
-		"BCH": {Name: "Bitcoin Cash", Code: CurrencyCode("BCH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8},
-		"LTC": {Name: "Litecoin", Code: CurrencyCode("LTC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8},
-		"ZEC": {Name: "Zcash", Code: CurrencyCode("ZEC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8},
-		"ETH": {Name: "Ethereum", Code: CurrencyCode("ETH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 18},
+		"BTC":   {Name: "Bitcoin", Code: CurrencyCode("BTC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 0},
+		"BCH":   {Name: "Bitcoin Cash", Code: CurrencyCode("BCH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 145},
+		"LTC":   {Name: "Litecoin", Code: CurrencyCode("LTC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 2},
+		"ZEC":   {Name: "Zcash", Code: CurrencyCode("ZEC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 133},
+		"ETH":   {Name: "Ethereum", Code: CurrencyCode("ETH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 18, Bip44Code: 60},
+		"XMR":   {Name: "Monero", Code: CurrencyCode("XMR"), CurrencyType: CurrencyTypeCrypto, Divisibility: 12, Bip44Code: 128},
+		"DASH":  {Name: "Dash", Code: CurrencyCode("DASH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 5},
+		"XRP":   {Name: "Ripple", Code: CurrencyCode("XRP"), CurrencyType: CurrencyTypeCrypto, Divisibility: 6, Bip44Code: 144},
+		"BNB":   {Name: "Binance Coin", Code: CurrencyCode("BNB"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 714},
+		"USDT":  {Name: "Tether", Code: CurrencyCode("USDT"), CurrencyType: CurrencyTypeCrypto, Divisibility: 6},
+		"EOS":   {Name: "EOS", Code: CurrencyCode("EOS"), CurrencyType: CurrencyTypeCrypto, Divisibility: 4, Bip44Code: 194},
+		"BSV":   {Name: "Bitcoin SV", Code: CurrencyCode("BSV"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 236},
+		"XLM":   {Name: "Stellar Lumens", Code: CurrencyCode("XLM"), CurrencyType: CurrencyTypeCrypto, Divisibility: 7, Bip44Code: 148},
+		"LEO":   {Name: "UNUS SED LEO", Code: CurrencyCode("LEO"), CurrencyType: CurrencyTypeCrypto, Divisibility: 18},
+		"ADA":   {Name: "Cardano", Code: CurrencyCode("ADA"), CurrencyType: CurrencyTypeCrypto, Divisibility: 6, Bip44Code: 1815},
+		"TRX":   {Name: "Tron", Code: CurrencyCode("TRX"), CurrencyType: CurrencyTypeCrypto, Divisibility: 6, Bip44Code: 195},
+		"LINK":  {Name: "Chainlink", Code: CurrencyCode("LINK"), CurrencyType: CurrencyTypeCrypto, Divisibility: 18},
+		"XTZ":   {Name: "Tezos", Code: CurrencyCode("XTZ"), CurrencyType: CurrencyTypeCrypto, Divisibility: 6, Bip44Code: 1729},
+		"NEO":   {Name: "NEO", Code: CurrencyCode("NEO"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 888},
+		"MIOTA": {Name: "IOTA", Code: CurrencyCode("MIOTA"), CurrencyType: CurrencyTypeCrypto, Divisibility: 6, Bip44Code: 4218},
+		"ETC":   {Name: "Ethereum Classic", Code: CurrencyCode("ETC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 18, Bip44Code: 61},
 
 		// Fiat
 		"AED": {Name: "UAE Dirham", Code: CurrencyCode("AED"), CurrencyType: CurrencyTypeFiat, Divisibility: 2},
@@ -267,6 +283,7 @@ type Currency struct {
 	Code         CurrencyCode
 	Divisibility uint
 	CurrencyType CurrencyType
+	Bip44Code    uint
 }
 
 // String returns a readable representation of CurrencyDefinition
