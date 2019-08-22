@@ -131,14 +131,14 @@ func (m *Messenger) Start() {
 
 	// Then every RetryInterval
 	ticker := time.NewTicker(RetryInterval)
-	for range ticker.C {
+	for {
 		select {
 		case <-m.done:
 			ticker.Stop()
 			return
-		default:
+		case <-ticker.C:
+			go m.retryAllMessages()
 		}
-		go m.retryAllMessages()
 	}
 }
 
