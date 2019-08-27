@@ -7,7 +7,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	_ "github.com/jinzhu/gorm/dialects/sqlite" // Import sqlite dialect
 	"os"
 	"path"
 	"sync"
@@ -21,7 +21,7 @@ var ErrReadOnly = errors.New("tx is read only")
 
 // FFSqliteDB is an implementation of the Database interface using
 // flat file store for the public data and a sqlite database.
-type FFSqliteDB struct {
+type DB struct {
 	db   *gorm.DB
 	ffdb *FlatFileDB
 	mtx  sync.RWMutex
@@ -37,7 +37,7 @@ func NewFFSqliteDB(dataDir string) (database.Database, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FFSqliteDB{db: db, ffdb: ffdb, mtx: sync.RWMutex{}}, nil
+	return &DB{db: db, ffdb: ffdb, mtx: sync.RWMutex{}}, nil
 }
 
 // NewFFSqliteDB instantiates a new db which satisfies the Database interface.
@@ -51,7 +51,7 @@ func NewFFMemoryDB(dataDir string) (database.Database, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FFSqliteDB{db: db, ffdb: ffdb, mtx: sync.RWMutex{}}, nil
+	return &DB{db: db, ffdb: ffdb, mtx: sync.RWMutex{}}, nil
 }
 
 // View invokes the passed function in the context of a managed
@@ -60,7 +60,7 @@ func NewFFMemoryDB(dataDir string) (database.Database, error) {
 //
 // Calling Rollback or Commit on the transaction passed to the
 // user-supplied function will result in a panic.
-func (fdb *FFSqliteDB) View(fn func(tx database.Tx) error) error {
+func (fdb *DB) View(fn func(tx database.Tx) error) error {
 	fdb.mtx.RLock()
 	defer fdb.mtx.RUnlock()
 
@@ -80,7 +80,7 @@ func (fdb *FFSqliteDB) View(fn func(tx database.Tx) error) error {
 //
 // Calling Rollback or Commit on the transaction passed to the
 // user-supplied function will result in a panic.
-func (fdb *FFSqliteDB) Update(fn func(tx database.Tx) error) error {
+func (fdb *DB) Update(fn func(tx database.Tx) error) error {
 	fdb.mtx.Lock()
 	defer fdb.mtx.Unlock()
 
@@ -93,14 +93,14 @@ func (fdb *FFSqliteDB) Update(fn func(tx database.Tx) error) error {
 }
 
 // PublicDataPath returns the path to the public data directory.
-func (fdb *FFSqliteDB) PublicDataPath() string {
+func (fdb *DB) PublicDataPath() string {
 	return fdb.ffdb.Path()
 }
 
 // Close cleanly shuts down the database and syncs all data.  It will
 // block until all database transactions have been finalized (rolled
 // back or committed).
-func (fdb *FFSqliteDB) Close() error {
+func (fdb *DB) Close() error {
 	fdb.mtx.Lock()
 	defer fdb.mtx.Unlock()
 

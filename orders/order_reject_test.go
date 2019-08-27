@@ -86,7 +86,7 @@ func TestOrderProcessor_OrderReject(t *testing.T) {
 			},
 			expectedError: nil,
 			expectedEvent: &events.OrderDeclinedNotification{
-				OrderId: "1234",
+				OrderID: "1234",
 				Thumbnail: events.Thumbnail{
 					Tiny:  tinyImageHash,
 					Small: smallImageHash,

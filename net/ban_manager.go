@@ -18,27 +18,27 @@ func NewBanManager(blockedIds []peer.ID) *BanManager {
 	return &BanManager{blockedMap, new(sync.RWMutex)}
 }
 
-func (bm *BanManager) AddBlockedId(peerId peer.ID) {
+func (bm *BanManager) AddBlockedID(peerID peer.ID) {
 	bm.Lock()
 	defer bm.Unlock()
-	bm.blockedIds[peerId.Pretty()] = true
+	bm.blockedIds[peerID.Pretty()] = true
 }
 
-func (bm *BanManager) RemoveBlockedId(peerId peer.ID) {
+func (bm *BanManager) RemoveBlockedID(peerID peer.ID) {
 	bm.Lock()
 	defer bm.Unlock()
-	if bm.blockedIds[peerId.Pretty()] {
-		delete(bm.blockedIds, peerId.Pretty())
+	if bm.blockedIds[peerID.Pretty()] {
+		delete(bm.blockedIds, peerID.Pretty())
 	}
 }
 
-func (bm *BanManager) SetBlockedIds(peerIds []peer.ID) {
+func (bm *BanManager) SetBlockedIds(peerIDs []peer.ID) {
 	bm.Lock()
 	defer bm.Unlock()
 
 	bm.blockedIds = make(map[string]bool)
 
-	for _, pid := range peerIds {
+	for _, pid := range peerIDs {
 		bm.blockedIds[pid.Pretty()] = true
 	}
 }
@@ -57,8 +57,8 @@ func (bm *BanManager) GetBlockedIds() []peer.ID {
 	return ret
 }
 
-func (bm *BanManager) IsBanned(peerId peer.ID) bool {
+func (bm *BanManager) IsBanned(peerID peer.ID) bool {
 	bm.RLock()
 	defer bm.RUnlock()
-	return bm.blockedIds[peerId.Pretty()]
+	return bm.blockedIds[peerID.Pretty()]
 }

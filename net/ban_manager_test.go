@@ -37,7 +37,7 @@ func TestBanManager_AddBlockedId(t *testing.T) {
 	bm := NewBanManager(nil)
 
 	for _, p := range banned {
-		bm.AddBlockedId(p)
+		bm.AddBlockedID(p)
 	}
 
 	for _, p := range banned {
@@ -52,7 +52,7 @@ func TestBanManager_RemoveBlockedId(t *testing.T) {
 	bm := NewBanManager(banned)
 
 	for _, p := range banned {
-		bm.RemoveBlockedId(p)
+		bm.RemoveBlockedID(p)
 	}
 
 	for _, p := range banned {

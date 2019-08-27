@@ -151,12 +151,12 @@ func TestFlatFileDB_Listing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if listing.Slug != slug {
-		t.Errorf("Incorrect listing returned. Expected slug %s got %s", slug, listing.Slug)
+	if listing.Listing.Slug != slug {
+		t.Errorf("Incorrect listing returned. Expected slug %s got %s", slug, listing.Listing.Slug)
 	}
 
-	if listing.RefundPolicy != policy {
-		t.Errorf("Incorrect listing returned. Expected policy %s got %s", policy, listing.RefundPolicy)
+	if listing.Listing.RefundPolicy != policy {
+		t.Errorf("Incorrect listing returned. Expected policy %s got %s", policy, listing.Listing.RefundPolicy)
 	}
 
 	sl, err = fdb.getSignedListing(slug)
@@ -165,11 +165,11 @@ func TestFlatFileDB_Listing(t *testing.T) {
 	}
 
 	if sl.Listing.Slug != slug {
-		t.Errorf("Incorrect listing returned. Expected slug %s got %s", slug, listing.Slug)
+		t.Errorf("Incorrect listing returned. Expected slug %s got %s", slug, listing.Listing.Slug)
 	}
 
 	if sl.Listing.RefundPolicy != policy {
-		t.Errorf("Incorrect listing returned. Expected policy %s got %s", policy, listing.RefundPolicy)
+		t.Errorf("Incorrect listing returned. Expected policy %s got %s", policy, listing.Listing.RefundPolicy)
 	}
 
 	if err := fdb.DeleteListing(slug); err != nil {

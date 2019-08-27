@@ -672,7 +672,7 @@ func convertCurrencyAmount(value *models.CurrencyValue, paymentCurrency *models.
 		return value.Amount, errors.New("error converting exchange rate to float")
 	}
 
-	div := new(big.Float).Quo(rateFloat, big.NewFloat(float64(math.Pow10(int(value.Currency.Divisibility)))))
+	div := new(big.Float).Quo(rateFloat, big.NewFloat(math.Pow10(int(value.Currency.Divisibility))))
 	div.Quo(big.NewFloat(1), div)
 
 	v, _ := div.Float64()

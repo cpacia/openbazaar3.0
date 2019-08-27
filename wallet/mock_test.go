@@ -30,7 +30,7 @@ func TestMockWallet_Spend(t *testing.T) {
 
 	spendAddrBytes := make([]byte, 20)
 	rand.Read(spendAddrBytes)
-	spendAddr := *iwallet.NewAddress(hex.EncodeToString(spendAddrBytes), iwallet.CtTestnetMock)
+	spendAddr := iwallet.NewAddress(hex.EncodeToString(spendAddrBytes), iwallet.CtTestnetMock)
 
 	dbtx, err := w.Begin()
 	if err != nil {
@@ -117,7 +117,7 @@ func TestMockWallet_SweepWallet(t *testing.T) {
 
 	spendAddrBytes := make([]byte, 20)
 	rand.Read(spendAddrBytes)
-	spendAddr := *iwallet.NewAddress(hex.EncodeToString(spendAddrBytes), iwallet.CtTestnetMock)
+	spendAddr := iwallet.NewAddress(hex.EncodeToString(spendAddrBytes), iwallet.CtTestnetMock)
 
 	dbtx, err := w.Begin()
 	if err != nil {
@@ -278,7 +278,7 @@ func TestMockWallet_SignMultisigTransaction(t *testing.T) {
 		},
 		To: []iwallet.SpendInfo{
 			{
-				Address: *iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtTestnetMock),
+				Address: iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtTestnetMock),
 				Amount:  iwallet.NewAmount(9000),
 			},
 		},
@@ -348,7 +348,7 @@ func TestMockWallet_1of2(t *testing.T) {
 		},
 		To: []iwallet.SpendInfo{
 			{
-				Address: *iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtTestnetMock),
+				Address: iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtTestnetMock),
 				Amount:  iwallet.NewAmount(9000),
 			},
 		},

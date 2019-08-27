@@ -345,55 +345,6 @@ func Test_validatePhysicalListing(t *testing.T) {
 		{
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
-				listing.Metadata.PricingCurrency = nil
-			},
-			valid: false,
-		},
-		{
-			listing: factory.NewPhysicalListing("test-listing"),
-			transform: func(listing *pb.Listing) {
-				listing.Metadata.PricingCurrency.Code = ""
-			},
-			valid: false,
-		},
-		{
-			listing: factory.NewPhysicalListing("test-listing"),
-			transform: func(listing *pb.Listing) {
-				listing.Metadata.PricingCurrency.Name = ""
-			},
-			valid: false,
-		},
-		{
-			listing: factory.NewPhysicalListing("test-listing"),
-			transform: func(listing *pb.Listing) {
-				listing.Metadata.PricingCurrency.CurrencyType = ""
-			},
-			valid: false,
-		},
-		{
-			listing: factory.NewPhysicalListing("test-listing"),
-			transform: func(listing *pb.Listing) {
-				listing.Metadata.PricingCurrency.Code = strings.Repeat("s", WordMaxCharacters+1)
-			},
-			valid: false,
-		},
-		{
-			listing: factory.NewPhysicalListing("test-listing"),
-			transform: func(listing *pb.Listing) {
-				listing.Metadata.PricingCurrency.Name = strings.Repeat("s", WordMaxCharacters+1)
-			},
-			valid: false,
-		},
-		{
-			listing: factory.NewPhysicalListing("test-listing"),
-			transform: func(listing *pb.Listing) {
-				listing.Metadata.PricingCurrency.CurrencyType = strings.Repeat("s", WordMaxCharacters+1)
-			},
-			valid: false,
-		},
-		{
-			listing: factory.NewPhysicalListing("test-listing"),
-			transform: func(listing *pb.Listing) {
 				listing.Item.Condition = strings.Repeat("s", SentenceMaxCharacters+1)
 			},
 			valid: false,
@@ -685,6 +636,55 @@ func Test_validateListing(t *testing.T) {
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata = nil
+			},
+			valid: false,
+		},
+		{
+			listing: factory.NewSignedListing(),
+			transform: func(sl *pb.SignedListing) {
+				sl.Listing.Metadata.PricingCurrency = nil
+			},
+			valid: false,
+		},
+		{
+			listing: factory.NewSignedListing(),
+			transform: func(sl *pb.SignedListing) {
+				sl.Listing.Metadata.PricingCurrency.Code = ""
+			},
+			valid: false,
+		},
+		{
+			listing: factory.NewSignedListing(),
+			transform: func(sl *pb.SignedListing) {
+				sl.Listing.Metadata.PricingCurrency.Name = ""
+			},
+			valid: false,
+		},
+		{
+			listing: factory.NewSignedListing(),
+			transform: func(sl *pb.SignedListing) {
+				sl.Listing.Metadata.PricingCurrency.CurrencyType = ""
+			},
+			valid: false,
+		},
+		{
+			listing: factory.NewSignedListing(),
+			transform: func(sl *pb.SignedListing) {
+				sl.Listing.Metadata.PricingCurrency.Code = strings.Repeat("s", WordMaxCharacters+1)
+			},
+			valid: false,
+		},
+		{
+			listing: factory.NewSignedListing(),
+			transform: func(sl *pb.SignedListing) {
+				sl.Listing.Metadata.PricingCurrency.Name = strings.Repeat("s", WordMaxCharacters+1)
+			},
+			valid: false,
+		},
+		{
+			listing: factory.NewSignedListing(),
+			transform: func(sl *pb.SignedListing) {
+				sl.Listing.Metadata.PricingCurrency.CurrencyType = strings.Repeat("s", WordMaxCharacters+1)
 			},
 			valid: false,
 		},

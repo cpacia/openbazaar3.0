@@ -111,8 +111,8 @@ func NewPhysicalListing(slug string) *pb.Listing {
 		Coupons: []*pb.Listing_Coupon{
 			{
 				Title:    "Insider's Discount",
-				Code:     &pb.Listing_Coupon_DiscountCode{"insider"},
-				Discount: &pb.Listing_Coupon_PercentDiscount{5},
+				Code:     &pb.Listing_Coupon_DiscountCode{DiscountCode: "insider"},
+				Discount: &pb.Listing_Coupon_PercentDiscount{PercentDiscount: 5},
 			},
 		},
 	}
@@ -166,8 +166,8 @@ func NewDigitalListing(slug string) *pb.Listing {
 		Coupons: []*pb.Listing_Coupon{
 			{
 				Title:    "Insider's Discount",
-				Code:     &pb.Listing_Coupon_DiscountCode{"insider"},
-				Discount: &pb.Listing_Coupon_PercentDiscount{5},
+				Code:     &pb.Listing_Coupon_DiscountCode{DiscountCode: "insider"},
+				Discount: &pb.Listing_Coupon_PercentDiscount{PercentDiscount: 5},
 			},
 		},
 	}

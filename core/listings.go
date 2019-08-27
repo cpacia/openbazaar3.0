@@ -437,6 +437,28 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 			return ErrTooManyCharacters{"metadata.acceptedcurrencies", strconv.Itoa(WordMaxCharacters)}
 		}
 	}
+	if sl.Listing.Metadata.PricingCurrency == nil {
+		return ErrMissingField("metadata.pricingcurrency")
+	}
+	if sl.Listing.Metadata.PricingCurrency.Code == "" {
+		return ErrMissingField("metadata.pricingcurrency.code")
+	}
+	if sl.Listing.Metadata.PricingCurrency.Name == "" {
+		return ErrMissingField("metadata.pricingcurrency.name")
+	}
+	if sl.Listing.Metadata.PricingCurrency.CurrencyType == "" {
+		return ErrMissingField("metadata.pricingcurrency.currencytype")
+	}
+	if len(sl.Listing.Metadata.PricingCurrency.Code) > WordMaxCharacters {
+		return ErrTooManyCharacters{"metadata.pricingcurrency.code", strconv.Itoa(WordMaxCharacters)}
+	}
+	if len(sl.Listing.Metadata.PricingCurrency.CurrencyType) > WordMaxCharacters {
+		return ErrTooManyCharacters{"metadata.pricingcurrency.currencyType", strconv.Itoa(WordMaxCharacters)}
+	}
+	if len(sl.Listing.Metadata.PricingCurrency.Name) > WordMaxCharacters {
+		return ErrTooManyCharacters{"metadata.pricingcurrency.name", strconv.Itoa(WordMaxCharacters)}
+	}
+	// TODO: validate divisibility
 
 	// Item
 	if sl.Listing.Item.Title == "" {
@@ -790,27 +812,6 @@ func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte) (*pb.Signed
 // validatePhysicalListing validates the part of the listing that is relevant to
 // physical listings.
 func validatePhysicalListing(listing *pb.Listing) error {
-	if listing.Metadata.PricingCurrency == nil {
-		return ErrMissingField("metadata.pricingcurrency")
-	}
-	if listing.Metadata.PricingCurrency.Code == "" {
-		return ErrMissingField("metadata.pricingcurrency.code")
-	}
-	if listing.Metadata.PricingCurrency.Name == "" {
-		return ErrMissingField("metadata.pricingcurrency.name")
-	}
-	if listing.Metadata.PricingCurrency.CurrencyType == "" {
-		return ErrMissingField("metadata.pricingcurrency.currencytype")
-	}
-	if len(listing.Metadata.PricingCurrency.Code) > WordMaxCharacters {
-		return ErrTooManyCharacters{"metadata.pricingcurrency.code", strconv.Itoa(WordMaxCharacters)}
-	}
-	if len(listing.Metadata.PricingCurrency.CurrencyType) > WordMaxCharacters {
-		return ErrTooManyCharacters{"metadata.pricingcurrency.currencyType", strconv.Itoa(WordMaxCharacters)}
-	}
-	if len(listing.Metadata.PricingCurrency.Name) > WordMaxCharacters {
-		return ErrTooManyCharacters{"metadata.pricingcurrency.name", strconv.Itoa(WordMaxCharacters)}
-	}
 	if len(listing.Item.Condition) > SentenceMaxCharacters {
 		return ErrTooManyCharacters{"item.condition", strconv.Itoa(SentenceMaxCharacters)}
 	}

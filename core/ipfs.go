@@ -35,10 +35,11 @@ const (
 // cat fetches a file from IPFS given a path.
 func (n *OpenBazaarNode) cat(pth path.Path) ([]byte, error) {
 	catDone := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.Background(), catTimeout)
 	defer func() {
+		cancel()
 		catDone <- struct{}{}
 	}()
-	ctx, cancel := context.WithTimeout(context.Background(), catTimeout)
 
 	api, err := coreapi.NewCoreAPI(n.ipfsNode)
 	if err != nil {
@@ -127,10 +128,11 @@ func (n *OpenBazaarNode) cid(file []byte) (cid.Cid, error) {
 // pin fetches a file from IPFS given a path and pins it.
 func (n *OpenBazaarNode) pin(pth path.Path) error {
 	pinDone := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.Background(), catTimeout)
 	defer func() {
+		cancel()
 		pinDone <- struct{}{}
 	}()
-	ctx, cancel := context.WithTimeout(context.Background(), catTimeout)
 
 	api, err := coreapi.NewCoreAPI(n.ipfsNode)
 	if err != nil {
@@ -305,7 +307,7 @@ func getFromDatastore(tx database.Tx, p peer.ID) (path.Path, error) {
 	if err := tx.Read().Where("peer_id = ?", p.String()).First(&entry).Error; err != nil {
 		return nil, err
 	}
-	return path.New(string("/ipfs/" + entry.CID)), nil
+	return path.New("/ipfs/" + entry.CID), nil
 }
 
 func putToDatastoreCache(tx database.Tx, p peer.ID, pth path.Path) error {

@@ -26,10 +26,10 @@ type ListingPrice struct {
 
 type OrderNotification struct {
 	BuyerHandle string       `json:"buyerHandle"`
-	BuyerID     string       `json:"buyerId"`
-	ID          string       `json:"notificationId"`
+	BuyerID     string       `json:"buyerID"`
+	ID          string       `json:"notificationID"`
 	ListingType string       `json:"listingType"`
-	OrderId     string       `json:"orderId"`
+	OrderID     string       `json:"orderID"`
 	Price       ListingPrice `json:"price"`
 	Slug        string       `json:"slug"`
 	Thumbnail   Thumbnail    `json:"thumbnail"`
@@ -39,8 +39,8 @@ type OrderNotification struct {
 func (n *OrderNotification) Type() string { return "OrderNotification" }
 
 type PaymentNotification struct {
-	ID           string `json:"notificationId"`
-	OrderId      string `json:"orderId"`
+	ID           string `json:"notificationID"`
+	OrderID      string `json:"orderID"`
 	FundingTotal uint64 `json:"fundingTotal"`
 	CoinType     string `json:"coinType"`
 }
@@ -48,82 +48,82 @@ type PaymentNotification struct {
 func (n *PaymentNotification) Type() string { return "PaymentNotification" }
 
 type OrderConfirmationNotification struct {
-	ID           string    `json:"notificationId"`
-	OrderId      string    `json:"orderId"`
+	ID           string    `json:"notificationID"`
+	OrderID      string    `json:"orderID"`
 	Thumbnail    Thumbnail `json:"thumbnail"`
 	VendorHandle string    `json:"vendorHandle"`
-	VendorID     string    `json:"vendorId"`
+	VendorID     string    `json:"vendorID"`
 }
 
 func (n *OrderConfirmationNotification) Type() string { return "OrderConfirmationNotification" }
 
 type OrderDeclinedNotification struct {
-	ID           string    `json:"notificationId"`
-	OrderId      string    `json:"orderId"`
+	ID           string    `json:"notificationID"`
+	OrderID      string    `json:"orderID"`
 	Thumbnail    Thumbnail `json:"thumbnail"`
 	VendorHandle string    `json:"vendorHandle"`
-	VendorID     string    `json:"vendorId"`
+	VendorID     string    `json:"vendorID"`
 }
 
 func (n *OrderDeclinedNotification) Type() string { return "OrderDeclinedNotification" }
 
 type OrderCancelNotification struct {
-	ID          string    `json:"notificationId"`
-	OrderId     string    `json:"orderId"`
+	ID          string    `json:"notificationID"`
+	OrderID     string    `json:"orderID"`
 	Thumbnail   Thumbnail `json:"thumbnail"`
 	BuyerHandle string    `json:"buyerHandle"`
-	BuyerID     string    `json:"buyerId"`
+	BuyerID     string    `json:"buyerID"`
 }
 
 func (n *OrderCancelNotification) Type() string { return "OrderCancelNotification" }
 
 type RefundNotification struct {
-	ID           string    `json:"notificationId"`
-	OrderId      string    `json:"orderId"`
+	ID           string    `json:"notificationID"`
+	OrderID      string    `json:"orderID"`
 	Thumbnail    Thumbnail `json:"thumbnail"`
 	VendorHandle string    `json:"vendorHandle"`
-	VendorID     string    `json:"vendorId"`
+	VendorID     string    `json:"vendorID"`
 }
 
 func (n *RefundNotification) Type() string { return "RefundNotification" }
 
 type FulfillmentNotification struct {
-	ID           string    `json:"notificationId"`
-	OrderId      string    `json:"orderId"`
+	ID           string    `json:"notificationID"`
+	OrderID      string    `json:"orderID"`
 	Thumbnail    Thumbnail `json:"thumbnail"`
 	VendorHandle string    `json:"vendorHandle"`
-	VendorID     string    `json:"vendorId"`
+	VendorID     string    `json:"vendorID"`
 }
 
 func (n *FulfillmentNotification) Type() string { return "FulfillmentNotification" }
 
 type ProcessingErrorNotification struct {
-	ID           string    `json:"notificationId"`
-	OrderId      string    `json:"orderId"`
+	ID           string    `json:"notificationID"`
+	OrderID      string    `json:"orderID"`
 	Thumbnail    Thumbnail `json:"thumbnail"`
 	VendorHandle string    `json:"vendorHandle"`
-	VendorID     string    `json:"vendorId"`
+	VendorID     string    `json:"vendorID"`
 }
 
 func (n *ProcessingErrorNotification) Type() string { return "ProcessingErrorNotification" }
 
 type CompletionNotification struct {
-	ID          string    `json:"notificationId"`
-	OrderId     string    `json:"orderId"`
+	ID          string    `json:"notificationID"`
+	OrderID     string    `json:"orderID"`
 	Thumbnail   Thumbnail `json:"thumbnail"`
 	BuyerHandle string    `json:"buyerHandle"`
-	BuyerID     string    `json:"buyerId"`
+	BuyerID     string    `json:"buyerID"`
 }
 
 func (n *CompletionNotification) Type() string { return "CompletionNotification" }
 
 type DisputeOpenNotification struct {
-	ID             string    `json:"notificationId"`
-	OrderId        string    `json:"orderId"`
+	ID             string    `json:"notificationID"`
+	OrderID        string    `json:"orderID"`
 	Thumbnail      Thumbnail `json:"thumbnail"`
-	DisputerID     string    `json:"disputerId"`
+	DisputerID     string    `json:"disputerID"`
 	DisputerHandle string    `json:"disputerHandle"`
-	DisputeeID     string    `json:"disputeeId"`
+	DisputeeID     string    `json:"disputeeID"`
 	DisputeeHandle string    `json:"disputeeHandle"`
 	Buyer          string    `json:"buyer"`
 }
@@ -131,12 +131,12 @@ type DisputeOpenNotification struct {
 func (n *DisputeOpenNotification) Type() string { return "DisputeOpenNotification" }
 
 type DisputeUpdateNotification struct {
-	ID             string    `json:"notificationId"`
-	OrderId        string    `json:"orderId"`
+	ID             string    `json:"notificationID"`
+	OrderID        string    `json:"orderId"`
 	Thumbnail      Thumbnail `json:"thumbnail"`
-	DisputerID     string    `json:"disputerId"`
+	DisputerID     string    `json:"disputerID"`
 	DisputerHandle string    `json:"disputerHandle"`
-	DisputeeID     string    `json:"disputeeId"`
+	DisputeeID     string    `json:"disputeeID"`
 	DisputeeHandle string    `json:"disputeeHandle"`
 	Buyer          string    `json:"buyer"`
 }
@@ -144,10 +144,10 @@ type DisputeUpdateNotification struct {
 func (n *DisputeUpdateNotification) Type() string { return "DisputeUpdateNotification" }
 
 type DisputeCloseNotification struct {
-	ID               string    `json:"notificationId"`
-	OrderId          string    `json:"orderId"`
+	ID               string    `json:"notificationID"`
+	OrderID          string    `json:"orderID"`
 	Thumbnail        Thumbnail `json:"thumbnail"`
-	OtherPartyID     string    `json:"otherPartyId"`
+	OtherPartyID     string    `json:"otherPartyID"`
 	OtherPartyHandle string    `json:"otherPartyHandle"`
 	Buyer            string    `json:"buyer"`
 }
@@ -155,10 +155,10 @@ type DisputeCloseNotification struct {
 func (n *DisputeCloseNotification) Type() string { return "DisputeCloseNotification" }
 
 type DisputeAcceptedNotification struct {
-	ID               string    `json:"notificationId"`
-	OrderId          string    `json:"orderId"`
+	ID               string    `json:"notificationID"`
+	OrderID          string    `json:"orderID"`
 	Thumbnail        Thumbnail `json:"thumbnail"`
-	OherPartyID      string    `json:"otherPartyId"`
+	OherPartyID      string    `json:"otherPartyID"`
 	OtherPartyHandle string    `json:"otherPartyHandle"`
 	Buyer            string    `json:"buyer"`
 }
@@ -166,29 +166,29 @@ type DisputeAcceptedNotification struct {
 func (n *DisputeAcceptedNotification) Type() string { return "DisputeAcceptedNotification" }
 
 type FollowNotification struct {
-	ID     string `json:"notificationId"`
+	ID     string `json:"notificationID"`
 	PeerID string `json:"peerID"`
 }
 
 func (n *FollowNotification) Type() string { return "FollowNotification" }
 
 type UnfollowNotification struct {
-	ID     string `json:"notificationId"`
+	ID     string `json:"notificationID"`
 	PeerID string `json:"peerID"`
 }
 
 func (n *UnfollowNotification) Type() string { return "UnfollowNotification" }
 
 type ModeratorAddNotification struct {
-	ID     string `json:"notificationId"`
-	PeerId string `json:"peerId"`
+	ID     string `json:"notificationID"`
+	PeerID string `json:"peerID"`
 }
 
 func (n *ModeratorAddNotification) Type() string { return "ModeratorAddNotification" }
 
 type ModeratorRemoveNotification struct {
-	ID     string `json:"notificationId"`
-	PeerId string `json:"peerId"`
+	ID     string `json:"notificationID"`
+	PeerID string `json:"peerID"`
 }
 
 func (n *ModeratorRemoveNotification) Type() string { return "ModeratorRemoveNotification" }
@@ -237,7 +237,7 @@ type IncomingTransactionNotification struct {
 	Memo          string    `json:"memo"`
 	Timestamp     time.Time `json:"timestamp"`
 	Confirmations int32     `json:"confirmations"`
-	OrderId       string    `json:"orderId"`
+	OrderID       string    `json:"orderId"`
 	Thumbnail     string    `json:"thumbnail"`
 	Height        int32     `json:"height"`
 	CanBumpFee    bool      `json:"canBumpFee"`
@@ -249,8 +249,8 @@ func (n *IncomingTransactionNotification) Type() string { return "IncomingTransa
 // which will soon be unable to dispute. The Type indicates the age of the
 // purchase and OrderID references the purchases orderID in the database schema
 type VendorDisputeTimeoutNotification struct {
-	ID        string    `json:"notificationId"`
-	OrderID   string    `json:"purchaseOrderId"`
+	ID        string    `json:"notificationID"`
+	OrderID   string    `json:"purchaseOrderID"`
 	ExpiresIn uint      `json:"expiresIn"`
 	Thumbnail Thumbnail `json:"thumbnail"`
 }
@@ -260,9 +260,9 @@ func (n *VendorDisputeTimeoutNotification) Type() string { return "VendorDispute
 // BuyerDisputeTimeout represents a notification about a purchase
 // which will soon be unable to dispute.
 type BuyerDisputeTimeoutNotification struct {
-	ID        string    `json:"notificationId"`
-	OrderID   string    `json:"orderId"`
-	ExpiresIn uint      `json:"expiresIn"`
+	ID        string    `json:"notificationID"`
+	OrderID   string    `json:"orderID"`
+	ExpiresIn uint      `json:"expiresID"`
 	Thumbnail Thumbnail `json:"thumbnail"`
 }
 
@@ -271,8 +271,8 @@ func (n *BuyerDisputeTimeoutNotification) Type() string { return "BuyerDisputeTi
 // BuyerDisputeExpiry represents a notification about a purchase
 // which has an open dispute that is expiring
 type BuyerDisputeExpiryNotification struct {
-	ID        string    `json:"notificationId"`
-	OrderID   string    `json:"orderId"`
+	ID        string    `json:"notificationID"`
+	OrderID   string    `json:"orderID"`
 	ExpiresIn uint      `json:"expiresIn"`
 	Thumbnail Thumbnail `json:"thumbnail"`
 }
@@ -282,8 +282,8 @@ func (n *BuyerDisputeExpiryNotification) Type() string { return "BuyerDisputeExp
 // VendorFinalizedPayment represents a notification about a purchase
 // which will soon be unable to dispute.
 type VendorFinalizedPaymentNotification struct {
-	ID      string `json:"notificationId"`
-	OrderID string `json:"orderId"`
+	ID      string `json:"notificationID"`
+	OrderID string `json:"orderID"`
 }
 
 func (n *VendorFinalizedPaymentNotification) Type() string {
@@ -295,8 +295,8 @@ func (n *VendorFinalizedPaymentNotification) Type() string {
 // the age of the dispute case and the CaseID references the cases caseID
 // in the database schema
 type ModeratorDisputeExpiryNotification struct {
-	ID        string    `json:"notificationId"`
-	CaseID    string    `json:"disputeCaseId"`
+	ID        string    `json:"notificationID"`
+	CaseID    string    `json:"disputeCaseID"`
 	ExpiresIn uint      `json:"expiresIn"`
 	Thumbnail Thumbnail `json:"thumbnail"`
 }

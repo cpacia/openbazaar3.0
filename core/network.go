@@ -341,12 +341,12 @@ func (n *OpenBazaarNode) republish() {
 
 	n.republishChan = make(chan struct{})
 
-	tick := time.After(republishInterval - time.Now().Sub(lastPublish))
+	tick := time.After(republishInterval - time.Since(lastPublish))
 	for {
 		select {
 		case <-tick:
 			lastPublish = time.Now()
-			tick = time.After(republishInterval - time.Now().Sub(lastPublish))
+			tick = time.After(republishInterval - time.Since(lastPublish))
 			err = n.repo.DB().Update(func(tx database.Tx) error {
 				return tx.Save(&models.Event{Name: "last_publish", Time: lastPublish})
 			})
@@ -356,7 +356,7 @@ func (n *OpenBazaarNode) republish() {
 			n.Publish(nil)
 		case <-n.republishChan:
 			lastPublish = time.Now()
-			tick = time.After(republishInterval - time.Now().Sub(lastPublish))
+			tick = time.After(republishInterval - time.Since(lastPublish))
 		case <-n.shutdown:
 			return
 		}

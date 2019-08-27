@@ -441,21 +441,21 @@ func TestFFSqliteDB_listing(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if l1.Slug != listing1.Listing.Slug {
-			t.Errorf("Returned incorrect listing slug. Expected %s, got %s", listing1.Listing.Slug, l1.Slug)
+		if l1.Listing.Slug != listing1.Listing.Slug {
+			t.Errorf("Returned incorrect listing slug. Expected %s, got %s", listing1.Listing.Slug, l1.Listing.Slug)
 		}
-		if l1.TermsAndConditions != listing2.Listing.TermsAndConditions {
-			t.Errorf("Returned incorrect listing terms. Expected %s, got %s", listing2.Listing.TermsAndConditions, l1.TermsAndConditions)
+		if l1.Listing.TermsAndConditions != listing2.Listing.TermsAndConditions {
+			t.Errorf("Returned incorrect listing terms. Expected %s, got %s", listing2.Listing.TermsAndConditions, l1.Listing.TermsAndConditions)
 		}
 		l3, err := tx.GetListing(listing3.Listing.Slug)
 		if err != nil {
 			return err
 		}
-		if l3.Slug != listing3.Listing.Slug {
-			t.Errorf("Returned incorrect listing slug. Expected %s, got %s", listing3.Listing.Slug, l3.Slug)
+		if l3.Listing.Slug != listing3.Listing.Slug {
+			t.Errorf("Returned incorrect listing slug. Expected %s, got %s", listing3.Listing.Slug, l3.Listing.Slug)
 		}
-		if l3.TermsAndConditions != listing3.Listing.TermsAndConditions {
-			t.Errorf("Returned incorrect listing terms. Expected %s, got %s", listing3.Listing.TermsAndConditions, l3.TermsAndConditions)
+		if l3.Listing.TermsAndConditions != listing3.Listing.TermsAndConditions {
+			t.Errorf("Returned incorrect listing terms. Expected %s, got %s", listing3.Listing.TermsAndConditions, l3.Listing.TermsAndConditions)
 		}
 		return nil
 	})
@@ -463,8 +463,8 @@ func TestFFSqliteDB_listing(t *testing.T) {
 		t.Error(err)
 	}
 	var (
-		l1 *pb.Listing
-		l3 *pb.Listing
+		l1 *pb.SignedListing
+		l3 *pb.SignedListing
 	)
 	err = db.View(func(tx database.Tx) error {
 		l1, err = tx.GetListing(listing1.Listing.Slug)
@@ -477,27 +477,27 @@ func TestFFSqliteDB_listing(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if l1.Slug != listing1.Listing.Slug {
-		t.Errorf("Returned incorrect listing slug. Expected %s, got %s", listing1.Listing.Slug, l1.Slug)
+	if l1.Listing.Slug != listing1.Listing.Slug {
+		t.Errorf("Returned incorrect listing slug. Expected %s, got %s", listing1.Listing.Slug, l1.Listing.Slug)
 	}
-	if l1.TermsAndConditions != listing2.Listing.TermsAndConditions {
-		t.Errorf("Returned incorrect listing terms. Expected %s, got %s", listing2.Listing.TermsAndConditions, l1.TermsAndConditions)
+	if l1.Listing.TermsAndConditions != listing2.Listing.TermsAndConditions {
+		t.Errorf("Returned incorrect listing terms. Expected %s, got %s", listing2.Listing.TermsAndConditions, l1.Listing.TermsAndConditions)
 	}
-	if l3.Slug != listing3.Listing.Slug {
-		t.Errorf("Returned incorrect listing slug. Expected %s, got %s", listing3.Listing.Slug, l3.Slug)
+	if l3.Listing.Slug != listing3.Listing.Slug {
+		t.Errorf("Returned incorrect listing slug. Expected %s, got %s", listing3.Listing.Slug, l3.Listing.Slug)
 	}
-	if l3.TermsAndConditions != listing3.Listing.TermsAndConditions {
-		t.Errorf("Returned incorrect listing terms. Expected %s, got %s", listing3.Listing.TermsAndConditions, l3.TermsAndConditions)
+	if l3.Listing.TermsAndConditions != listing3.Listing.TermsAndConditions {
+		t.Errorf("Returned incorrect listing terms. Expected %s, got %s", listing3.Listing.TermsAndConditions, l3.Listing.TermsAndConditions)
 	}
 
 	err = db.Update(func(tx database.Tx) error {
-		return tx.DeleteListing(l1.Slug)
+		return tx.DeleteListing(l1.Listing.Slug)
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = db.View(func(tx database.Tx) error {
-		l1, err = tx.GetListing(l1.Slug)
+		l1, err = tx.GetListing(l1.Listing.Slug)
 		if !os.IsNotExist(err) {
 			t.Error("Deleted listing still exists")
 		}

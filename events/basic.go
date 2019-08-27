@@ -79,7 +79,7 @@ func (b *basicBus) Subscribe(evtTypes interface{}, opts ...SubscriptionOpt) (_ S
 	b.lk.Lock()
 	defer b.lk.Unlock()
 
-	settings := subSettings(subSettingsDefault)
+	settings := subSettingsDefault
 	for _, opt := range opts {
 		if err := opt(&settings); err != nil {
 			return nil, err

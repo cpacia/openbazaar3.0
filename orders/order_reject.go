@@ -45,7 +45,7 @@ func (op *OrderProcessor) handleOrderRejectMessage(dbtx database.Tx, order *mode
 	}
 
 	event := &events.OrderDeclinedNotification{
-		OrderId: order.ID.String(),
+		OrderID: order.ID.String(),
 		Thumbnail: events.Thumbnail{
 			Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
 			Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,

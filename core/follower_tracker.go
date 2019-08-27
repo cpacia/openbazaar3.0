@@ -101,7 +101,7 @@ func (t *FollowerTracker) Close() {
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
 	for pid, connectedTime := range t.connected {
-		connectedDuration := time.Now().Sub(connectedTime)
+		connectedDuration := time.Since(connectedTime)
 
 		err := t.repo.DB().Update(func(tx database.Tx) error {
 			var stat models.FollowerStat
@@ -172,7 +172,7 @@ func (t *FollowerTracker) listenEvents() {
 				t.connected[notif.Peer] = time.Now()
 			}
 			t.mtx.Unlock()
-			t.bus.Emit(&events.TrackerPeerConnected{notif.Peer})
+			t.bus.Emit(&events.TrackerPeerConnected{Peer: notif.Peer})
 		case event := <-disonnectedSub.Out():
 			notif, ok := event.(*events.PeerDisconnected)
 			if !ok {
@@ -186,7 +186,7 @@ func (t *FollowerTracker) listenEvents() {
 					t.mtx.Unlock()
 					continue
 				}
-				connectedDuration := time.Now().Sub(connectedTime)
+				connectedDuration := time.Since(connectedTime)
 
 				err := t.repo.DB().Update(func(tx database.Tx) error {
 					var stat models.FollowerStat
@@ -205,7 +205,7 @@ func (t *FollowerTracker) listenEvents() {
 				delete(t.connected, notif.Peer)
 			}
 			t.mtx.Unlock()
-			t.bus.Emit(&events.TrackerPeerDisconnected{notif.Peer})
+			t.bus.Emit(&events.TrackerPeerDisconnected{Peer: notif.Peer})
 		case event := <-followerSub.Out():
 			notif, ok := event.(*events.FollowNotification)
 			if !ok {
@@ -220,7 +220,7 @@ func (t *FollowerTracker) listenEvents() {
 			t.mtx.Lock()
 			t.followers[pid] = true
 			t.mtx.Unlock()
-			t.bus.Emit(&events.TrackerFollow{pid})
+			t.bus.Emit(&events.TrackerFollow{Peer: pid})
 
 		case event := <-unfollowerSub.Out():
 			notif, ok := event.(*events.UnfollowNotification)
@@ -236,11 +236,14 @@ func (t *FollowerTracker) listenEvents() {
 			t.mtx.Lock()
 			delete(t.followers, pid)
 			t.mtx.Unlock()
-			t.bus.Emit(&events.TrackerUnfollow{pid})
+			t.bus.Emit(&events.TrackerUnfollow{Peer: pid})
 
 		case pid := <-t.peerCh:
-			ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
-			go t.net.DialPeer(ctx, pid)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+			go func() {
+				defer cancel()
+				t.net.DialPeer(ctx, pid)
+			}()
 
 		case <-t.shutdown:
 			return

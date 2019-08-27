@@ -32,7 +32,7 @@ func NewNotificationRecord(notification events.TypedNotification) (*Notification
 	return &NotificationRecord{
 		ID:         newNofificationID(),
 		Timestamp:  time.Now(),
-		Type:       string(notification.Type()),
+		Type:       notification.Type(),
 		Serialized: out,
 	}, nil
 }

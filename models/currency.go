@@ -186,7 +186,7 @@ var (
 		"TJS": {Name: "Somoni", Code: CurrencyCode("TJS"), CurrencyType: CurrencyTypeFiat, Divisibility: 2},
 		"TMT": {Name: "Turkmenistan New Manat", Code: CurrencyCode("TMT"), CurrencyType: CurrencyTypeFiat, Divisibility: 2},
 		"TND": {Name: "Tunisian Dinar", Code: CurrencyCode("TND"), CurrencyType: CurrencyTypeFiat, Divisibility: 2},
-		"TOP": {Name: "Pa\"anga", Code: CurrencyCode("TOP"), CurrencyType: CurrencyTypeFiat, Divisibility: 2},
+		"TOP": {Name: "Paanga", Code: CurrencyCode("TOP"), CurrencyType: CurrencyTypeFiat, Divisibility: 2},
 		"TRY": {Name: "Turkish Lira", Code: CurrencyCode("TRY"), CurrencyType: CurrencyTypeFiat, Divisibility: 2},
 		"TTD": {Name: "Trinidad and Tobago Dollar", Code: CurrencyCode("TTD"), CurrencyType: CurrencyTypeFiat, Divisibility: 2},
 		"TWD": {Name: "New Taiwan Dollar", Code: CurrencyCode("TWD"), CurrencyType: CurrencyTypeFiat, Divisibility: 2},
@@ -327,43 +327,43 @@ type CurrencyValue struct {
 	Currency *Currency
 }
 
-func (c *CurrencyValue) MarshalJSON() ([]byte, error) {
-	type currencyJson struct {
+func (cv *CurrencyValue) MarshalJSON() ([]byte, error) {
+	type currencyJSON struct {
 		Amount   string   `json:"amount"`
 		Currency Currency `json:"currency"`
 	}
 
-	c0 := currencyJson{
+	c0 := currencyJSON{
 		Amount:   "0",
 		Currency: Currency{},
 	}
 
-	c0.Amount = c.Amount.String()
+	c0.Amount = cv.Amount.String()
 
-	if c.Currency != nil {
+	if cv.Currency != nil {
 		c0.Currency = Currency{
-			Code:         c.Currency.Code,
-			Divisibility: c.Currency.Divisibility,
-			Name:         c.Currency.Name,
-			CurrencyType: c.Currency.CurrencyType,
+			Code:         cv.Currency.Code,
+			Divisibility: cv.Currency.Divisibility,
+			Name:         cv.Currency.Name,
+			CurrencyType: cv.Currency.CurrencyType,
 		}
 	}
 
 	return json.Marshal(c0)
 }
 
-func (c *CurrencyValue) UnmarshalJSON(b []byte) error {
-	type currencyJson struct {
+func (cv *CurrencyValue) UnmarshalJSON(b []byte) error {
+	type currencyJSON struct {
 		Amount   string   `json:"amount"`
 		Currency Currency `json:"currency"`
 	}
 
-	var c0 currencyJson
+	var c0 currencyJSON
 
 	err := json.Unmarshal(b, &c0)
 	if err == nil {
-		c.Amount = iwallet.NewAmount(c0.Amount)
-		c.Currency = &c0.Currency
+		cv.Amount = iwallet.NewAmount(c0.Amount)
+		cv.Currency = &c0.Currency
 	}
 
 	return err
@@ -388,43 +388,43 @@ func NewCurrencyValue(amount string, currency *Currency) *CurrencyValue {
 }
 
 // AmountInt64 returns a valid int64 or an error
-func (v *CurrencyValue) AmountInt64() (int64, error) {
-	if !v.Amount.IsInt64() {
+func (cv *CurrencyValue) AmountInt64() (int64, error) {
+	if !cv.Amount.IsInt64() {
 		return 0, ErrCurrencyValueInsufficientPrecision
 	}
-	return v.Amount.Int64(), nil
+	return cv.Amount.Int64(), nil
 }
 
 // AmountUint64 returns a valid int64 or an error
-func (v *CurrencyValue) AmountUint64() (uint64, error) {
-	if !v.Amount.IsUint64() {
+func (cv *CurrencyValue) AmountUint64() (uint64, error) {
+	if !cv.Amount.IsUint64() {
 		return 0, ErrCurrencyValueInsufficientPrecision
 	}
-	return v.Amount.Uint64(), nil
+	return cv.Amount.Uint64(), nil
 }
 
 // String returns a string representation of a CurrencyValue
-func (v *CurrencyValue) String() string {
-	return fmt.Sprintf("%s %s", v.Amount.String(), v.Currency.String())
+func (cv *CurrencyValue) String() string {
+	return fmt.Sprintf("%s %s", cv.Amount.String(), cv.Currency.String())
 }
 
 // Equal indicates if the amount and variety of currency is equivalent
-func (v *CurrencyValue) Equal(other *CurrencyValue) bool {
-	if v == nil || other == nil {
+func (cv *CurrencyValue) Equal(other *CurrencyValue) bool {
+	if cv == nil || other == nil {
 		return false
 	}
-	if !v.Currency.Equal(other.Currency) {
+	if !cv.Currency.Equal(other.Currency) {
 		return false
 	}
-	return v.Amount.Cmp(other.Amount) == 0
+	return cv.Amount.Cmp(other.Amount) == 0
 }
 
 // ConvertTo will perform the following math:
 // v.Amount * exchangeRate * (final.Currency.Divisibility/v.Currency.Divisibility)
 // where v is the receiver, exchangeRate is the ratio of (1 final.Currency/v.Currency)
 // v and final must both be Valid() and exchangeRate must not be zero.
-func (v *CurrencyValue) ConvertTo(final *Currency, exchangeRate float64) (*CurrencyValue, error) {
-	if final == nil || v.Currency == nil {
+func (cv *CurrencyValue) ConvertTo(final *Currency, exchangeRate float64) (*CurrencyValue, error) {
+	if final == nil || cv.Currency == nil {
 		return nil, fmt.Errorf("cannot convert invalid value")
 	}
 	if exchangeRate <= 0 {
@@ -436,13 +436,13 @@ func (v *CurrencyValue) ConvertTo(final *Currency, exchangeRate float64) (*Curre
 		currencyRate     = new(big.Float)
 		divisibilityRate = new(big.Float)
 
-		divRateFloat = math.Pow10(int(final.Divisibility)) / math.Pow10(int(v.Currency.Divisibility))
+		divRateFloat = math.Pow10(int(final.Divisibility)) / math.Pow10(int(cv.Currency.Divisibility))
 	)
 
 	currencyRate.SetFloat64(exchangeRate)
 	divisibilityRate.SetFloat64(divRateFloat)
 
-	x := big.Int(v.Amount)
+	x := big.Int(cv.Amount)
 	j.SetInt(&x)
 	j.Mul(j, currencyRate)
 	j.Mul(j, divisibilityRate)
