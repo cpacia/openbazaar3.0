@@ -108,7 +108,7 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 
 			orderOpen.Payment.Method = pb.OrderOpen_Payment_CANCELABLE
 			orderOpen.Payment.Address = address.String()
-			orderOpen.Payment.AdditionalAddressData = hex.EncodeToString(script)
+			orderOpen.Payment.Script = hex.EncodeToString(script)
 			orderOpen.Payment.EscrowReleaseFee = escrowFee.String()
 		} else {
 			if err := wallet.ValidateAddress(paymentAddress); err != nil {

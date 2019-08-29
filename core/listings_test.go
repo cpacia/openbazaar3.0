@@ -275,6 +275,7 @@ func Test_validateMarketPriceListing(t *testing.T) {
 		valid     bool
 	}{
 		{
+			// Valid
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
@@ -283,6 +284,7 @@ func Test_validateMarketPriceListing(t *testing.T) {
 			valid: true,
 		},
 		{
+			// Price modifier is at lower bound
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
@@ -292,6 +294,7 @@ func Test_validateMarketPriceListing(t *testing.T) {
 			valid: true,
 		},
 		{
+			// Price modifier is at upper bound
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
@@ -301,6 +304,7 @@ func Test_validateMarketPriceListing(t *testing.T) {
 			valid: true,
 		},
 		{
+			// Price modifier too small
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
@@ -310,6 +314,7 @@ func Test_validateMarketPriceListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Price modifier too big
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
@@ -338,11 +343,13 @@ func Test_validatePhysicalListing(t *testing.T) {
 		valid     bool
 	}{
 		{
+			// Valid
 			listing:   factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {},
 			valid:     true,
 		},
 		{
+			// Condition too long
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Item.Condition = strings.Repeat("s", SentenceMaxCharacters+1)
@@ -350,6 +357,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many options
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				for i := 0; i < MaxListItems+1; i++ {
@@ -361,6 +369,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// No shipping options
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions = []*pb.Listing_ShippingOption{}
@@ -368,6 +377,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many shipping options
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions = []*pb.Listing_ShippingOption{}
@@ -380,6 +390,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Shipping option name is ""
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = ""
@@ -387,6 +398,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Shipping option name too long
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = strings.Repeat("s", WordMaxCharacters+1)
@@ -397,6 +409,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Duplicate shipping region
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions = []*pb.Listing_ShippingOption{}
@@ -412,6 +425,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Shipping option type out of enum range
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -423,6 +437,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// No regions selected
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -432,6 +447,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid country code
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -443,6 +459,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Region out of enum range
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -454,6 +471,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many regions
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -466,6 +484,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// No services
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -475,6 +494,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many services
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -489,6 +509,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Name is ""
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -502,6 +523,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Name too long
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -515,6 +537,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Duplicate name
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -532,6 +555,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Estimated delivery is ""
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -545,6 +569,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Estimated delivery too long
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -559,6 +584,7 @@ func Test_validatePhysicalListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Price too long
 			listing: factory.NewPhysicalListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions[0].Name = "afsdf"
@@ -600,11 +626,13 @@ func Test_validateListing(t *testing.T) {
 		valid     bool
 	}{
 		{
+			// Valid listing
 			listing:   factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {},
 			valid:     true,
 		},
 		{
+			// Slug is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Slug = ""
@@ -612,6 +640,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Slug too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Slug = strings.Repeat("s", SentenceMaxCharacters+1)
@@ -619,6 +648,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Slug is blank
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Slug = " "
@@ -626,6 +656,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Slug contains invalid character
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Slug = "/"
@@ -633,6 +664,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Metadata is nil
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata = nil
@@ -640,6 +672,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Pricing currency is nil
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.PricingCurrency = nil
@@ -647,6 +680,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Pricing currency code is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.PricingCurrency.Code = ""
@@ -654,6 +688,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Pricing currency name is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.PricingCurrency.Name = ""
@@ -661,6 +696,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Pricing currency type is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.PricingCurrency.CurrencyType = ""
@@ -668,6 +704,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Pricing currency code too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.PricingCurrency.Code = strings.Repeat("s", WordMaxCharacters+1)
@@ -675,6 +712,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Pricing currency name too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.PricingCurrency.Name = strings.Repeat("s", WordMaxCharacters+1)
@@ -682,6 +720,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Pricing currency type too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.PricingCurrency.CurrencyType = strings.Repeat("s", WordMaxCharacters+1)
@@ -689,6 +728,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Contract type out of enum range
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.ContractType = pb.Listing_Metadata_CRYPTOCURRENCY + 1
@@ -696,6 +736,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Format out of enum range
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE + 1
@@ -703,6 +744,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Expiry is nil
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.Expiry = nil
@@ -710,6 +752,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Expiry is in the past
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				ts, _ := ptypes.TimestampProto(time.Time{})
@@ -718,6 +761,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Language too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.Language = strings.Repeat("s", WordMaxCharacters+1)
@@ -725,6 +769,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Escrow timeout hours is incorrect
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				node.testnet = false
@@ -733,6 +778,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// No accepted currencies
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.AcceptedCurrencies = []string{}
@@ -740,6 +786,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many accepted currencies
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.AcceptedCurrencies = []string{}
@@ -750,6 +797,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Accepted currency too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.AcceptedCurrencies = []string{
@@ -759,6 +807,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Title is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Title = ""
@@ -766,6 +815,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Price is zero
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Price = "0"
@@ -773,6 +823,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Title too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Title = strings.Repeat("s", TitleMaxCharacters+1)
@@ -780,6 +831,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Description too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Description = strings.Repeat("s", DescriptionMaxCharacters+1)
@@ -787,6 +839,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Processing time too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.ProcessingTime = strings.Repeat("s", SentenceMaxCharacters+1)
@@ -794,6 +847,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many tags
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Tags = []string{}
@@ -804,6 +858,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Tag too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Tags = []string{
@@ -813,6 +868,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Tag is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Tags = []string{
@@ -822,6 +878,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// No images
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Images = []*pb.Listing_Item_Image{}
@@ -829,6 +886,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many images
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Images = []*pb.Listing_Item_Image{}
@@ -839,6 +897,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid tiny image hash
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Images = []*pb.Listing_Item_Image{
@@ -854,6 +913,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid small image hash
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Images = []*pb.Listing_Item_Image{
@@ -866,18 +926,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
-			listing: factory.NewSignedListing(),
-			transform: func(sl *pb.SignedListing) {
-				sl.Listing.Item.Images = []*pb.Listing_Item_Image{
-					{
-						Tiny:  "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-						Small: "adsf",
-					},
-				}
-			},
-			valid: false,
-		},
-		{
+			// Invalid medium image hash
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Images = []*pb.Listing_Item_Image{
@@ -891,6 +940,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid large image hash
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Images = []*pb.Listing_Item_Image{
@@ -905,6 +955,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid original image hash
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Images = []*pb.Listing_Item_Image{
@@ -920,6 +971,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid filename
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Images = []*pb.Listing_Item_Image{
@@ -936,6 +988,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Filename too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Images = []*pb.Listing_Item_Image{
@@ -952,6 +1005,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many categories
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Categories = []string{}
@@ -962,6 +1016,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Category is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Categories = []string{
@@ -971,6 +1026,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Category too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Categories = []string{
@@ -980,6 +1036,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Option name is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -991,6 +1048,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Less than two variants
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1007,6 +1065,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Option name too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1026,6 +1085,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Description too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1046,6 +1106,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Duplicate options
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1076,6 +1137,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many options
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1090,6 +1152,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Variant name too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1109,6 +1172,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Duplicate variants
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1128,6 +1192,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid tiny variant image
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1150,6 +1215,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid small variant image
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1173,6 +1239,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid medium variant image
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1197,6 +1264,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid large variant image
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1222,6 +1290,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid original variant image
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1248,6 +1317,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Variant image filename too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1275,6 +1345,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Variant filename is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1302,6 +1373,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many skus
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1325,6 +1397,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Product ID too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1350,6 +1423,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Zero sku selections
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1374,6 +1448,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Duplicate skus
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1413,6 +1488,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Incorrect sku variant
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1447,6 +1523,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid sku variant
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1477,6 +1554,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Incorrect sku variant
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Options = []*pb.Listing_Item_Option{
@@ -1507,6 +1585,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Price too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Item.Price = strings.Repeat("1", SentenceMaxCharacters+1)
@@ -1514,6 +1593,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many taxes
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Taxes = []*pb.Listing_Tax{}
@@ -1524,6 +1604,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Tax type is ""
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Taxes = []*pb.Listing_Tax{
@@ -1535,6 +1616,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Tax type too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Taxes = []*pb.Listing_Tax{
@@ -1546,6 +1628,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// No tax regions
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Taxes = []*pb.Listing_Tax{
@@ -1557,6 +1640,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many tax regions
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Taxes = []*pb.Listing_Tax{
@@ -1571,6 +1655,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Tax percentage is zero
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Taxes = []*pb.Listing_Tax{
@@ -1584,6 +1669,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Tax percentage > 100
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Taxes = []*pb.Listing_Tax{
@@ -1597,6 +1683,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many coupons
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Coupons = []*pb.Listing_Coupon{}
@@ -1607,6 +1694,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Coupon title too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Coupons = []*pb.Listing_Coupon{
@@ -1618,6 +1706,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Coupon discount code too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Coupons = []*pb.Listing_Coupon{
@@ -1632,6 +1721,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Percent discount > 100
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Coupons = []*pb.Listing_Coupon{
@@ -1646,6 +1736,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Price discount too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Coupons = []*pb.Listing_Coupon{
@@ -1660,6 +1751,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Price discount is zero
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Coupons = []*pb.Listing_Coupon{
@@ -1674,6 +1766,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Too many moderators
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Moderators = []string{}
@@ -1684,6 +1777,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Invalid moderator peer ID
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Moderators = []string{
@@ -1693,6 +1787,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Terms and conditions too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.TermsAndConditions = strings.Repeat("s", PolicyMaxCharacters+1)
@@ -1700,6 +1795,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Refund policy too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.RefundPolicy = strings.Repeat("s", PolicyMaxCharacters+1)
@@ -1707,6 +1803,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Vendor ID is nil
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.VendorID = nil
@@ -1714,6 +1811,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Vendor handle too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.VendorID = &pb.ID{
@@ -1723,6 +1821,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Vendor ID is empty
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.VendorID = &pb.ID{}
@@ -1730,6 +1829,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Vendor Peer ID is invalid
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.VendorID.PeerID = "adsf"
@@ -1737,6 +1837,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Vendor escrow pubkey bad encoding
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.VendorID.Pubkeys.Escrow = []byte("asdf")
@@ -1744,6 +1845,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Vendor escorw pubkey invalid
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.VendorID.Pubkeys.Escrow = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
@@ -1751,6 +1853,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Vendor sig bad encoding
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.VendorID.Sig = []byte{0x00}
@@ -1758,6 +1861,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Vendor ID signature invalid
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.VendorID.Sig[25] = 0x00
@@ -1765,6 +1869,7 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Listing signature invalid
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Signature[25] = 0x00

@@ -26,19 +26,22 @@ func Test_convertCurrencyAmount(t *testing.T) {
 		paymentCurrency  string
 		expected         string
 	}{
-		{ // Exchange rate $407
+		{
+			// Exchange rate $407
 			"100",
 			"USD",
 			"BCH",
 			"245579",
 		},
-		{ // Same currency
+		{
+			// Same currency
 			"100000",
 			"BCH",
 			"BCH",
 			"100000",
 		},
-		{ // Exchange rate 31.588915
+		{
+			// Exchange rate 31.588915
 			"100000000",
 			"BTC",
 			"BCH",
@@ -86,18 +89,21 @@ func TestCalculateOrderTotal(t *testing.T) {
 		transform     func(order *pb.OrderOpen) error
 		expectedTotal iwallet.Amount
 	}{
-		{ // Normal
+		{
+			// Normal
 			transform:     func(order *pb.OrderOpen) error { return nil },
 			expectedTotal: iwallet.NewAmount("4992221"),
 		},
-		{ // Quantity 2
+		{
+			// Quantity 2
 			transform: func(order *pb.OrderOpen) error {
 				order.Items[0].Quantity = 2
 				return nil
 			},
 			expectedTotal: iwallet.NewAmount("9152406"),
 		},
-		{ // Additional item shipping
+		{
+			// Additional item shipping
 			transform: func(order *pb.OrderOpen) error {
 				order.Listings[0].Listing.ShippingOptions[0].Services[0].AdditionalItemPrice = "20"
 				hash, err := hashListing(order.Listings[0])
@@ -110,7 +116,8 @@ func TestCalculateOrderTotal(t *testing.T) {
 			},
 			expectedTotal: iwallet.NewAmount("9984442"),
 		},
-		{ // Multiple items
+		{
+			// Multiple items
 			transform: func(order *pb.OrderOpen) error {
 				order.Listings = append(order.Listings, order.Listings[0])
 				order.Listings[1].Listing.Item.Title = "abc"
@@ -125,7 +132,8 @@ func TestCalculateOrderTotal(t *testing.T) {
 			},
 			expectedTotal: iwallet.NewAmount("9568425"),
 		},
-		{ // Coupons
+		{
+			// Coupons
 			transform: func(order *pb.OrderOpen) error {
 				order.Items[0].CouponCodes = []string{
 					"insider",
@@ -134,7 +142,8 @@ func TestCalculateOrderTotal(t *testing.T) {
 			},
 			expectedTotal: iwallet.NewAmount("4784212"),
 		},
-		{ // Price Discount
+		{
+			// Price Discount
 			transform: func(order *pb.OrderOpen) error {
 				order.Listings = append(order.Listings, order.Listings[0])
 				order.Listings[1].Listing.Item.Title = "abc"
@@ -151,7 +160,8 @@ func TestCalculateOrderTotal(t *testing.T) {
 			},
 			expectedTotal: iwallet.NewAmount("4784212"),
 		},
-		{ // Market price listing
+		{
+			// Market price listing
 			transform: func(order *pb.OrderOpen) error {
 				order.Listings[0].Listing.Metadata.ContractType = pb.Listing_Metadata_CRYPTOCURRENCY
 				order.Listings[0].Listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
