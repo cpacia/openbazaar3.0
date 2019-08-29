@@ -14,13 +14,13 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
-	"github.com/multiformats/go-multihash"
 	"math"
 	"math/big"
 	"strings"
@@ -297,7 +297,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	if err != nil {
 		return err
 	}
-	vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+	vendorKey, err := utils.GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
 	if err != nil {
 		return err
 	}
@@ -305,7 +305,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	if err != nil {
 		return err
 	}
-	buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+	buyerKey, err := utils.GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
 	if err != nil {
 		return err
 	}
@@ -318,7 +318,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		if err != nil {
 			return err
 		}
-		moderatorKey, err := GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
+		moderatorKey, err := utils.GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
 		if err != nil {
 			return err
 		}
@@ -455,12 +455,7 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 
 		// Subtract any coupons
 		for _, couponCode := range item.CouponCodes {
-			h := sha256.Sum256([]byte(couponCode))
-			encoded, err := multihash.Encode(h[:], multihash.SHA2_256)
-			if err != nil {
-				return orderTotal, err
-			}
-			couponHash, err := multihash.Cast(encoded)
+			couponHash, err := utils.MultihashSha256([]byte(couponCode))
 			if err != nil {
 				return orderTotal, err
 			}
@@ -706,7 +701,7 @@ func convertCurrencyAmount(value *models.CurrencyValue, paymentCurrency *models.
 // slice of listings if it exists.
 func extractListing(hash string, listings []*pb.SignedListing) (*pb.Listing, error) {
 	for _, sl := range listings {
-		mh, err := hashListing(sl)
+		mh, err := utils.HashListing(sl)
 		if err != nil {
 			return nil, err
 		}
@@ -752,23 +747,6 @@ func getSelectedSku(listing *pb.Listing, options []*pb.OrderOpen_Item_Option) (*
 		}
 	}
 	return nil, errors.New("selected sku not found in listing")
-}
-
-func hashListing(listing *pb.SignedListing) (multihash.Multihash, error) {
-	ser, err := proto.Marshal(listing)
-	if err != nil {
-		return nil, err
-	}
-	h := sha256.Sum256(ser)
-	encoded, err := multihash.Encode(h[:], multihash.SHA2_256)
-	if err != nil {
-		return nil, err
-	}
-	mh, err := multihash.Cast(encoded)
-	if err != nil {
-		return nil, err
-	}
-	return mh, nil
 }
 
 // validateBigString validates that the string is a base10 big number.

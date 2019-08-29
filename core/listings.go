@@ -11,6 +11,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/golang/protobuf/proto"
 	"github.com/gosimple/slug"
 	"github.com/ipfs/go-cid"
@@ -120,7 +121,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 
 			_, err := multihash.FromB58String(hash)
 			if err != nil {
-				couponMH, err := multihashSha256([]byte(code))
+				couponMH, err := utils.MultihashSha256([]byte(code))
 				if err != nil {
 					return err
 				}

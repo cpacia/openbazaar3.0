@@ -9,6 +9,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
 	"testing"
@@ -106,7 +107,7 @@ func TestCalculateOrderTotal(t *testing.T) {
 			// Additional item shipping
 			transform: func(order *pb.OrderOpen) error {
 				order.Listings[0].Listing.ShippingOptions[0].Services[0].AdditionalItemPrice = "20"
-				hash, err := hashListing(order.Listings[0])
+				hash, err := utils.HashListing(order.Listings[0])
 				if err != nil {
 					return err
 				}
@@ -122,7 +123,7 @@ func TestCalculateOrderTotal(t *testing.T) {
 				order.Listings = append(order.Listings, order.Listings[0])
 				order.Listings[1].Listing.Item.Title = "abc"
 				order.Listings[1].Listing.ShippingOptions[0].Services[0].Price = "30"
-				hash, err := hashListing(order.Listings[1])
+				hash, err := utils.HashListing(order.Listings[1])
 				if err != nil {
 					return err
 				}
@@ -148,7 +149,7 @@ func TestCalculateOrderTotal(t *testing.T) {
 				order.Listings = append(order.Listings, order.Listings[0])
 				order.Listings[1].Listing.Item.Title = "abc"
 				order.Listings[1].Listing.Coupons[0].Discount = &pb.Listing_Coupon_PriceDiscount{PriceDiscount: "5"}
-				hash, err := hashListing(order.Listings[1])
+				hash, err := utils.HashListing(order.Listings[1])
 				if err != nil {
 					return err
 				}
@@ -173,7 +174,7 @@ func TestCalculateOrderTotal(t *testing.T) {
 				}
 				order.Listings[0].Listing.ShippingOptions = nil
 				order.Listings[0].Listing.Taxes = nil
-				hash, err := hashListing(order.Listings[0])
+				hash, err := utils.HashListing(order.Listings[0])
 				if err != nil {
 					return err
 				}
@@ -375,7 +376,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				sl.Listing.Metadata.ContractType = pb.Listing_Metadata_CRYPTOCURRENCY
 				sl.Listing.Slug = "Crypto"
 				order.Listings[0] = sl
-				mh, err := hashListing(sl)
+				mh, err := utils.HashListing(sl)
 				if err != nil {
 					return nil, err
 				}
@@ -708,7 +709,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+				vendorKey, err := utils.GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
@@ -716,12 +717,12 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+				buyerKey, err := utils.GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
 				moderatorEscrowPubkey := priv.PubKey()
-				moderatorKey, err := GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
+				moderatorKey, err := utils.GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
@@ -786,7 +787,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+				vendorKey, err := utils.GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
@@ -794,12 +795,12 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+				buyerKey, err := utils.GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
 				moderatorEscrowPubkey := priv.PubKey()
-				moderatorKey, err := GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
+				moderatorKey, err := utils.GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
@@ -840,7 +841,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+				vendorKey, err := utils.GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
@@ -848,7 +849,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+				buyerKey, err := utils.GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
@@ -887,7 +888,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+				vendorKey, err := utils.GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
@@ -895,7 +896,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+				buyerKey, err := utils.GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
 				if err != nil {
 					return nil, err
 				}
