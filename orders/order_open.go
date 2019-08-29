@@ -129,6 +129,11 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		return errors.New("rating keys field is nil")
 	}
 
+	wal, err := op.multiwallet.WalletForCurrencyCode(order.Payment.Coin)
+	if err != nil {
+		return err
+	}
+
 	if op.identity.Pretty() != order.BuyerID.PeerID { // If we are vendor.
 		// Check to make sure we actually have the item for sale.
 		for _, listing := range order.Listings {
@@ -166,11 +171,6 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 			if !bytes.Equal(mySer, theirSer) {
 				return fmt.Errorf("item %s is not for sale", listing.Listing.Slug)
 			}
-		}
-
-		wal, err := op.multiwallet.WalletForCurrencyCode(order.Payment.Coin)
-		if err != nil {
-			return err
 		}
 
 		if order.Payment.Method == pb.OrderOpen_Payment_DIRECT {
@@ -250,46 +250,6 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		}
 	}
 
-	// Validate payment
-	if order.Payment.Amount == "" {
-		return errors.New("payment amount not set")
-	}
-	if ok := validateBigString(order.Payment.Amount); !ok {
-		return errors.New("payment amount not valid")
-	}
-	if order.Payment.Address == "" {
-		return errors.New("order payment address is empty")
-	}
-	// TODO: validate order payment address
-	_, err := models.CurrencyDefinitions.Lookup(order.Payment.Coin)
-	if err != nil {
-		return errors.New("unknown payment currency")
-	}
-	if order.Payment.Method != pb.OrderOpen_Payment_DIRECT {
-		if order.Payment.EscrowReleaseFee == "" {
-			return errors.New("escrow release fee is empty")
-		}
-		if ok := validateBigString(order.Payment.EscrowReleaseFee); !ok {
-			return errors.New("escrow release fee not valid")
-		}
-	}
-	if order.Payment.Method == pb.OrderOpen_Payment_MODERATED {
-		_, err := peer.IDB58Decode(order.Payment.Moderator)
-		if err != nil {
-			return errors.New("invalid moderator selection")
-		}
-		if order.Payment.ModeratorKey == nil {
-			return errors.New("moderator key not set")
-		}
-	}
-
-	// Validate rating keys
-	for _, key := range order.RatingKeys {
-		if _, err := btcec.ParsePubKey(key, btcec.S256()); err != nil {
-			return errors.New("invalid rating pubkey")
-		}
-	}
-
 	// Validate buyer ID
 	if order.BuyerID.Pubkeys == nil {
 		return errors.New("buyer id pubkeys is nil")
@@ -317,6 +277,101 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	valid := sig.Verify(idHash[:], escrowPubkey)
 	if !valid {
 		return errors.New("invalid buyer ID signature")
+	}
+
+	// Validate payment
+	if order.Payment.Amount == "" {
+		return errors.New("payment amount not set")
+	}
+	if ok := validateBigString(order.Payment.Amount); !ok {
+		return errors.New("payment amount not valid")
+	}
+	if order.Payment.Address == "" {
+		return errors.New("order payment address is empty")
+	}
+	chaincode, err := hex.DecodeString(order.Payment.Chaincode)
+	if err != nil {
+		return fmt.Errorf("chaincode parse error: %s", err)
+	}
+	vendorEscrowPubkey, err := btcec.ParsePubKey(order.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
+	if err != nil {
+		return err
+	}
+	vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+	if err != nil {
+		return err
+	}
+	buyerEscrowPubkey, err := btcec.ParsePubKey(order.BuyerID.Pubkeys.Escrow, btcec.S256())
+	if err != nil {
+		return err
+	}
+	buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+	if err != nil {
+		return err
+	}
+	if order.Payment.Method == pb.OrderOpen_Payment_MODERATED {
+		_, err := peer.IDB58Decode(order.Payment.Moderator)
+		if err != nil {
+			return errors.New("invalid moderator selection")
+		}
+		moderatorEscrowPubkey, err := btcec.ParsePubKey(order.Payment.ModeratorKey, btcec.S256())
+		if err != nil {
+			return err
+		}
+		moderatorKey, err := GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
+		if err != nil {
+			return err
+		}
+		escrowWallet, ok := wal.(iwallet.Escrow)
+		if !ok {
+			return errors.New("wallet does not support escorw")
+		}
+		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
+		if err != nil {
+			return err
+		}
+		if order.Payment.Address != address.String() {
+			return errors.New("invalid moderated payment address")
+		}
+		if order.Payment.Script != hex.EncodeToString(script) {
+			return errors.New("invalid moderated payment script")
+		}
+	} else if order.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
+		escrowWallet, ok := wal.(iwallet.Escrow)
+		if !ok {
+			return errors.New("wallet does not support escorw")
+		}
+		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey}, 1)
+		if err != nil {
+			return err
+		}
+		if order.Payment.Address != address.String() {
+			return errors.New("invalid cancelable payment address")
+		}
+		if order.Payment.Script != hex.EncodeToString(script) {
+			return errors.New("invalid cancelable payment script")
+		}
+	} else if order.Payment.Method != pb.OrderOpen_Payment_DIRECT {
+		return errors.New("invalid payment method")
+	}
+	_, err = models.CurrencyDefinitions.Lookup(order.Payment.Coin)
+	if err != nil {
+		return errors.New("unknown payment currency")
+	}
+	if order.Payment.Method != pb.OrderOpen_Payment_DIRECT {
+		if order.Payment.EscrowReleaseFee == "" {
+			return errors.New("escrow release fee is empty")
+		}
+		if ok := validateBigString(order.Payment.EscrowReleaseFee); !ok {
+			return errors.New("escrow release fee not valid")
+		}
+	}
+
+	// Validate rating keys
+	for _, key := range order.RatingKeys {
+		if _, err := btcec.ParsePubKey(key, btcec.S256()); err != nil {
+			return errors.New("invalid rating pubkey")
+		}
 	}
 
 	return nil

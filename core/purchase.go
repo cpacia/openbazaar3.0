@@ -87,12 +87,12 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 			if err != nil {
 				return orderID, paymentAddress, paymentAmount, err
 			}
-			vendorKey, err := generateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+			vendorKey, err := orders.GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
 			if err != nil {
 				return orderID, paymentAddress, paymentAmount, err
 			}
 			buyerEscrowPubkey := n.escrowMasterKey.PubKey()
-			buyerKey, err := generateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+			buyerKey, err := orders.GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
 			if err != nil {
 				return orderID, paymentAddress, paymentAmount, err
 			}
@@ -359,7 +359,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		if err != nil {
 			return nil, err
 		}
-		moderatorKey, err := generateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
+		moderatorKey, err := orders.GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
 		if err != nil {
 			return nil, err
 		}
@@ -368,12 +368,12 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		if err != nil {
 			return nil, err
 		}
-		vendorKey, err := generateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+		vendorKey, err := orders.GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
 		if err != nil {
 			return nil, err
 		}
 		buyerEscrowPubkey := n.escrowMasterKey.PubKey()
-		buyerKey, err := generateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+		buyerKey, err := orders.GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
 		if err != nil {
 			return nil, err
 		}
@@ -382,7 +382,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 			return nil, err
 		}
 		order.Payment.Address = address.String()
-		order.Payment.AdditionalAddressData = hex.EncodeToString(script)
+		order.Payment.Script = hex.EncodeToString(script)
 	}
 
 	order.Payment.Method = paymentMethod
@@ -395,7 +395,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 	}
 	order.Payment.Amount = total.String()
 
-	ratingKeys, err := generateRatingPublicKeys(n.ratingMasterKey.PubKey(), len(order.Listings), chaincode)
+	ratingKeys, err := orders.GenerateRatingPublicKeys(n.ratingMasterKey.PubKey(), len(order.Listings), chaincode)
 	if err != nil {
 		return nil, err
 	}

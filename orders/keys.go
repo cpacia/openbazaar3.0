@@ -1,18 +1,16 @@
-package core
+package orders
 
 import (
+	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 )
 
-// generateRatingPublicKeys uses the chaincode from the order to deterministically generate public keys
+// GenerateRatingPublicKeys uses the chaincode from the order to deterministically generate public keys
 // from our rating public key. This allows us to recover the private key to sign the rating with later on
 // as long as we know the chaincode.
-//
-// This is a hardened key so anyone who views the key should not be able to derive our master pubkey key
-// nor any other keys we use for ratings.
-func generateRatingPublicKeys(ratingPubKey *btcec.PublicKey, numKeys int, chaincode []byte) ([][]byte, error) {
+func GenerateRatingPublicKeys(ratingPubKey *btcec.PublicKey, numKeys int, chaincode []byte) ([][]byte, error) {
 	hdKey := hdkeychain.NewExtendedKey(
 		chaincfg.MainNetParams.HDPublicKeyID[:],
 		ratingPubKey.SerializeCompressed(),
@@ -25,9 +23,9 @@ func generateRatingPublicKeys(ratingPubKey *btcec.PublicKey, numKeys int, chainc
 	return generateHdKeys(hdKey, numKeys, false)
 }
 
-// generateRatingPrivateKeys does the same thing as it's public key counterpart except it
+// GenerateRatingPrivateKeys does the same thing as it's public key counterpart except it
 // returns the private keys.
-func generateRatingPrivateKeys(ratingPrivKey *btcec.PrivateKey, numKeys int, chaincode []byte) ([][]byte, error) {
+func GenerateRatingPrivateKeys(ratingPrivKey *btcec.PrivateKey, numKeys int, chaincode []byte) ([][]byte, error) {
 	hdKey := hdkeychain.NewExtendedKey(
 		chaincfg.MainNetParams.HDPrivateKeyID[:],
 		ratingPrivKey.Serialize(),
@@ -35,18 +33,15 @@ func generateRatingPrivateKeys(ratingPrivKey *btcec.PrivateKey, numKeys int, cha
 		[]byte{0x00, 0x00, 0x00, 0x00},
 		0,
 		0,
-		false)
+		true)
 
 	return generateHdKeys(hdKey, numKeys, true)
 }
 
-// generateEscrowPublicKey uses the chaincode from the order to deterministically generate public keys
+// GenerateEscrowPublicKey uses the chaincode from the order to deterministically generate public keys
 // from our escrow public key. This allows us to recover the private key to sign the transaction with later
 // on as long as we know the chaincode.
-//
-// This is a hardened key so anyone who views the key should not be able to derive our master pubkey key
-// nor any other keys we use for orders.
-func generateEscrowPublicKey(escrowPubKey *btcec.PublicKey, chaincode []byte) (*btcec.PublicKey, error) {
+func GenerateEscrowPublicKey(escrowPubKey *btcec.PublicKey, chaincode []byte) (*btcec.PublicKey, error) {
 	hdKey := hdkeychain.NewExtendedKey(
 		chaincfg.MainNetParams.HDPublicKeyID[:],
 		escrowPubKey.SerializeCompressed(),
@@ -56,16 +51,16 @@ func generateEscrowPublicKey(escrowPubKey *btcec.PublicKey, chaincode []byte) (*
 		0,
 		false)
 
-	key, err := generateHdKey(hdKey)
+	key, err := generateChild(hdKey)
 	if err != nil {
 		return nil, err
 	}
 	return key.ECPubKey()
 }
 
-// generateEscrowPrivateKey does the same thing as it's public key counterpart except it
+// GenerateEscrowPrivateKey does the same thing as it's public key counterpart except it
 // returns the private keys.
-func generateEscrowPrivateKey(escrowPrivKey *btcec.PrivateKey, chaincode []byte) (*btcec.PrivateKey, error) {
+func GenerateEscrowPrivateKey(escrowPrivKey *btcec.PrivateKey, chaincode []byte) (*btcec.PrivateKey, error) {
 	hdKey := hdkeychain.NewExtendedKey(
 		chaincfg.MainNetParams.HDPrivateKeyID[:],
 		escrowPrivKey.Serialize(),
@@ -73,9 +68,9 @@ func generateEscrowPrivateKey(escrowPrivKey *btcec.PrivateKey, chaincode []byte)
 		[]byte{0x00, 0x00, 0x00, 0x00},
 		0,
 		0,
-		false)
+		true)
 
-	key, err := generateHdKey(hdKey)
+	key, err := generateChild(hdKey)
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +78,12 @@ func generateEscrowPrivateKey(escrowPrivKey *btcec.PrivateKey, chaincode []byte)
 }
 
 // generateHdKey returns a single child key from the provided hd key.
-func generateHdKey(hdKey *hdkeychain.ExtendedKey) (*hdkeychain.ExtendedKey, error) {
+func generateChild(hdKey *hdkeychain.ExtendedKey) (*hdkeychain.ExtendedKey, error) {
 	i := 0
 	for {
-		childKey, err := hdKey.Child(hdkeychain.HardenedKeyStart + uint32(i))
+		childKey, err := hdKey.Child(uint32(i))
 		if err != nil {
+			fmt.Println(err)
 			// Small chance this can fail due to weird curve stuff.
 			// Bip32 spec calls for skipping to next key.
 			i++
@@ -103,7 +99,7 @@ func generateHdKeys(hdKey *hdkeychain.ExtendedKey, numKeys int, priv bool) ([][]
 	keys := make([][]byte, 0, numKeys)
 	i := 0
 	for len(keys) < numKeys {
-		childKey, err := hdKey.Child(hdkeychain.HardenedKeyStart + uint32(i))
+		childKey, err := hdKey.Child(uint32(i))
 		if err != nil {
 			// Small chance this can fail due to weird curve stuff.
 			// Bip32 spec calls for skipping to next key.

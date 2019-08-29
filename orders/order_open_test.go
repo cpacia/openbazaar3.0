@@ -1,6 +1,10 @@
 package orders
 
 import (
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
@@ -526,12 +530,405 @@ func Test_validateOrderOpen(t *testing.T) {
 			},
 			valid: false,
 		},
+		{
+			// Escrow release fee is ""
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.Payment.EscrowReleaseFee = ""
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Escrow release fee is invalid
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.Payment.EscrowReleaseFee = "asdfad"
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Invalid moderator peer ID
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.Payment.Method = pb.OrderOpen_Payment_MODERATED
+				order.Payment.Moderator = "asdf"
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Moderator key is nil
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.Payment.Method = pb.OrderOpen_Payment_MODERATED
+				order.Payment.Moderator = "12D3KooWHHcLYLNxcfxNojVAEHErv75DagcaezKAX86qVrP9QXqM"
+				order.Payment.ModeratorKey = nil
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Moderator key is invalid
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.Payment.Method = pb.OrderOpen_Payment_MODERATED
+				order.Payment.Moderator = "12D3KooWHHcLYLNxcfxNojVAEHErv75DagcaezKAX86qVrP9QXqM"
+				order.Payment.ModeratorKey = []byte{0x00}
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Invalid rating keys
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.RatingKeys = [][]byte{{0x00}}
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Buyer ID pubkeys is nil
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.BuyerID.Pubkeys = nil
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Invalid buyer ID pubkey
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.BuyerID.Pubkeys.Identity = []byte{0x00}
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// ID pubkey does not match peer ID
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.BuyerID.PeerID = "12D3KooWHHcLYLNxcfxNojVAEHErv65DagcaezKAX86qVrP9QXqM"
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Invalid escrow pubkey
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.BuyerID.Pubkeys.Escrow = []byte{0x00}
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Signature parse error
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.BuyerID.Sig = []byte{0x00}
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Signature invalid
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.BuyerID.Sig[len(order.BuyerID.Sig)-1] = 0x00
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Valid moderated address
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				priv, err := btcec.NewPrivateKey(btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				chaincode, err := hex.DecodeString(order.Payment.Chaincode)
+				if err != nil {
+					return nil, fmt.Errorf("chaincode parse error: %s", err)
+				}
+				vendorEscrowPubkey, err := btcec.ParsePubKey(order.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				buyerEscrowPubkey, err := btcec.ParsePubKey(order.BuyerID.Pubkeys.Escrow, btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				moderatorEscrowPubkey := priv.PubKey()
+				moderatorKey, err := GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				wal, err := processor.multiwallet.WalletForCurrencyCode("TMCK")
+				if err != nil {
+					return nil, err
+				}
+				escrowWallet, ok := wal.(iwallet.Escrow)
+				if !ok {
+					return nil, errors.New("wallet does not support escorw")
+				}
+				address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
+				if err != nil {
+					return nil, err
+				}
+
+				order.Payment.Method = pb.OrderOpen_Payment_MODERATED
+				order.Payment.Moderator = "12D3KooWDUcbMF23kLEVAV3ES7ysWiD2GBh87DHDx3buRNDLFpo8"
+				order.Payment.ModeratorKey = priv.PubKey().SerializeCompressed()
+				order.Payment.Address = address.String()
+				order.Payment.Script = hex.EncodeToString(script)
+				return order, nil
+			},
+			valid: true,
+		},
+		{
+			// Invalid moderated address
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				priv, err := btcec.NewPrivateKey(btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+
+				order.Payment.Method = pb.OrderOpen_Payment_MODERATED
+				order.Payment.ModeratorKey = priv.PubKey().SerializeCompressed()
+				order.Payment.Moderator = "12D3KooWHHcLYLNxcfxNojVAEHErv65DagcaezKAX86qVrP9QXqM"
+				order.Payment.Address = "asdfadsf"
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Invalid moderated script
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				priv, err := btcec.NewPrivateKey(btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				chaincode, err := hex.DecodeString(order.Payment.Chaincode)
+				if err != nil {
+					return nil, fmt.Errorf("chaincode parse error: %s", err)
+				}
+				vendorEscrowPubkey, err := btcec.ParsePubKey(order.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				buyerEscrowPubkey, err := btcec.ParsePubKey(order.BuyerID.Pubkeys.Escrow, btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				moderatorEscrowPubkey := priv.PubKey()
+				moderatorKey, err := GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				wal, err := processor.multiwallet.WalletForCurrencyCode("TMCK")
+				if err != nil {
+					return nil, err
+				}
+				escrowWallet, ok := wal.(iwallet.Escrow)
+				if !ok {
+					return nil, errors.New("wallet does not support escorw")
+				}
+				address, _, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
+				if err != nil {
+					return nil, err
+				}
+
+				order.Payment.Method = pb.OrderOpen_Payment_MODERATED
+				order.Payment.Moderator = "12D3KooWDUcbMF23kLEVAV3ES7ysWiD2GBh87DHDx3buRNDLFpo8"
+				order.Payment.ModeratorKey = priv.PubKey().SerializeCompressed()
+				order.Payment.Address = address.String()
+				order.Payment.Script = "fasdfad"
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Valid cancelable address
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				chaincode, err := hex.DecodeString(order.Payment.Chaincode)
+				if err != nil {
+					return nil, fmt.Errorf("chaincode parse error: %s", err)
+				}
+				vendorEscrowPubkey, err := btcec.ParsePubKey(order.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				buyerEscrowPubkey, err := btcec.ParsePubKey(order.BuyerID.Pubkeys.Escrow, btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				wal, err := processor.multiwallet.WalletForCurrencyCode("TMCK")
+				if err != nil {
+					return nil, err
+				}
+				escrowWallet, ok := wal.(iwallet.Escrow)
+				if !ok {
+					return nil, errors.New("wallet does not support escorw")
+				}
+				address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey}, 1)
+				if err != nil {
+					return nil, err
+				}
+
+				order.Payment.Method = pb.OrderOpen_Payment_CANCELABLE
+				order.Payment.Address = address.String()
+				order.Payment.Script = hex.EncodeToString(script)
+				return order, nil
+			},
+			valid: true,
+		},
+		{
+			// Invalid cancelable script
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				chaincode, err := hex.DecodeString(order.Payment.Chaincode)
+				if err != nil {
+					return nil, fmt.Errorf("chaincode parse error: %s", err)
+				}
+				vendorEscrowPubkey, err := btcec.ParsePubKey(order.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				vendorKey, err := GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				buyerEscrowPubkey, err := btcec.ParsePubKey(order.BuyerID.Pubkeys.Escrow, btcec.S256())
+				if err != nil {
+					return nil, err
+				}
+				buyerKey, err := GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+				if err != nil {
+					return nil, err
+				}
+				wal, err := processor.multiwallet.WalletForCurrencyCode("TMCK")
+				if err != nil {
+					return nil, err
+				}
+				escrowWallet, ok := wal.(iwallet.Escrow)
+				if !ok {
+					return nil, errors.New("wallet does not support escorw")
+				}
+				address, _, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey}, 1)
+				if err != nil {
+					return nil, err
+				}
+
+				order.Payment.Method = pb.OrderOpen_Payment_CANCELABLE
+				order.Payment.Address = address.String()
+				order.Payment.Script = "afsdaf"
+				return order, nil
+			},
+			valid: false,
+		},
+		{
+			// Invalid cancelable script
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+
+				order.Payment.Method = pb.OrderOpen_Payment_CANCELABLE
+				order.Payment.Address = "fasdfasdf"
+				return order, nil
+			},
+			valid: false,
+		},
 	}
 
 	for i, test := range tests {
 		order, err := test.order()
 		if err != nil {
-			t.Errorf("Test %d order build error %s", i, err)
+			t.Errorf("Test %d order build error: %s", i, err)
 			continue
 		}
 		processor.db.Update(func(tx database.Tx) error {

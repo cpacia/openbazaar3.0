@@ -55,7 +55,7 @@ message OrderOpen {
         string amount                = 3; // Satoshis
         string chaincode             = 4; // Hex encoded
         string address               = 5; // B58check encoded
-        string additionalAddressData = 6; // Hex encoded, usually redeem script.
+        string script                = 6; // Hex encoded, usually redeem script.
         bytes  moderatorKey          = 7;
         string coin                  = 8;
         string escrowReleaseFee      = 9;
