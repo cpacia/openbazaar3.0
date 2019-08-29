@@ -46,7 +46,6 @@ func TestOrderProcessor_OrderReject(t *testing.T) {
 		Message:     rejectAny,
 	}
 
-	// Test normal case where order open exists.
 	var (
 		vendorPeerID   = "xyz"
 		vendorHandle   = "abc"
@@ -79,7 +78,8 @@ func TestOrderProcessor_OrderReject(t *testing.T) {
 		expectedError error
 		expectedEvent interface{}
 	}{
-		{ // Normal case where order open exists.
+		{
+			// Normal case where order open exists.
 			setup: func(order *models.Order) error {
 				order.ID = "1234"
 				return order.PutMessage(orderOpen)
@@ -95,7 +95,8 @@ func TestOrderProcessor_OrderReject(t *testing.T) {
 				VendorID:     vendorPeerID,
 			},
 		},
-		{ // Order confirmation already exists.
+		{
+			// Order confirmation already exists.
 			setup: func(order *models.Order) error {
 				order.SerializedOrderReject = nil
 				order.SerializedOrderConfirmation = []byte{0x00}
@@ -104,7 +105,8 @@ func TestOrderProcessor_OrderReject(t *testing.T) {
 			expectedError: ErrUnexpectedMessage,
 			expectedEvent: nil,
 		},
-		{ // Order cancel already exists.
+		{
+			// Order cancel already exists.
 			setup: func(order *models.Order) error {
 				order.SerializedOrderReject = nil
 				order.SerializedOrderCancel = []byte{0x00}
@@ -113,14 +115,16 @@ func TestOrderProcessor_OrderReject(t *testing.T) {
 			expectedError: ErrUnexpectedMessage,
 			expectedEvent: nil,
 		},
-		{ // Duplicate order reject.
+		{
+			// Duplicate order reject.
 			setup: func(order *models.Order) error {
 				return order.PutMessage(rejectMsg)
 			},
 			expectedError: nil,
 			expectedEvent: nil,
 		},
-		{ // Duplicate but different.
+		{
+			// Duplicate but different.
 			setup: func(order *models.Order) error {
 				msg2 := *rejectMsg
 				msg2.Type = pb.OrderReject_USER_REJECT
@@ -129,7 +133,8 @@ func TestOrderProcessor_OrderReject(t *testing.T) {
 			expectedError: ErrChangedMessage,
 			expectedEvent: nil,
 		},
-		{ // Out of order.
+		{
+			// Out of order.
 			setup: func(order *models.Order) error {
 				order.SerializedOrderOpen = nil
 				return nil
@@ -159,5 +164,4 @@ func TestOrderProcessor_OrderReject(t *testing.T) {
 			t.Errorf("Error executing db update in test %d: %s", i, err)
 		}
 	}
-
 }

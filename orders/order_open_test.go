@@ -1,19 +1,169 @@
 package orders
 
 import (
+	"bytes"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
+	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	peer "github.com/libp2p/go-libp2p-peer"
+	"reflect"
 	"testing"
 )
+
+func TestOrderProcessor_OrderOpen(t *testing.T) {
+	op, err := newMockOrderProcessor()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = op.db.Update(func(tx database.Tx) error {
+		sl := factory.NewSignedListing()
+		return tx.SetListing(sl)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, pub, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remotePeer, err := peer.IDFromPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		setup             func(order *models.Order, orderOpen *pb.OrderOpen) error
+		expectedError     error
+		expectedEvent     func(orderOpen *pb.OrderOpen) interface{}
+		errorResponseSent bool
+	}{
+		{
+			// Normal case order validates
+			setup: func(order *models.Order, orderOpen *pb.OrderOpen) error {
+				order.ID = "1234"
+				return nil
+			},
+			expectedError: nil,
+			expectedEvent: func(orderOpen *pb.OrderOpen) interface{} {
+				return &events.OrderNotification{
+					BuyerHandle: orderOpen.BuyerID.Handle,
+					BuyerID:     orderOpen.BuyerID.PeerID,
+					ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),
+					OrderID:     "1234",
+					Price: events.ListingPrice{
+						Amount:        orderOpen.Payment.Amount,
+						CurrencyCode:  orderOpen.Payment.Coin,
+						PriceModifier: orderOpen.Listings[0].Listing.Metadata.PriceModifier,
+					},
+					Slug: orderOpen.Listings[0].Listing.Slug,
+					Thumbnail: events.Thumbnail{
+						Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
+						Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
+					},
+					Title: orderOpen.Listings[0].Listing.Slug,
+				}
+			},
+		},
+		{
+			// Order already exists with different order.
+			setup: func(order *models.Order, orderOpen *pb.OrderOpen) error {
+				order.SerializedOrderOpen = nil
+				order.SerializedOrderOpen = []byte{0x00}
+				return nil
+			},
+			expectedError: ErrChangedMessage,
+			expectedEvent: nil,
+		},
+		{
+			// Order open already exists.
+			setup: func(order *models.Order, orderOpen *pb.OrderOpen) error {
+				return order.PutMessage(orderOpen)
+			},
+			expectedError: nil,
+			expectedEvent: nil,
+		},
+		{
+			// Invalid order
+			setup: func(order *models.Order, orderOpen *pb.OrderOpen) error {
+				orderOpen.Items[0].ListingHash = "abc"
+				return nil
+			},
+			expectedError:     nil,
+			expectedEvent:     nil,
+			errorResponseSent: true,
+		},
+	}
+
+	for i, test := range tests {
+		order := &models.Order{}
+		orderOpen, _, err := factory.NewOrder()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := test.setup(order, orderOpen); err != nil {
+			t.Errorf("Test %d setup error: %s", i, err)
+			continue
+		}
+
+		openAny, err := ptypes.MarshalAny(orderOpen)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		orderMsg := &npb.OrderMessage{
+			OrderID:     "1234",
+			MessageType: npb.OrderMessage_ORDER_OPEN,
+			Message:     openAny,
+		}
+		err = op.db.Update(func(tx database.Tx) error {
+			event, err := op.handleOrderOpenMessage(tx, order, remotePeer, orderMsg)
+			if err != test.expectedError {
+				t.Errorf("Test %d: Incorrect error returned. Expected %t, got %t", i, test.expectedError, err)
+			}
+			if err == nil {
+				ser, err := proto.Marshal(orderOpen)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(order.SerializedOrderOpen, ser) {
+					t.Errorf("Test %d: Failed to save order open message to the order", i)
+				}
+			}
+			if test.expectedEvent != nil {
+				expectedEvent := test.expectedEvent(orderOpen)
+				if !reflect.DeepEqual(event, expectedEvent) {
+					t.Errorf("Test %d: incorrect event returned", i)
+				}
+			}
+			if test.errorResponseSent && order.SerializedOrderReject == nil {
+				t.Errorf("Test %d: failed to save order reject message", i)
+			}
+			if test.errorResponseSent && event != nil {
+				t.Errorf("Test %d: event returned when validation failed", i)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Errorf("Error executing db update in test %d: %s", i, err)
+		}
+	}
+}
 
 func Test_convertCurrencyAmount(t *testing.T) {
 	erp, err := wallet.NewMockExchangeRates()

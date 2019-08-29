@@ -18,10 +18,9 @@ type Thumbnail struct {
 }
 
 type ListingPrice struct {
-	Amount           uint64  `json:"amount"`
-	CurrencyCode     string  `json:"currencyCode"`
-	PriceModifier    float32 `json:"priceModifier"`
-	CoinDivisibility uint32  `json:"coinDivisibility"`
+	Amount        string  `json:"amount"`
+	CurrencyCode  string  `json:"currencyCode"`
+	PriceModifier float32 `json:"priceModifier"`
 }
 
 type OrderNotification struct {

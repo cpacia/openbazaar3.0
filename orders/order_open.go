@@ -85,7 +85,7 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 				return nil, err
 			}
 
-			if err := order.PutMessage(&resp); err != nil {
+			if err := order.PutMessage(&reject); err != nil {
 				return nil, err
 			}
 		}
@@ -96,7 +96,21 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 	// TODO: do we want to emit an event in the case of a validation error?
 	if !validationError && op.identity != peer {
 		event = &events.OrderNotification{
-			ID: order.ID.String(),
+			BuyerHandle: orderOpen.BuyerID.Handle,
+			BuyerID:     orderOpen.BuyerID.PeerID,
+			ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),
+			OrderID:     order.ID.String(),
+			Price: events.ListingPrice{
+				Amount:        orderOpen.Payment.Amount,
+				CurrencyCode:  orderOpen.Payment.Coin,
+				PriceModifier: orderOpen.Listings[0].Listing.Metadata.PriceModifier,
+			},
+			Slug: orderOpen.Listings[0].Listing.Slug,
+			Thumbnail: events.Thumbnail{
+				Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
+				Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
+			},
+			Title: orderOpen.Listings[0].Listing.Slug,
 		}
 	}
 
