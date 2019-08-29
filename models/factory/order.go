@@ -12,7 +12,7 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-func NewOrder() (*pb.OrderOpen, *crypto.PrivKey, error) {
+func NewOrder() (*pb.OrderOpen, crypto.PrivKey, error) {
 	privKeyBytes, err := hex.DecodeString("080112406e22f498c42014ea4485c2d4bdffd90fb3c4ee394f0aaa49a61a7b4e51235e016efc82dba17659db9daf4c8d1e39818f0d41ce9919876e299f56c71031375944")
 	if err != nil {
 		return nil, nil, err
@@ -130,5 +130,5 @@ func NewOrder() (*pb.OrderOpen, *crypto.PrivKey, error) {
 	}
 	order.Signature = orderSig
 
-	return order, &privkey, nil
+	return order, privkey, nil
 }

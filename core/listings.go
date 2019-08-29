@@ -92,7 +92,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
-		pubkey, err := n.ipfsNode.PrivateKey.GetPublic().Bytes()
+		pubkey, err := crypto.MarshalPublicKey(n.ipfsNode.PrivateKey.GetPublic())
 		if err != nil {
 			return err
 		}

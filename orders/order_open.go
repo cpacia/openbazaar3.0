@@ -152,7 +152,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		// Check to make sure we actually have the item for sale.
 		for _, listing := range order.Listings {
 			var theirListing pb.SignedListing
-			if err := deepCopyListing(&theirListing, listing); err != nil {
+			if err := deepCopyProto(&theirListing, listing); err != nil {
 				return err
 			}
 
@@ -386,6 +386,27 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		if _, err := btcec.ParsePubKey(key, btcec.S256()); err != nil {
 			return errors.New("invalid rating pubkey")
 		}
+	}
+
+	// Check signature
+	var orderCopy pb.OrderOpen
+	if err := deepCopyProto(&orderCopy, order); err != nil {
+		return err
+	}
+	sigOrder := make([]byte, len(orderCopy.Signature))
+	copy(sigOrder, orderCopy.Signature)
+
+	orderCopy.Signature = nil
+	ser, err := proto.Marshal(&orderCopy)
+	if err != nil {
+		return err
+	}
+	validSig, err := idPubkey.Verify(ser, sigOrder)
+	if err != nil {
+		return err
+	}
+	if !validSig {
+		return errors.New("invalid signature on order")
 	}
 
 	return nil
@@ -726,7 +747,7 @@ func extractListing(hash string, listings []*pb.SignedListing) (*pb.Listing, err
 	return nil, fmt.Errorf("listing %s not found in order", hash)
 }
 
-func deepCopyListing(dest *pb.SignedListing, src *pb.SignedListing) error {
+func deepCopyProto(dest proto.Message, src proto.Message) error {
 	m := jsonpb.Marshaler{
 		EnumsAsInts:  false,
 		EmitDefaults: true,

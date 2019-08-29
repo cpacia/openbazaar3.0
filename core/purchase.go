@@ -17,8 +17,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
-	"github.com/jinzhu/gorm"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"os"
 )
 
 const (
@@ -119,6 +120,18 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 		}
 	}
 
+	// Sign order
+	ser, err := proto.Marshal(orderOpen)
+	if err != nil {
+		return
+	}
+	sig, err := n.ipfsNode.PrivateKey.Sign(ser)
+	if err != nil {
+		return
+	}
+	orderOpen.Signature = sig
+
+	// Build message
 	orderAny, err := ptypes.MarshalAny(orderOpen)
 	if err != nil {
 		return
@@ -220,17 +233,21 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		refundAddress = *purchase.RefundAddress
 	}
 
-	identityPubkey, err := n.ipfsNode.PrivateKey.GetPublic().Bytes()
+	identityPubkey, err := crypto.MarshalPublicKey(n.ipfsNode.PrivateKey.GetPublic())
 	if err != nil {
 		return nil, err
 	}
 
-	profile := &models.Profile{}
+	profile := models.Profile{}
 	err = n.repo.DB().View(func(tx database.Tx) error {
-		profile, err = tx.GetProfile()
-		return err
+		pro, err := tx.GetProfile()
+		if err != nil {
+			return err
+		}
+		profile = *pro
+		return nil
 	})
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 	if len(purchase.Items) == 0 {
@@ -317,11 +334,6 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 
 	chaincode := make([]byte, 32)
 	if _, err := rand.Read(chaincode); err != nil {
-		return nil, err
-	}
-
-	wallet, err = n.multiwallet.WalletForCurrencyCode(purchase.PaymentCoin)
-	if err != nil {
 		return nil, err
 	}
 

@@ -660,7 +660,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Correct direct payment address
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, privKey, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -674,6 +674,17 @@ func Test_validateOrderOpen(t *testing.T) {
 				}
 				order.Payment.Method = pb.OrderOpen_Payment_DIRECT
 				order.Payment.Address = addr.String()
+
+				order.Signature = nil
+				ser, err := proto.Marshal(order)
+				if err != nil {
+					return nil, err
+				}
+				sig, err := privKey.Sign(ser)
+				if err != nil {
+					return nil, err
+				}
+				order.Signature = sig
 				return order, nil
 			},
 			valid: true,
@@ -843,7 +854,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Valid moderated address
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, privKey, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -894,6 +905,17 @@ func Test_validateOrderOpen(t *testing.T) {
 				order.Payment.ModeratorKey = priv.PubKey().SerializeCompressed()
 				order.Payment.Address = address.String()
 				order.Payment.Script = hex.EncodeToString(script)
+
+				order.Signature = nil
+				ser, err := proto.Marshal(order)
+				if err != nil {
+					return nil, err
+				}
+				sig, err := privKey.Sign(ser)
+				if err != nil {
+					return nil, err
+				}
+				order.Signature = sig
 				return order, nil
 			},
 			valid: true,
