@@ -3,10 +3,12 @@ package factory
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/libp2p/go-libp2p-crypto"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/multiformats/go-multihash"
 )
 
@@ -23,14 +25,24 @@ func NewOrder() (*pb.OrderOpen, *crypto.PrivKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	escrowPubkey, err := hex.DecodeString("029f4ead6d340076a4060df48d723714541d5a23c8547e50414a22d6e360ea1b3b")
+
+	pid, err := peer.IDFromPublicKey(privkey.GetPublic())
 	if err != nil {
 		return nil, nil, err
 	}
-	idSig, err := hex.DecodeString("3045022100a24d967b45f058dfcb2b32a58cd2434c38af677741bd1607e54cf9fad3df869f02202758cf2a0f9c85efaf88488488692e0bb3862b634d0fa1ca357dda287ef3c55c")
+
+	escrowPrivkeyBytes, err := hex.DecodeString("e93fc130413a742e96844ac2d2b38b380081b0a54ddc3aac4e5bdaecb598ff38")
 	if err != nil {
 		return nil, nil, err
 	}
+	escrowPrivkey, escrowPubkey := btcec.PrivKeyFromBytes(btcec.S256(), escrowPrivkeyBytes)
+
+	sigHash := sha256.Sum256([]byte(pid.Pretty()))
+	sig, err := escrowPrivkey.Sign(sigHash[:])
+	if err != nil {
+		return nil, nil, err
+	}
+
 	ratingKey, err := hex.DecodeString("02fcaa2903a6aeff06eb5660d82cf3cd6ce686e7d2e2c23a12b23ea0cbbaf04e99")
 	if err != nil {
 		return nil, nil, err
@@ -66,13 +78,13 @@ func NewOrder() (*pb.OrderOpen, *crypto.PrivKey, error) {
 			AddressNotes: "Don't leave in on the porch. Cleveland steals my packages.",
 		},
 		BuyerID: &pb.ID{
-			PeerID: "12D3KooWDLv1VhTC7N7aasWkeG1Hyv3QgATYJNrbosnzEykMSxhg",
+			PeerID: pid.Pretty(),
 			Handle: "@assman",
 			Pubkeys: &pb.ID_Pubkeys{
 				Identity: pubkeyBytes,
-				Escrow:   escrowPubkey,
+				Escrow:   escrowPubkey.SerializeCompressed(),
 			},
-			Sig: idSig,
+			Sig: sig.Serialize(),
 		},
 		Timestamp: ptypes.TimestampNow(),
 		Items: []*pb.OrderOpen_Item{
@@ -96,10 +108,11 @@ func NewOrder() (*pb.OrderOpen, *crypto.PrivKey, error) {
 			},
 		},
 		Payment: &pb.OrderOpen_Payment{
-			Method:  pb.OrderOpen_Payment_DIRECT,
-			Amount:  "466454170",
+			Method:  pb.OrderOpen_Payment_CANCELABLE,
+			Amount:  "4992221",
 			Address: "068885193265b763a7510377a61176192622be07",
 			Coin:    "TMCK",
+			EscrowReleaseFee: "10",
 		},
 		RatingKeys:           [][]byte{ratingKey},
 		AlternateContactInfo: "peter@familyguy.net",
@@ -110,11 +123,11 @@ func NewOrder() (*pb.OrderOpen, *crypto.PrivKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	sig, err := privkey.Sign(ser)
+	orderSig, err := privkey.Sign(ser)
 	if err != nil {
 		return nil, nil, err
 	}
-	order.Signature = sig
+	order.Signature = orderSig
 
 	return order, &privkey, nil
 }

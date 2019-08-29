@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/OpenBazaar/jsonpb"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
@@ -131,9 +132,14 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	if op.identity.Pretty() != order.BuyerID.PeerID { // If we are vendor.
 		// Check to make sure we actually have the item for sale.
 		for _, listing := range order.Listings {
-			myListing, err := dbtx.GetListing(listing.Listing.Slug)
+			var theirListing pb.SignedListing
+			if err := deepCopyListing(&theirListing, listing); err != nil {
+				return err
+			}
+
+			myListing, err := dbtx.GetListing(theirListing.Listing.Slug)
 			if err != nil {
-				return fmt.Errorf("item %s is not for sale", listing.Listing.Slug)
+				return fmt.Errorf("item %s is not for sale", theirListing.Listing.Slug)
 			}
 
 			// Zero out the inventory on each listing. We will check
@@ -141,8 +147,8 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 			for i := range myListing.Listing.Item.Skus {
 				myListing.Listing.Item.Skus[i].Quantity = 0
 			}
-			for i := range listing.Listing.Item.Skus {
-				listing.Listing.Item.Skus[i].Quantity = 0
+			for i := range theirListing.Listing.Item.Skus {
+				theirListing.Listing.Item.Skus[i].Quantity = 0
 			}
 
 			// We can tell if we have the listing for sale if the serialized bytes match
@@ -152,7 +158,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 				return err
 			}
 
-			theirSer, err := proto.Marshal(listing.Listing)
+			theirSer, err := proto.Marshal(theirListing.Listing)
 			if err != nil {
 				return err
 			}
@@ -161,36 +167,32 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 				return fmt.Errorf("item %s is not for sale", listing.Listing.Slug)
 			}
 		}
+
+		wal, err := op.multiwallet.WalletForCurrencyCode(order.Payment.Coin)
+		if err != nil {
+			return err
+		}
+
+		if order.Payment.Method == pb.OrderOpen_Payment_DIRECT {
+			has, err := wal.HasKey(iwallet.NewAddress(order.Payment.Address, iwallet.CoinType(order.Payment.Coin)))
+			if err != nil {
+				return err
+			}
+			if !has {
+				return errors.New("direct payment address not found in wallet")
+			}
+		}
 	}
 
 	for i, item := range order.Items {
+		if item == nil {
+			return fmt.Errorf("item %d is nil", i)
+		}
 		// Let's check to make sure there is a listing for each
 		// item in the order.
 		listing, err := extractListing(item.ListingHash, order.Listings)
 		if err != nil {
 			return fmt.Errorf("listing not found in order for item %s", item.ListingHash)
-		}
-
-		// Validate shipping is provided if physical good.
-		if listing.Metadata == nil {
-			return fmt.Errorf("listing %d metadata is nil", i)
-		}
-		if listing.Metadata.ContractType == pb.Listing_Metadata_PHYSICAL_GOOD && item.ShippingOption == nil {
-			return fmt.Errorf("item %d shipping option is nil", i)
-		}
-
-		// Validate pricing currency is not nil
-		if listing.Metadata.PricingCurrency == nil {
-			return fmt.Errorf("listing %d pricing currency is nil", i)
-		}
-		_, err = models.CurrencyDefinitions.Lookup(listing.Metadata.PricingCurrency.Code)
-		if err != nil {
-			return fmt.Errorf("item %d unknown pricing currency for listing", i)
-		}
-
-		// Validate listing item is not nil
-		if listing.Item == nil {
-			return fmt.Errorf("listing %d item is nil", i)
 		}
 
 		// Validate the rest of the item
@@ -207,16 +209,16 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		}
 		optionMap := make(map[string]string)
 		for _, option := range item.Options {
-			optionMap[option.Name] = option.Value
+			optionMap[strings.ToLower(option.Name)] = strings.ToLower(option.Value)
 		}
 		for _, opt := range listing.Item.Options {
-			val, ok := optionMap[opt.Name]
+			val, ok := optionMap[strings.ToLower(opt.Name)]
 			if !ok {
 				return fmt.Errorf("item %d option %s not found in listing", i, opt.Name)
 			}
 			valExists := false
 			for _, variant := range opt.Variants {
-				if variant.Name == val {
+				if strings.ToLower(variant.Name) == val {
 					valExists = true
 					break
 				}
@@ -225,57 +227,26 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 				return fmt.Errorf("item %d variant %s not found in listing option", i, val)
 			}
 		}
-		for x, sku := range listing.Item.Skus {
-			if sku.Surcharge == "" {
-				return fmt.Errorf("item %d listing sku %d surcharge not set", i, x)
-			}
-			if ok := validateBigString(sku.Surcharge); !ok {
-				return fmt.Errorf("item %d listing sku %d surcharge not valid", i, x)
-			}
-		}
 
 		// Validate shipping option
 		if item.ShippingOption != nil {
 			shippingOpts := make(map[string][]*pb.Listing_ShippingOption_Service)
 			for _, option := range listing.ShippingOptions {
-				shippingOpts[option.Name] = option.Services
+				shippingOpts[strings.ToLower(option.Name)] = option.Services
 			}
-			services, ok := shippingOpts[item.ShippingOption.Name]
+			services, ok := shippingOpts[strings.ToLower(item.ShippingOption.Name)]
 			if !ok {
 				return fmt.Errorf("item %d shipping option %s not found in listing", i, item.ShippingOption.Name)
 			}
 			serviceExists := false
-			for x, service := range services {
-				if service.Name == item.ShippingOption.Service {
+			for _, service := range services {
+				if strings.ToLower(service.Name) == strings.ToLower(item.ShippingOption.Service) {
 					serviceExists = true
-				}
-				if service.Price == "" {
-					return fmt.Errorf("item %d shipping service %d price not set", i, x)
-				}
-				if ok := validateBigString(service.Price); !ok {
-					return fmt.Errorf("item %d shipping service %d price not valid", i, x)
 				}
 			}
 			if !serviceExists {
 				return fmt.Errorf("item %d shipping service %s not found in listing option", i, item.ShippingOption.Service)
 			}
-		}
-
-		// Validate coupon discount price
-		for _, coupon := range listing.Coupons {
-			if coupon.GetPriceDiscount() != "" {
-				if ok := validateBigString(coupon.GetPriceDiscount()); !ok {
-					return fmt.Errorf("item %d listing coupon price discount not valid", i)
-				}
-			}
-		}
-
-		// Validate listing item price
-		if listing.Item.Price == "" {
-			return fmt.Errorf("item %d listing price not set", i)
-		}
-		if ok := validateBigString(listing.Item.Price); !ok {
-			return fmt.Errorf("item %d listing price not valid", i)
 		}
 	}
 
@@ -289,6 +260,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	if order.Payment.Address == "" {
 		return errors.New("order payment address is empty")
 	}
+	// TODO: validate order payment address
 	_, err := models.CurrencyDefinitions.Lookup(order.Payment.Coin)
 	if err != nil {
 		return errors.New("unknown payment currency")
@@ -322,7 +294,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	if order.BuyerID.Pubkeys == nil {
 		return errors.New("buyer id pubkeys is nil")
 	}
-	idPubkey, err := crypto.UnmarshalEd25519PublicKey(order.BuyerID.Pubkeys.Identity)
+	idPubkey, err := crypto.UnmarshalPublicKey(order.BuyerID.Pubkeys.Identity)
 	if err != nil {
 		return fmt.Errorf("invalid buyer ID pubkey: %s", err)
 	}
@@ -345,15 +317,6 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	valid := sig.Verify(idHash[:], escrowPubkey)
 	if !valid {
 		return errors.New("invalid buyer ID signature")
-	}
-
-	// Make sure the provided total is the same as what we calculate.
-	total, err := CalculateOrderTotal(order, op.erp)
-	if err != nil {
-		return err
-	}
-	if total.Cmp(iwallet.NewAmount(order.Payment.Amount)) != 0 {
-		return fmt.Errorf("invalid payment amount: expected %s, got %s", total, order.Payment.Amount)
 	}
 
 	return nil
@@ -697,6 +660,20 @@ func extractListing(hash string, listings []*pb.SignedListing) (*pb.Listing, err
 		}
 	}
 	return nil, fmt.Errorf("listing %s not found in order", hash)
+}
+
+func deepCopyListing(dest *pb.SignedListing, src *pb.SignedListing) error {
+	m := jsonpb.Marshaler{
+		EnumsAsInts:  false,
+		EmitDefaults: true,
+		Indent:       "",
+		OrigName:     false,
+	}
+	out, err := m.MarshalToString(src)
+	if err != nil {
+		return err
+	}
+	return jsonpb.UnmarshalString(out, dest)
 }
 
 // getSelectedSku returns the SKU from the listing which matches the provided options.

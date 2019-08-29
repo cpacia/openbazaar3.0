@@ -78,13 +78,25 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 			if !ok {
 				return orderID, paymentAddress, paymentAmount, errors.New("selected payment currency does not support escrow transactions")
 			}
+			chaincode, err := hex.DecodeString(orderOpen.Payment.Chaincode)
+			if err != nil {
+				return orderID, paymentAddress, paymentAmount, err
+			}
 
 			vendorEscrowPubkey, err := btcec.ParsePubKey(orderOpen.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
 			if err != nil {
 				return orderID, paymentAddress, paymentAmount, err
 			}
+			vendorKey, err := generateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+			if err != nil {
+				return orderID, paymentAddress, paymentAmount, err
+			}
 			buyerEscrowPubkey := n.escrowMasterKey.PubKey()
-			address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerEscrowPubkey, *vendorEscrowPubkey}, 1)
+			buyerKey, err := generateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+			if err != nil {
+				return orderID, paymentAddress, paymentAmount, err
+			}
+			address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey}, 1)
 			if err != nil {
 				return orderID, paymentAddress, paymentAmount, err
 			}
@@ -347,12 +359,25 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		if err != nil {
 			return nil, err
 		}
+		moderatorKey, err := generateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
+		if err != nil {
+			return nil, err
+		}
+
 		vendorEscrowPubkey, err := btcec.ParsePubKey(order.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
 		if err != nil {
 			return nil, err
 		}
+		vendorKey, err := generateEscrowPublicKey(vendorEscrowPubkey, chaincode)
+		if err != nil {
+			return nil, err
+		}
 		buyerEscrowPubkey := n.escrowMasterKey.PubKey()
-		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerEscrowPubkey, *vendorEscrowPubkey, *moderatorEscrowPubkey}, 2)
+		buyerKey, err := generateEscrowPublicKey(buyerEscrowPubkey, chaincode)
+		if err != nil {
+			return nil, err
+		}
+		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
 		if err != nil {
 			return nil, err
 		}
