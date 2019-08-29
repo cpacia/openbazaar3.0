@@ -204,11 +204,13 @@ func Test_validateCryptocurrencyListing(t *testing.T) {
 		valid     bool
 	}{
 		{
+			// Valid
 			listing:   factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {},
 			valid:     true,
 		},
 		{
+			// Should have no coupons
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Coupons = []*pb.Listing_Coupon{
@@ -220,6 +222,7 @@ func Test_validateCryptocurrencyListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Should have no variants
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Item.Options = []*pb.Listing_Item_Option{
@@ -231,6 +234,7 @@ func Test_validateCryptocurrencyListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Should have no shipping options
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.ShippingOptions = []*pb.Listing_ShippingOption{
@@ -242,6 +246,7 @@ func Test_validateCryptocurrencyListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Condition should be ""
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Item.Condition = "terrible"
@@ -249,6 +254,7 @@ func Test_validateCryptocurrencyListing(t *testing.T) {
 			valid: false,
 		},
 		{
+			// Divisibility does not match currency definitions
 			listing: factory.NewCryptoListing("test-listing"),
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.PricingCurrency.Divisibility = 10
