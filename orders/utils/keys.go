@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -20,12 +19,20 @@ func GenerateRatingPublicKeys(ratingPubKey *btcec.PublicKey, numKeys int, chainc
 		0,
 		false)
 
-	return generateHdKeys(hdKey, numKeys, false)
+	keyBytes := make([][]byte, 0, numKeys)
+	iKeys, err := generateHdKeys(hdKey, numKeys, false)
+	if err != nil {
+		return nil, err
+	}
+	for _, key := range iKeys {
+		keyBytes = append(keyBytes, key.([]byte))
+	}
+	return keyBytes, nil
 }
 
 // GenerateRatingPrivateKeys does the same thing as it's public key counterpart except it
 // returns the private keys.
-func GenerateRatingPrivateKeys(ratingPrivKey *btcec.PrivateKey, numKeys int, chaincode []byte) ([][]byte, error) {
+func GenerateRatingPrivateKeys(ratingPrivKey *btcec.PrivateKey, numKeys int, chaincode []byte) ([]*btcec.PrivateKey, error) {
 	hdKey := hdkeychain.NewExtendedKey(
 		chaincfg.MainNetParams.HDPrivateKeyID[:],
 		ratingPrivKey.Serialize(),
@@ -35,7 +42,15 @@ func GenerateRatingPrivateKeys(ratingPrivKey *btcec.PrivateKey, numKeys int, cha
 		0,
 		true)
 
-	return generateHdKeys(hdKey, numKeys, true)
+	keys := make([]*btcec.PrivateKey, 0, numKeys)
+	iKeys, err := generateHdKeys(hdKey, numKeys, true)
+	if err != nil {
+		return nil, err
+	}
+	for _, key := range iKeys {
+		keys = append(keys, key.(*btcec.PrivateKey))
+	}
+	return keys, nil
 }
 
 // GenerateEscrowPublicKey uses the chaincode from the order to deterministically generate public keys
@@ -83,7 +98,6 @@ func generateChild(hdKey *hdkeychain.ExtendedKey) (*hdkeychain.ExtendedKey, erro
 	for {
 		childKey, err := hdKey.Child(uint32(i))
 		if err != nil {
-			fmt.Println(err)
 			// Small chance this can fail due to weird curve stuff.
 			// Bip32 spec calls for skipping to next key.
 			i++
@@ -95,8 +109,8 @@ func generateChild(hdKey *hdkeychain.ExtendedKey) (*hdkeychain.ExtendedKey, erro
 
 // generateHdKeys is a helper function that can generate from either public or private
 // keys.
-func generateHdKeys(hdKey *hdkeychain.ExtendedKey, numKeys int, priv bool) ([][]byte, error) {
-	keys := make([][]byte, 0, numKeys)
+func generateHdKeys(hdKey *hdkeychain.ExtendedKey, numKeys int, priv bool) ([]interface{}, error) {
+	keys := make([]interface{}, 0, numKeys)
 	i := 0
 	for len(keys) < numKeys {
 		childKey, err := hdKey.Child(uint32(i))
@@ -111,7 +125,7 @@ func generateHdKeys(hdKey *hdkeychain.ExtendedKey, numKeys int, priv bool) ([][]
 			if err != nil {
 				return nil, err
 			}
-			keys = append(keys, priv.Serialize())
+			keys = append(keys, priv)
 		} else {
 			pub, err := childKey.ECPubKey()
 			if err != nil {
