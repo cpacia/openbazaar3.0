@@ -241,6 +241,9 @@ func (mn *Mocknet) WalletNetwork() *wallet.MockWalletNetwork {
 // TearDown shutsdown the network and destroys the data directories.
 func (mn *Mocknet) TearDown() error {
 	for _, n := range mn.nodes {
+		if n == nil {
+			return nil
+		}
 		n.Stop()
 		if err := n.repo.DestroyRepo(); err != nil {
 			return err

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
@@ -18,7 +19,249 @@ import (
 )
 
 func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
-	network, err := NewMocknet(2)
+	network, err := NewMocknet(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer network.TearDown()
+
+	ackSub1, err := network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderNotification{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	listing := factory.NewPhysicalListing("tshirt")
+
+	done := make(chan struct{})
+	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
+		t.Fatal(err)
+	}
+	<-done
+
+	index, err := network.Nodes()[0].GetMyListings()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done2 := make(chan struct{})
+	if err := network.Nodes()[2].SetProfile(&models.Profile{Name: "Ron Paul"}, done2); err != nil {
+		t.Fatal(err)
+	}
+	<-done2
+
+	modInfo := &models.ModeratorInfo{
+		AcceptedCurrencies: []string{"TMCK"},
+		Fee: models.ModeratorFee{
+			Percentage: 10,
+			FeeType:    models.PercentageFee,
+		},
+	}
+	done3 := make(chan struct{})
+	if err := network.Nodes()[2].SetSelfAsModerator(context.Background(), modInfo, done3); err != nil {
+		t.Fatal(err)
+	}
+	<-done3
+
+	purchase := &models.Purchase{
+		ShipTo:       "Peter",
+		Address:      "123 Spooner St.",
+		City:         "Quahog",
+		State:        "RI",
+		PostalCode:   "90210",
+		CountryCode:  pb.CountryCode_UNITED_STATES.String(),
+		AddressNotes: "asdf",
+		Moderator:    "",
+		Items: []models.PurchaseItem{
+			{
+				ListingHash: index[0].Hash,
+				Quantity:    1,
+				Options: []models.PurchaseItemOption{
+					{
+						Name:  "size",
+						Value: "large",
+					},
+					{
+						Name:  "color",
+						Value: "red",
+					},
+				},
+				Shipping: models.PurchaseShippingOption{
+					Name:    "usps",
+					Service: "standard",
+				},
+				Memo: "I want it fast!",
+			},
+		},
+		AlternateContactInfo: "peter@protonmail.com",
+		PaymentCoin:          "TMCK",
+	}
+
+	// Address request direct order
+	_, _, paymentAmount, err := network.Nodes()[1].PurchaseListing(purchase)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedAmount := "4992221"
+	if paymentAmount.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
+		t.Errorf("Returned incorrect amount. Expected %s, got %s", expectedAmount, paymentAmount.Amount)
+	}
+
+	<-ackSub1.Out()
+	orderEvent := <-orderSub0.Out()
+	orderNotif := orderEvent.(*events.OrderNotification)
+	if orderNotif.BuyerID != network.Nodes()[1].Identity().Pretty() {
+		t.Errorf("Incorrect notification peer ID: expected %s, got %s", network.Nodes()[1].Identity().Pretty(), orderNotif.BuyerID)
+	}
+	if orderNotif.Slug != listing.Slug {
+		t.Errorf("Incorrect notification slug: expected %s, got %s", listing.Slug, orderNotif.Slug)
+	}
+	if orderNotif.Title != listing.Item.Title {
+		t.Errorf("Incorrect notification title: expected %s, got %s", listing.Item.Title, orderNotif.Title)
+	}
+	if orderNotif.ListingType != listing.Metadata.ContractType.String() {
+		t.Errorf("Incorrect notification listing type: expected %s, got %s", listing.Metadata.ContractType.String(), orderNotif.ListingType)
+	}
+	if orderNotif.Thumbnail.Small != listing.Item.Images[0].Small {
+		t.Errorf("Incorrect notification small image: expected %s, got %s", listing.Item.Images[0].Small, orderNotif.Thumbnail.Small)
+	}
+	if orderNotif.Thumbnail.Tiny != listing.Item.Images[0].Tiny {
+		t.Errorf("Incorrect notification tiny image: expected %s, got %s", listing.Item.Images[0].Tiny, orderNotif.Thumbnail.Tiny)
+	}
+	if orderNotif.Price.Amount == "" {
+		t.Error("Order notification price not set")
+	}
+	if orderNotif.Price.CurrencyCode == "" {
+		t.Error("Order notification currency code not set")
+	}
+
+	var order models.Order
+	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if order.SerializedOrderOpen == nil {
+		t.Error("Node 0 failed to save order")
+	}
+
+	var order2 models.Order
+	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order2).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if order2.SerializedOrderOpen == nil {
+		t.Error("Node 1 failed to save order")
+	}
+	if !order2.OrderOpenAcked {
+		t.Error("Node 1 failed to record order open ACK")
+	}
+	orderOpen, err := order2.OrderOpenMessage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if orderOpen.Payment.Method != pb.OrderOpen_Payment_DIRECT {
+		t.Errorf("Expected direct order, got %s", orderOpen.Payment.Method)
+	}
+
+	// Moderated order
+	purchase.Moderator = network.Nodes()[2].Identity().Pretty()
+	_, _, paymentAmount, err = network.Nodes()[1].PurchaseListing(purchase)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedAmount = "4992221"
+	if paymentAmount.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
+		t.Errorf("Returned incorrect amount. Expected %s, got %s", expectedAmount, paymentAmount.Amount)
+	}
+
+	<-ackSub1.Out()
+	orderEvent = <-orderSub0.Out()
+	orderNotif = orderEvent.(*events.OrderNotification)
+
+	var order3 models.Order
+	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order3).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if order3.SerializedOrderOpen == nil {
+		t.Error("Node 0 failed to save order")
+	}
+
+	var order4 models.Order
+	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order4).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if order4.SerializedOrderOpen == nil {
+		t.Error("Node 1 failed to save order")
+	}
+	if !order4.OrderOpenAcked {
+		t.Error("Node 1 failed to record order open ACK")
+	}
+	orderOpen, err = order4.OrderOpenMessage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if orderOpen.Payment.Method != pb.OrderOpen_Payment_MODERATED {
+		t.Errorf("Expected moderated order, got %s", orderOpen.Payment.Method)
+	}
+
+	// Offline/cancelable order
+	network.Nodes()[0].Stop()
+	network.nodes[0] = nil
+
+	purchase.Moderator = ""
+	orderID, _, paymentAmount, err := network.Nodes()[1].PurchaseListing(purchase)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedAmount = "4992221"
+	if paymentAmount.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
+		t.Errorf("Returned incorrect amount. Expected %s, got %s", expectedAmount, paymentAmount.Amount)
+	}
+
+	var order6 models.Order
+	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("id = ?", orderID.String()).Last(&order6).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if order6.SerializedOrderOpen == nil {
+		t.Error("Node 1 failed to save order")
+	}
+	orderOpen, err = order6.OrderOpenMessage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if orderOpen.Payment.Method != pb.OrderOpen_Payment_CANCELABLE {
+		t.Errorf("Expected cancelable order, got %s", orderOpen.Payment.Method)
+	}
+}
+
+func TestOpenBazaarNode_EstimateOrderSubtotal(t *testing.T) {
+	network, err := NewMocknet(3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,25 +315,17 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		PaymentCoin:          "TMCK",
 	}
 
-	_, _, paymentAmount, err := network.Nodes()[1].PurchaseListing(purchase)
+	val, err := network.Nodes()[1].EstimateOrderSubtotal(purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	expectedAmount := "4992221"
-	if paymentAmount.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
-		t.Errorf("Returned incorrect amount. Expected %s, got %s", expectedAmount, paymentAmount.Amount)
+	if val.Currency.Code.String() != purchase.PaymentCoin {
+		t.Errorf("Incorrect currency code: Expected %s, got %s", purchase.PaymentCoin, val.Currency.Code.String())
 	}
-
-	// TODO: check order saved correctly on both sides
-	// TODO: check buyer saved order ACK
-
-	// TODO: try again with cancelable order
-	// TODO: try again with moderated order
-}
-
-func TestOpenBazaarNode_EstimateOrderSubtotal(t *testing.T) {
-
+	expectedAmount := 4992221
+	if val.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
+		t.Errorf("Returned incorrect amount: Expected %d, got %s", expectedAmount, val.Amount)
+	}
 }
 
 func TestOpenBazaarNode_createOrder(t *testing.T) {

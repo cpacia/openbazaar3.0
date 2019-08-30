@@ -27,6 +27,8 @@ import (
 )
 
 func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
+	order.ID = models.OrderID(message.OrderID)
+
 	orderOpen := new(pb.OrderOpen)
 	if err := ptypes.UnmarshalAny(message.Message, orderOpen); err != nil {
 		return nil, err
@@ -99,7 +101,7 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 			BuyerHandle: orderOpen.BuyerID.Handle,
 			BuyerID:     orderOpen.BuyerID.PeerID,
 			ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),
-			OrderID:     order.ID.String(),
+			OrderID:     message.OrderID,
 			Price: events.ListingPrice{
 				Amount:        orderOpen.Payment.Amount,
 				CurrencyCode:  orderOpen.Payment.Coin,
@@ -110,7 +112,7 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 				Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
 				Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
 			},
-			Title: orderOpen.Listings[0].Listing.Slug,
+			Title: orderOpen.Listings[0].Listing.Item.Title,
 		}
 	}
 
