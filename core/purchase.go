@@ -2,6 +2,7 @@ package core
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -113,7 +114,7 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 			orderOpen.Payment.Script = hex.EncodeToString(script)
 			orderOpen.Payment.EscrowReleaseFee = escrowFee.String()
 		} else {
-			if err := wallet.ValidateAddress(paymentAddress); err != nil {
+			if err := wallet.ValidateAddress(address); err != nil {
 				return orderID, paymentAddress, paymentAmount, fmt.Errorf("vendor provided invalid payment address: %s", err)
 			}
 			orderOpen.Payment.Address = address.String()
@@ -305,6 +306,12 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		items = append(items, orderItem)
 	}
 
+	idHash := sha256.Sum256([]byte(n.Identity().Pretty()))
+	sig, err := n.escrowMasterKey.Sign(idHash[:])
+	if err != nil {
+		return nil, err
+	}
+
 	order := &pb.OrderOpen{
 		Timestamp: ptypes.TimestampNow(),
 		BuyerID: &pb.ID{
@@ -314,6 +321,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 				Escrow:   n.escrowMasterKey.PubKey().SerializeCompressed(),
 			},
 			Handle: profile.Handle,
+			Sig:    sig.Serialize(),
 		},
 		AlternateContactInfo: purchase.AlternateContactInfo,
 		Listings:             listings,
@@ -355,7 +363,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		order.Payment.Moderator = purchase.Moderator
 		order.Payment.EscrowReleaseFee = escrowFee.String()
 
-		moderatorPeerID, err := peer.IDHexDecode(purchase.Moderator)
+		moderatorPeerID, err := peer.IDB58Decode(purchase.Moderator)
 		if err != nil {
 			return nil, err
 		}
@@ -394,6 +402,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		if err != nil {
 			return nil, err
 		}
+		order.Payment.ModeratorKey = moderatorPubkeyBytes
 		order.Payment.Address = address.String()
 		order.Payment.Script = hex.EncodeToString(script)
 	}
@@ -413,11 +422,5 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		return nil, err
 	}
 	order.RatingKeys = ratingKeys
-
-	identitySig, err := n.escrowMasterKey.Sign([]byte(n.Identity().Pretty()))
-	if err != nil {
-		return nil, err
-	}
-	order.BuyerID.Sig = identitySig.Serialize()
 	return order, nil
 }

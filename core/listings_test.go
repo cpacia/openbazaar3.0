@@ -93,6 +93,8 @@ func TestOpenBazaarNode_ListingsGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	defer network.TearDown()
+
 	listing := factory.NewPhysicalListing("ron-swanson-shirt")
 
 	done := make(chan struct{})

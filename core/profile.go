@@ -23,7 +23,7 @@ import (
 // chan will be closed when publishing is complete.
 func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{}) error {
 	profile.EscrowPublicKey = hex.EncodeToString(n.escrowMasterKey.PubKey().SerializeCompressed())
-	profile.PeerID = n.ipfsNode.Identity.Pretty()
+	profile.PeerID = n.Identity().Pretty()
 	profile.LastModified = time.Now()
 
 	if err := validateProfile(profile); err != nil {

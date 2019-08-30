@@ -176,7 +176,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 				if err != nil {
 					return
 				}
-				if n.ipfsNode.Identity != p {
+				if n.Identity() != p {
 					err = n.repo.DB().Update(func(tx database.Tx) error {
 						return putToDatastoreCache(tx, p, pth)
 					})
@@ -204,7 +204,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 		return pth, nil
 	}
 	// Resolving succeeded. Update the cache.
-	if n.ipfsNode.Identity != p {
+	if n.Identity() != p {
 		err = n.repo.DB().Update(func(tx database.Tx) error {
 			return putToDatastoreCache(tx, p, pth)
 		})

@@ -63,7 +63,7 @@ func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message
 		event interface{}
 		err   error
 	)
-	err = dbtx.Read().Where("order_id = ?", message.OrderID).First(&order).Error
+	err = dbtx.Read().Where("id = ?", message.OrderID).First(&order).Error
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		return nil, err
 	} else if gorm.IsRecordNotFoundError(err) && message.MessageType != npb.OrderMessage_ORDER_OPEN {
@@ -140,7 +140,7 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 	default:
 		return errors.New("unknown order message type")
 	}
-	return tx.Update(key, true, map[string]interface{}{"order_id = ?": orderMessage.OrderID}, &models.Order{})
+	return tx.Update(key, true, map[string]interface{}{"id = ?": orderMessage.OrderID}, &models.Order{})
 }
 
 // isDuplicate checks the serialization of the passed in message against the
