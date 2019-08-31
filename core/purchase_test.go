@@ -26,6 +26,12 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	defer network.TearDown()
 
+	go network.StartWalletNetwork()
+
+	for _, node := range network.Nodes() {
+		go node.orderProcessor.Start()
+	}
+
 	ackSub1, err := network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
 	if err != nil {
 		t.Fatal(err)
@@ -68,42 +74,11 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 	<-done3
 
-	purchase := &models.Purchase{
-		ShipTo:       "Peter",
-		Address:      "123 Spooner St.",
-		City:         "Quahog",
-		State:        "RI",
-		PostalCode:   "90210",
-		CountryCode:  pb.CountryCode_UNITED_STATES.String(),
-		AddressNotes: "asdf",
-		Moderator:    "",
-		Items: []models.PurchaseItem{
-			{
-				ListingHash: index[0].Hash,
-				Quantity:    1,
-				Options: []models.PurchaseItemOption{
-					{
-						Name:  "size",
-						Value: "large",
-					},
-					{
-						Name:  "color",
-						Value: "red",
-					},
-				},
-				Shipping: models.PurchaseShippingOption{
-					Name:    "usps",
-					Service: "standard",
-				},
-				Memo: "I want it fast!",
-			},
-		},
-		AlternateContactInfo: "peter@protonmail.com",
-		PaymentCoin:          "TMCK",
-	}
+	purchase := factory.NewPurchase()
+	purchase.Items[0].ListingHash = index[0].Hash
 
 	// Address request direct order
-	_, _, paymentAmount, err := network.Nodes()[1].PurchaseListing(purchase)
+	_, paymentAddress, paymentAmount, err := network.Nodes()[1].PurchaseListing(purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,6 +148,62 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 	if orderOpen.Payment.Method != pb.OrderOpen_Payment_DIRECT {
 		t.Errorf("Expected direct order, got %s", orderOpen.Payment.Method)
+	}
+
+	wallet, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode("TMCK")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	walletAddr, err := wallet.CurrentAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := network.WalletNetwork().GenerateToAddress(walletAddr, iwallet.NewAmount(100000000)); err != nil {
+		t.Fatal(err)
+	}
+
+	txSub, err := network.Nodes()[1].eventBus.Subscribe(&events.TransactionReceived{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	<-txSub.Out()
+
+	dbtx, err := wallet.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = wallet.Spend(dbtx, paymentAddress, paymentAmount.Amount, iwallet.FlNormal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dbtx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	paymentSub, err := network.Nodes()[1].eventBus.Subscribe(&events.PaymentNotification{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	<-paymentSub.Out()
+
+	var order5 models.Order
+	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order5).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	funded, err := order5.IsFunded()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !funded {
+		t.Errorf("Order not marked as funded in db")
 	}
 
 	// Moderated order

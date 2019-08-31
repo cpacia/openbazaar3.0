@@ -108,7 +108,7 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 			if err != nil {
 				return orderID, paymentAddress, paymentAmount, err
 			}
-
+			paymentAddress = address
 			orderOpen.Payment.Method = pb.OrderOpen_Payment_CANCELABLE
 			orderOpen.Payment.Address = address.String()
 			orderOpen.Payment.Script = hex.EncodeToString(script)
@@ -117,6 +117,7 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 			if err := wallet.ValidateAddress(address); err != nil {
 				return orderID, paymentAddress, paymentAmount, fmt.Errorf("vendor provided invalid payment address: %s", err)
 			}
+			paymentAddress = address
 			orderOpen.Payment.Address = address.String()
 		}
 	}

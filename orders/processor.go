@@ -63,9 +63,10 @@ func NewOrderProcessor(cfg *Config) *OrderProcessor {
 func (op *OrderProcessor) Start() {
 	for _, wallet := range op.multiwallet {
 		go func(w iwallet.Wallet) {
+			sub := w.SubscribeTransactions()
 			for {
 				select {
-				case tx := <-w.SubscribeTransactions():
+				case tx := <-sub:
 					op.handleWalletTransaction(tx)
 				case <-op.shutdown:
 					return

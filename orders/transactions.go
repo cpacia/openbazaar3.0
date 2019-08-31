@@ -65,13 +65,18 @@ func (op *OrderProcessor) handleWalletTransaction(transaction iwallet.Transactio
 func (op *OrderProcessor) handleIncomingPayment(dbtx database.Tx, order *models.Order, from iwallet.SpendInfo, tx iwallet.Transaction) error {
 	err := order.PutTransaction(tx)
 	if models.IsDuplicateTransactionError(err) {
-		log.Debug("Received duplicate transaction %s", tx.ID.String())
+		log.Debugf("Received duplicate transaction %s", tx.ID.String())
 		return nil
 	} else if err != nil {
 		return err
 	}
 
 	funded, err := order.IsFunded()
+	if err != nil {
+		return err
+	}
+
+	orderOpen, err := order.OrderOpenMessage()
 	if err != nil {
 		return err
 	}
@@ -109,11 +114,6 @@ func (op *OrderProcessor) handleIncomingPayment(dbtx database.Tx, order *models.
 			Payload:     payload,
 		}
 
-		orderOpen, err := order.OrderOpenMessage()
-		if err != nil {
-			return err
-		}
-
 		vendor, err := peer.IDB58Decode(orderOpen.Listings[0].Listing.VendorID.PeerID)
 		if err != nil {
 			return err
@@ -144,7 +144,29 @@ func (op *OrderProcessor) handleIncomingPayment(dbtx database.Tx, order *models.
 		}
 
 	case models.RoleVendor:
-		//
+		if funded {
+			notif := &events.OrderFundedNotification{
+				BuyerHandle: orderOpen.BuyerID.Handle,
+				BuyerID:     orderOpen.BuyerID.PeerID,
+				ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),
+				OrderID:     order.ID.String(),
+				Price: events.ListingPrice{
+					Amount:        orderOpen.Payment.Amount,
+					CurrencyCode:  orderOpen.Payment.Coin,
+					PriceModifier: orderOpen.Listings[0].Listing.Metadata.PriceModifier,
+				},
+				Slug: orderOpen.Listings[0].Listing.Slug,
+				Thumbnail: events.Thumbnail{
+					Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
+					Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
+				},
+				Title: orderOpen.Listings[0].Listing.Item.Title,
+			}
+			op.bus.Emit(&notif)
+			log.Infof("Payment detected: Order %s fully funded", order.ID)
+		} else {
+			log.Infof("Payment detected: Order %s partially funded", order.ID)
+		}
 	}
 	return nil
 }

@@ -240,10 +240,11 @@ func (w *MockWallet) Start() {
 					if _, ok := w.addrs[out.Address]; ok {
 						idx := make([]byte, 4)
 						binary.BigEndian.PutUint32(idx, uint32(i))
-						outpoint := hex.EncodeToString(append(txidBytes, idx...))
+						op := append(txidBytes, idx...)
+						outpoint := hex.EncodeToString(op)
 						if _, ok := w.utxos[outpoint]; !ok {
 							w.utxos[outpoint] = mockUtxo{
-								outpoint: append(txidBytes, idx...),
+								outpoint: op,
 								address:  out.Address,
 								value:    out.Amount,
 							}
@@ -418,6 +419,7 @@ func (w *MockWallet) HasKey(addr iwallet.Address) (bool, error) {
 
 func (w *MockWallet) newAddress() (iwallet.Address, error) {
 	b := make([]byte, 20)
+	rand.Read(b)
 	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
 	w.addrs[addr] = false
 	return addr, nil
@@ -597,13 +599,13 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 			w.utxos[hex.EncodeToString(changeUtxo.outpoint)] = *changeUtxo
 			w.addrs[changeUtxo.address] = true
 		}
+		w.mtx.Unlock()
 		if w.outgoing != nil {
 			w.outgoing <- txn
 		}
 		for _, sub := range w.txSubs {
 			sub <- txn
 		}
-		w.mtx.Unlock()
 		return nil
 	}
 
@@ -671,13 +673,13 @@ func (w *MockWallet) SweepWallet(tx iwallet.Tx, to iwallet.Address, feeLevel iwa
 		for _, utxo := range utxosToDelete {
 			delete(w.utxos, utxo)
 		}
+		w.mtx.Unlock()
 		if w.outgoing != nil {
 			w.outgoing <- txn
 		}
 		for _, sub := range w.txSubs {
 			sub <- txn
 		}
-		w.mtx.Unlock()
 		return nil
 	}
 
@@ -850,7 +852,6 @@ func (w *MockWallet) BuildAndSend(tx iwallet.Tx, txn iwallet.Transaction, signat
 
 	dbtx.onCommit = func() error {
 		w.mtx.Lock()
-		defer w.mtx.Unlock()
 
 		for _, utxo := range utxosToAdd {
 			w.utxos[hex.EncodeToString(utxo.outpoint)] = utxo
@@ -858,6 +859,7 @@ func (w *MockWallet) BuildAndSend(tx iwallet.Tx, txn iwallet.Transaction, signat
 		}
 
 		w.transactions[txn.ID] = txn
+		w.mtx.Unlock()
 
 		if w.outgoing != nil {
 			w.outgoing <- txn

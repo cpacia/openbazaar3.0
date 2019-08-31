@@ -2,6 +2,7 @@ package orders
 
 import (
 	"context"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
@@ -48,5 +49,6 @@ func newMockOrderProcessor() (*OrderProcessor, error) {
 		Messenger:            messenger,
 		Multiwallet:          mw,
 		ExchangeRateProvider: erp,
+		EventBus:             events.NewBus(),
 	}), nil
 }

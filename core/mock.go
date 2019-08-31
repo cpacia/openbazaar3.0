@@ -235,6 +235,10 @@ func (mn *Mocknet) StartAll() {
 	}
 }
 
+func (mn *Mocknet) StartWalletNetwork() {
+	mn.wn.Start()
+}
+
 // WalletNetwork returns the mock wallet network.
 func (mn *Mocknet) WalletNetwork() *wallet.MockWalletNetwork {
 	return mn.wn
