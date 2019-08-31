@@ -74,6 +74,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		Messenger:            messenger,
 		Multiwallet:          mw,
 		ExchangeRateProvider: erp,
+		EventBus:             bus,
 	})
 
 	node := &OpenBazaarNode{
@@ -172,6 +173,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			Messenger:            messenger,
 			Multiwallet:          mw,
 			ExchangeRateProvider: erp,
+			EventBus:             bus,
 		})
 
 		node := &OpenBazaarNode{

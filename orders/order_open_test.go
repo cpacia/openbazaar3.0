@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/OpenBazaar/jsonpb"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
@@ -75,7 +76,7 @@ func TestOrderProcessor_OrderOpen(t *testing.T) {
 						Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
 						Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
 					},
-					Title: orderOpen.Listings[0].Listing.Slug,
+					Title: orderOpen.Listings[0].Listing.Item.Title,
 				}
 			},
 		},
@@ -83,6 +84,7 @@ func TestOrderProcessor_OrderOpen(t *testing.T) {
 			// Order already exists with different order.
 			setup: func(order *models.Order, orderOpen *pb.OrderOpen) error {
 				order.SerializedOrderOpen = nil
+				order.SetRole(models.RoleVendor)
 				order.SerializedOrderOpen = []byte{0x00}
 				return nil
 			},
@@ -92,6 +94,8 @@ func TestOrderProcessor_OrderOpen(t *testing.T) {
 		{
 			// Order open already exists.
 			setup: func(order *models.Order, orderOpen *pb.OrderOpen) error {
+				order.PaymentAddress = orderOpen.Payment.Address
+				order.SetRole(models.RoleVendor)
 				return order.PutMessage(orderOpen)
 			},
 			expectedError: nil,
@@ -137,12 +141,20 @@ func TestOrderProcessor_OrderOpen(t *testing.T) {
 				t.Errorf("Test %d: Incorrect error returned. Expected %t, got %t", i, test.expectedError, err)
 			}
 			if err == nil {
-				ser, err := proto.Marshal(orderOpen)
+				m := jsonpb.Marshaler{
+					EmitDefaults: true,
+					Indent:       "    ",
+				}
+				ser, err := m.MarshalToString(orderOpen)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if !bytes.Equal(order.SerializedOrderOpen, ser) {
+				if !bytes.Equal(order.SerializedOrderOpen, []byte(ser)) {
 					t.Errorf("Test %d: Failed to save order open message to the order", i)
+				}
+
+				if order.PaymentAddress != orderOpen.Payment.Address {
+					t.Errorf("Test %d: Saved incorrect payment address: Expected %s, got %s", i, orderOpen.Payment.Address, order.PaymentAddress)
 				}
 			}
 			if test.expectedEvent != nil {
@@ -151,11 +163,15 @@ func TestOrderProcessor_OrderOpen(t *testing.T) {
 					t.Errorf("Test %d: incorrect event returned", i)
 				}
 			}
+
 			if test.errorResponseSent && order.SerializedOrderReject == nil {
 				t.Errorf("Test %d: failed to save order reject message", i)
 			}
 			if test.errorResponseSent && event != nil {
 				t.Errorf("Test %d: event returned when validation failed", i)
+			}
+			if order.Role() != models.RoleVendor {
+				t.Errorf("Test %d: expected role vendor got %d", i, order.Role())
 			}
 			return nil
 		})

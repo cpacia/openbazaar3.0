@@ -255,6 +255,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		return nil, errors.New("no listings selected in purchase")
 	}
 	addedListings := make(map[string]bool)
+	vendors := make(map[string]bool)
 	for _, item := range purchase.Items {
 		c, err := cid.Decode(item.ListingHash)
 		if err != nil {
@@ -266,6 +267,10 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		}
 		if err := n.validateListing(listing); err != nil {
 			return nil, err
+		}
+		vendors[listing.Listing.VendorID.PeerID] = true
+		if len(vendors) > 1 {
+			return nil, errors.New("order can only purchase items from a single vendor")
 		}
 		// If we are purchasing the same listing multiple times but with
 		// different options we don't need to include the full listing

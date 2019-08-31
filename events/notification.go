@@ -37,10 +37,24 @@ type OrderNotification struct {
 
 func (n *OrderNotification) Type() string { return "OrderNotification" }
 
+type OrderFundedNotification struct {
+	BuyerHandle string       `json:"buyerHandle"`
+	BuyerID     string       `json:"buyerID"`
+	ID          string       `json:"notificationID"`
+	ListingType string       `json:"listingType"`
+	OrderID     string       `json:"orderID"`
+	Price       ListingPrice `json:"price"`
+	Slug        string       `json:"slug"`
+	Thumbnail   Thumbnail    `json:"thumbnail"`
+	Title       string       `json:"title"`
+}
+
+func (n *OrderFundedNotification) Type() string { return "OrderFundedNotification" }
+
 type PaymentNotification struct {
 	ID           string `json:"notificationID"`
 	OrderID      string `json:"orderID"`
-	FundingTotal uint64 `json:"fundingTotal"`
+	FundingTotal string `json:"fundingTotal"`
 	CoinType     string `json:"coinType"`
 }
 

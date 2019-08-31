@@ -92,6 +92,7 @@ func (n *OpenBazaarNode) Start() {
 	}()
 	go n.messenger.Start()
 	go n.followerTracker.Start()
+	go n.orderProcessor.Start()
 	go n.syncMessages()
 	go n.republish()
 }
@@ -104,6 +105,7 @@ func (n *OpenBazaarNode) Stop() {
 	n.repo.Close()
 	n.networkService.Close()
 	n.messenger.Stop()
+	n.orderProcessor.Stop()
 }
 
 // UsingTestnet returns whether or not this node is running on

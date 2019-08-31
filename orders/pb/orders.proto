@@ -69,8 +69,8 @@ message OrderOpen {
 }
 
 message OrderReject {
-    RejectType type = 1;
-    string reason   = 2;
+    RejectType type             = 1;
+    string reason               = 2;
 
     enum RejectType {
         USER_REJECT      = 0;
@@ -86,5 +86,13 @@ message DisputeOpen {}
 message DisputeUpdate {}
 message DisputeClose {}
 message Refund {}
-message PaymentSent {}
+
+message PaymentSent {
+    string transactionID = 1;
+}
+
 message PaymentFinalized {}
+
+message PaymentSentList {
+    repeated PaymentSent messages = 1;
+}

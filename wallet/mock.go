@@ -533,7 +533,7 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 		}
 	}
 	if totalUtxo.Cmp(totalWithFee) < 0 {
-		return iwallet.TransactionID(""), errors.New("insufficient funds")
+		return "", errors.New("insufficient funds")
 	}
 
 	txidBytes := make([]byte, 32)
@@ -687,7 +687,7 @@ func (w *MockWallet) SweepWallet(tx iwallet.Tx, to iwallet.Address, feeLevel iwa
 // SubscribeTransactions returns a chan over which the wallet is expected
 // to push both transactions relevant for this wallet as well as transactions
 // sending to or spending from a watched address.
-func (w *MockWallet) SubscribeTransactions() chan<- iwallet.Transaction {
+func (w *MockWallet) SubscribeTransactions() <-chan iwallet.Transaction {
 	ch := make(chan iwallet.Transaction)
 	w.txSubs = append(w.txSubs, ch)
 	return ch
@@ -695,7 +695,7 @@ func (w *MockWallet) SubscribeTransactions() chan<- iwallet.Transaction {
 
 // SubscribeBlocks returns a chan over which the wallet is expected
 // to push info about new blocks when they arrive.
-func (w *MockWallet) SubscribeBlocks() chan<- iwallet.BlockchainInfo {
+func (w *MockWallet) SubscribeBlocks() <-chan iwallet.BlockchainInfo {
 	ch := make(chan iwallet.BlockchainInfo)
 	w.blockSubs = append(w.blockSubs, ch)
 	return ch

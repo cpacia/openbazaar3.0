@@ -116,8 +116,17 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 		}
 	}
 
+	if op.identity.Pretty() == orderOpen.BuyerID.PeerID {
+		order.SetRole(models.RoleBuyer)
+	} else {
+		order.SetRole(models.RoleVendor)
+	}
+
 	if err := order.PutMessage(orderOpen); err != nil {
 		return nil, err
+	}
+	if orderOpen.Payment != nil {
+		order.PaymentAddress = orderOpen.Payment.Address
 	}
 
 	return event, nil

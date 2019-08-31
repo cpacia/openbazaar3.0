@@ -24,3 +24,8 @@ message ID {
         bytes escrow     = 2; // Cryptocurrency public key
     }
 }
+
+message EscrowSignature {
+    uint32 inputIndex = 1;
+    bytes sig         = 2;
+}

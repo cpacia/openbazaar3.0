@@ -134,6 +134,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		Messenger:            messenger,
 		Multiwallet:          mw,
 		ExchangeRateProvider: erp,
+		EventBus:             bus,
 	})
 
 	// Construct our OpenBazaar node.repo object

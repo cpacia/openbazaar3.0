@@ -3,11 +3,14 @@ package orders
 import (
 	"bytes"
 	"errors"
+	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/wallet"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
@@ -28,6 +31,7 @@ type Config struct {
 	Messenger            *net.Messenger
 	Multiwallet          wallet.Multiwallet
 	ExchangeRateProvider *wallet.ExchangeRateProvider
+	EventBus             events.Bus
 }
 
 // OrderProcessor is used to deterministically process orders.
@@ -37,11 +41,43 @@ type OrderProcessor struct {
 	messenger   *net.Messenger
 	multiwallet wallet.Multiwallet
 	erp         *wallet.ExchangeRateProvider
+	bus         events.Bus
+	shutdown    chan struct{}
 }
 
 // NewOrderProcessor initializes and returns a new OrderProcessor
 func NewOrderProcessor(cfg *Config) *OrderProcessor {
-	return &OrderProcessor{cfg.Identity, cfg.Db, cfg.Messenger, cfg.Multiwallet, cfg.ExchangeRateProvider}
+	return &OrderProcessor{
+		identity:    cfg.Identity,
+		db:          cfg.Db,
+		messenger:   cfg.Messenger,
+		multiwallet: cfg.Multiwallet,
+		erp:         cfg.ExchangeRateProvider,
+		bus:         cfg.EventBus,
+		shutdown:    make(chan struct{}),
+	}
+}
+
+// Start begins listening for transactions from the wallets that pertain to our
+// orders. When we find one we record the payment.
+func (op *OrderProcessor) Start() {
+	for _, wallet := range op.multiwallet {
+		go func(w iwallet.Wallet) {
+			for {
+				select {
+				case tx := <-w.SubscribeTransactions():
+					op.handleWalletTransaction(tx)
+				case <-op.shutdown:
+					return
+				}
+			}
+		}(wallet)
+	}
+}
+
+// Stop shuts down the processor.
+func (op *OrderProcessor) Stop() {
+	close(op.shutdown)
 }
 
 // ProcessMessage is the main handler for the OrderProcessor. It ingests a new message
@@ -146,9 +182,15 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 // isDuplicate checks the serialization of the passed in message against the
 // passed in serialization and returns true if they match.
 func isDuplicate(message proto.Message, serialized []byte) (bool, error) {
-	ser, err := proto.Marshal(message)
+	m := jsonpb.Marshaler{
+		EmitDefaults: true,
+		Indent:       "    ",
+	}
+
+	ser, err := m.MarshalToString(message)
 	if err != nil {
 		return false, err
 	}
-	return bytes.Equal(ser, serialized), nil
+
+	return bytes.Equal([]byte(ser), serialized), nil
 }
