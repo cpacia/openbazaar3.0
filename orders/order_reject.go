@@ -54,5 +54,7 @@ func (op *OrderProcessor) handleOrderRejectMessage(dbtx database.Tx, order *mode
 		VendorID:     orderOpen.Listings[0].Listing.VendorID.PeerID,
 	}
 
+	log.Infof("Received ORDER_REJECT message for order %s", order.ID)
+
 	return event, order.PutMessage(orderReject)
 }

@@ -60,6 +60,14 @@ type PaymentNotification struct {
 
 func (n *PaymentNotification) Type() string { return "PaymentNotification" }
 
+type PaymentSentNotification struct {
+	ID      string `json:"notificationID"`
+	OrderID string `json:"orderID"`
+	Txid    string `json:"transactionID"`
+}
+
+func (n *PaymentSentNotification) Type() string { return "PaymentSentNotification" }
+
 type OrderConfirmationNotification struct {
 	ID           string    `json:"notificationID"`
 	OrderID      string    `json:"orderID"`

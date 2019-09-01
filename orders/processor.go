@@ -118,14 +118,7 @@ func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message
 		return nil, nil
 	}
 
-	switch message.MessageType {
-	case npb.OrderMessage_ORDER_OPEN:
-		event, err = op.handleOrderOpenMessage(dbtx, &order, peer, message)
-	case npb.OrderMessage_ORDER_REJECT:
-		event, err = op.handleOrderRejectMessage(dbtx, &order, peer, message)
-	default:
-		return nil, errors.New("unknown order message type")
-	}
+	event, err = op.handleMessage(dbtx, &order, peer, message)
 	if err != nil {
 		if err := order.PutErrorMessage(message); err != nil {
 			return nil, err
@@ -178,6 +171,21 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 		return errors.New("unknown order message type")
 	}
 	return tx.Update(key, true, map[string]interface{}{"id = ?": orderMessage.OrderID}, &models.Order{})
+}
+
+// handleMessage passes the message off to the appropriate handler.
+func (op *OrderProcessor) handleMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (event interface{}, err error) {
+	switch message.MessageType {
+	case npb.OrderMessage_ORDER_OPEN:
+		event, err = op.handleOrderOpenMessage(dbtx, order, peer, message)
+	case npb.OrderMessage_PAYMENT_SENT:
+		event, err = op.handlePaymentSentMessage(dbtx, order, peer, message)
+	case npb.OrderMessage_ORDER_REJECT:
+		event, err = op.handleOrderRejectMessage(dbtx, order, peer, message)
+	default:
+		return nil, errors.New("unknown order message type")
+	}
+	return event, err
 }
 
 // isDuplicate checks the serialization of the passed in message against the

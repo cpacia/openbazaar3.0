@@ -67,7 +67,7 @@ type Order struct {
 
 	Transactions []byte
 
-	MyRole uint8
+	MyRole OrderRole
 
 	SerializedOrderOpen []byte
 	OrderOpenAcked      bool
@@ -111,21 +111,12 @@ type Order struct {
 
 // Role returns the role of the user for this order.
 func (o *Order) Role() OrderRole {
-	switch o.MyRole {
-	case 1:
-		return RoleBuyer
-	case 2:
-		return RoleVendor
-	case 3:
-		return RoleModerator
-	default:
-		return RoleUnknown
-	}
+	return o.MyRole
 }
 
 // SetRole sets the role of the user for this order.
 func (o *Order) SetRole(role OrderRole) {
-	o.MyRole = uint8(role)
+	o.MyRole = role
 }
 
 // GetTransactions returns all the transactions associated with this order.
@@ -350,6 +341,11 @@ func (o *Order) PutMessage(message proto.Message) error {
 				return err
 			}
 		}
+		for _, m := range paymentList.Messages {
+			if m.TransactionID == message.(*pb.PaymentSent).TransactionID {
+				return ErrDuplicateTransaction
+			}
+		}
 		paymentList.Messages = append(paymentList.Messages, message.(*pb.PaymentSent))
 		ser, err := marshaler.MarshalToString(paymentList)
 		if err != nil {
@@ -372,6 +368,28 @@ func (o *Order) ParkMessage(message *npb.OrderMessage) error {
 		}
 	}
 	parkedMessages.Messages = append(parkedMessages.Messages, message)
+	ser, err := marshaler.MarshalToString(parkedMessages)
+	if err != nil {
+		return err
+	}
+	o.ParkedMessages = []byte(ser)
+	return nil
+}
+
+// DeleteParkedMessage deletes a parked message from the order.
+func (o *Order) DeleteParkedMessage(orderID OrderID) error {
+	parkedMessages := new(npb.OrderList)
+	if o.ParkedMessages != nil {
+		if err := jsonpb.UnmarshalString(string(o.ParkedMessages), parkedMessages); err != nil {
+			return err
+		}
+	}
+	for i, message := range parkedMessages.Messages {
+		if message.OrderID == orderID.String() {
+			parkedMessages.Messages = append(parkedMessages.Messages[:i], parkedMessages.Messages[i+1:]...)
+			break
+		}
+	}
 	ser, err := marshaler.MarshalToString(parkedMessages)
 	if err != nil {
 		return err

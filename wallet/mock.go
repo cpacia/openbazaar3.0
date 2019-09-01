@@ -603,9 +603,6 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 		if w.outgoing != nil {
 			w.outgoing <- txn
 		}
-		for _, sub := range w.txSubs {
-			sub <- txn
-		}
 		return nil
 	}
 
@@ -676,9 +673,6 @@ func (w *MockWallet) SweepWallet(tx iwallet.Tx, to iwallet.Address, feeLevel iwa
 		w.mtx.Unlock()
 		if w.outgoing != nil {
 			w.outgoing <- txn
-		}
-		for _, sub := range w.txSubs {
-			sub <- txn
 		}
 		return nil
 	}
