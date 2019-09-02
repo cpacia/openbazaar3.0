@@ -36,7 +36,7 @@ func (op *OrderProcessor) handlePaymentSentMessage(dbtx database.Tx, order *mode
 	}
 
 	txs, err := order.GetTransactions()
-	if err != nil && !models.IsDuplicateTransactionError(err) {
+	if err != nil && !models.IsMessageNotExistError(err) {
 		return nil, err
 	}
 

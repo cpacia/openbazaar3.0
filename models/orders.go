@@ -377,7 +377,7 @@ func (o *Order) ParkMessage(message *npb.OrderMessage) error {
 }
 
 // DeleteParkedMessage deletes a parked message from the order.
-func (o *Order) DeleteParkedMessage(orderID OrderID) error {
+func (o *Order) DeleteParkedMessage(messageType npb.OrderMessage_MessageType) error {
 	parkedMessages := new(npb.OrderList)
 	if o.ParkedMessages != nil {
 		if err := jsonpb.UnmarshalString(string(o.ParkedMessages), parkedMessages); err != nil {
@@ -385,7 +385,7 @@ func (o *Order) DeleteParkedMessage(orderID OrderID) error {
 		}
 	}
 	for i, message := range parkedMessages.Messages {
-		if message.OrderID == orderID.String() {
+		if message.MessageType == messageType {
 			parkedMessages.Messages = append(parkedMessages.Messages[:i], parkedMessages.Messages[i+1:]...)
 			break
 		}
@@ -401,6 +401,9 @@ func (o *Order) DeleteParkedMessage(orderID OrderID) error {
 // GetParkedMessages gets the parked messages associated with this order.
 func (o *Order) GetParkedMessages() ([]*npb.OrderMessage, error) {
 	parkedMessages := new(npb.OrderList)
+	if o.ParkedMessages == nil || len(o.ParkedMessages) == 0 {
+		return nil, nil
+	}
 	if err := jsonpb.UnmarshalString(string(o.ParkedMessages), parkedMessages); err != nil {
 		return nil, err
 	}
@@ -427,6 +430,9 @@ func (o *Order) PutErrorMessage(message *npb.OrderMessage) error {
 // GetErroredMessages gets the errored messages associated with this order.
 func (o *Order) GetErroredMessages() ([]*npb.OrderMessage, error) {
 	erroredMessages := new(npb.OrderList)
+	if o.ErroredMessages == nil || len(o.ErroredMessages) == 0 {
+		return nil, nil
+	}
 	if err := jsonpb.UnmarshalString(string(o.ErroredMessages), erroredMessages); err != nil {
 		return nil, err
 	}
