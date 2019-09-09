@@ -28,7 +28,7 @@ func (op *OrderProcessor) handleWalletTransaction(transaction iwallet.Transactio
 				return err
 			}
 
-			if err := op.handleIncomingPayment(tx, &order, to, transaction); err != nil {
+			if err := op.handleIncomingPayment(tx, &order, transaction); err != nil {
 				return err
 			}
 
@@ -45,7 +45,7 @@ func (op *OrderProcessor) handleWalletTransaction(transaction iwallet.Transactio
 				return err
 			}
 
-			if err := op.handleOutgoingPayment(tx, &order, from, transaction); err != nil {
+			if err := op.handleOutgoingPayment(tx, &order, transaction); err != nil {
 				return err
 			}
 
@@ -62,7 +62,7 @@ func (op *OrderProcessor) handleWalletTransaction(transaction iwallet.Transactio
 }
 
 // handleIncomingPayment processes payments into an order's payment address.
-func (op *OrderProcessor) handleIncomingPayment(dbtx database.Tx, order *models.Order, from iwallet.SpendInfo, tx iwallet.Transaction) error {
+func (op *OrderProcessor) handleIncomingPayment(dbtx database.Tx, order *models.Order, tx iwallet.Transaction) error {
 	err := order.PutTransaction(tx)
 	if models.IsDuplicateTransactionError(err) {
 		log.Debugf("Received duplicate transaction %s", tx.ID.String())
@@ -172,6 +172,11 @@ func (op *OrderProcessor) handleIncomingPayment(dbtx database.Tx, order *models.
 }
 
 // handleOutgoingPayment processes payments coming out of an order's payment address.
-func (op *OrderProcessor) handleOutgoingPayment(dbtx database.Tx, order *models.Order, to iwallet.SpendInfo, tx iwallet.Transaction) error {
-	return nil
+func (op *OrderProcessor) handleOutgoingPayment(dbtx database.Tx, order *models.Order, tx iwallet.Transaction) error {
+	err := order.PutTransaction(tx)
+	if models.IsDuplicateTransactionError(err) {
+		log.Debugf("Received duplicate transaction %s", tx.ID.String())
+		return nil
+	}
+	return err
 }

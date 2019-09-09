@@ -53,7 +53,7 @@ func (op *OrderProcessor) handlePaymentSentMessage(dbtx database.Tx, order *mode
 	if err == nil {
 		for _, to := range tx.To {
 			if to.Address.String() == order.PaymentAddress {
-				if err := op.handleIncomingPayment(dbtx, order, to, tx); err != nil {
+				if err := op.handleIncomingPayment(dbtx, order, tx); err != nil {
 					return nil, err
 				}
 			}

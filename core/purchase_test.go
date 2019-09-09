@@ -171,6 +171,11 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	<-txSub.Out()
 
+	paymentSub, err := network.Nodes()[1].eventBus.Subscribe(&events.PaymentNotification{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dbtx, err := wallet.Begin()
 	if err != nil {
 		t.Fatal(err)
@@ -180,11 +185,6 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := dbtx.Commit(); err != nil {
-		t.Fatal(err)
-	}
-
-	paymentSub, err := network.Nodes()[1].eventBus.Subscribe(&events.PaymentNotification{})
-	if err != nil {
 		t.Fatal(err)
 	}
 
