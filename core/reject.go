@@ -10,6 +10,9 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
+// RejectOrder sends a ORDER_REJECT message to the remote peer and updates the node's
+// order state. Only a buyer can call this method and only if the order has been opened
+// and no other actions have been taken.
 func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done chan struct{}) error {
 	var order models.Order
 	err := n.repo.DB().View(func(tx database.Tx) error {

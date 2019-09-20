@@ -19,6 +19,7 @@ import (
 )
 
 func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
+	// Create a new mock network with three nodes.
 	network, err := NewMocknet(3)
 	if err != nil {
 		t.Fatal(err)
@@ -26,41 +27,49 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	defer network.TearDown()
 
+	// Start the mock wallets for each node
 	go network.StartWalletNetwork()
 
 	for _, node := range network.Nodes() {
 		go node.orderProcessor.Start()
 	}
 
+	// Create message ack event subscription in node 1.
 	ackSub1, err := network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Create order event subscription for node 0.
 	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderNotification{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// New mock listing from the factory.
 	listing := factory.NewPhysicalListing("tshirt")
 
+	// Save the listing in node 0 and block until saving is finished.
 	done := make(chan struct{})
 	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
 	<-done
 
+	// Fetch the listing index form node 0.
 	index, err := network.Nodes()[0].GetMyListings()
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Set the profile on the moderator node (node 2) and block until saving is finished.
 	done2 := make(chan struct{})
 	if err := network.Nodes()[2].SetProfile(&models.Profile{Name: "Ron Paul"}, done2); err != nil {
 		t.Fatal(err)
 	}
 	<-done2
 
+	// Create and save the moderator info in node 2 and block until the saving is finished.
 	modInfo := &models.ModeratorInfo{
 		AcceptedCurrencies: []string{"TMCK"},
 		Fee: models.ModeratorFee{
@@ -74,22 +83,28 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 	<-done3
 
+	// Create a purchase from the factory.
 	purchase := factory.NewPurchase()
 	purchase.Items[0].ListingHash = index[0].Hash
 
-	// Address request direct order
+	// Have node 1 purchase the listing from node 0.
 	_, paymentAddress, paymentAmount, err := network.Nodes()[1].PurchaseListing(purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Validate expected amount is correct.
 	expectedAmount := "4992221"
 	if paymentAmount.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
 		t.Errorf("Returned incorrect amount. Expected %s, got %s", expectedAmount, paymentAmount.Amount)
 	}
 
+	// Block until node 1 receives the message ACK for the purchase.
 	<-ackSub1.Out()
+	// Block until node 0 receives the order message.
 	orderEvent := <-orderSub0.Out()
+
+	// Validate the event is correct.
 	orderNotif := orderEvent.(*events.OrderNotification)
 	if orderNotif.BuyerID != network.Nodes()[1].Identity().Pretty() {
 		t.Errorf("Incorrect notification peer ID: expected %s, got %s", network.Nodes()[1].Identity().Pretty(), orderNotif.BuyerID)
@@ -116,6 +131,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		t.Error("Order notification currency code not set")
 	}
 
+	// Load the order from node 0 and validate it was indeed saved correctly.
 	var order models.Order
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order).Error
@@ -128,6 +144,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		t.Error("Node 0 failed to save order")
 	}
 
+	// Load the order from node 1 and validate that it was indeed saved correctly.
 	var order2 models.Order
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order2).Error
@@ -139,6 +156,8 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	if order2.SerializedOrderOpen == nil {
 		t.Error("Node 1 failed to save order")
 	}
+
+	// Validate that the order open ack was saved correctly.
 	if !order2.OrderOpenAcked {
 		t.Error("Node 1 failed to record order open ACK")
 	}
@@ -146,10 +165,13 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// Validate the order is a direct payment.
 	if orderOpen.Payment.Method != pb.OrderOpen_Payment_DIRECT {
 		t.Errorf("Expected direct order, got %s", orderOpen.Payment.Method)
 	}
 
+	// Generate some mock coins and send them to node 1.
 	wallet, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode("TMCK")
 	if err != nil {
 		t.Fatal(err)
@@ -164,6 +186,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Block until node 1 receives the mock coins.
 	txSub, err := network.Nodes()[1].eventBus.Subscribe(&events.TransactionReceived{})
 	if err != nil {
 		t.Fatal(err)
@@ -171,6 +194,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	<-txSub.Out()
 
+	// Send the payment for the order from node 1 to node 0 and block until node 1 detects the payment.
 	paymentSub, err := network.Nodes()[1].eventBus.Subscribe(&events.PaymentNotification{})
 	if err != nil {
 		t.Fatal(err)
@@ -190,6 +214,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	<-paymentSub.Out()
 
+	// Load the order from node 1 and make sure it is set to funded.
 	var order5 models.Order
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order5).Error
@@ -206,22 +231,28 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		t.Errorf("Order not marked as funded in db")
 	}
 
-	// Moderated order
+	// Next we're going to do the same but for a moderated order. Node 1 purchase a moderated
+	// listing from node 0.
 	purchase.Moderator = network.Nodes()[2].Identity().Pretty()
 	_, _, paymentAmount, err = network.Nodes()[1].PurchaseListing(purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Validate expected amount is correct.
 	expectedAmount = "4992221"
 	if paymentAmount.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
 		t.Errorf("Returned incorrect amount. Expected %s, got %s", expectedAmount, paymentAmount.Amount)
 	}
 
+	// Block until node 1 receives the order ACK.
 	<-ackSub1.Out()
+
+	// Block until node 0 receives the order.
 	orderEvent = <-orderSub0.Out()
 	orderNotif = orderEvent.(*events.OrderNotification)
 
+	// Load the order from node 0 and make sure it was saved correctly.
 	var order3 models.Order
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order3).Error
@@ -234,6 +265,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		t.Error("Node 0 failed to save order")
 	}
 
+	// Load the order from node 1 and make sure it was saved correctly.
 	var order4 models.Order
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order4).Error
@@ -252,25 +284,30 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// Validate that the order was saved as moderated.
 	if orderOpen.Payment.Method != pb.OrderOpen_Payment_MODERATED {
 		t.Errorf("Expected moderated order, got %s", orderOpen.Payment.Method)
 	}
 
-	// Offline/cancelable order
+	// Finally we're going to make an offline direct order. Shut down node 0 so that it is offline.
 	network.Nodes()[0].Stop()
 	network.nodes[0] = nil
 
+	// Send the direct purchase from node 1 to node 0.
 	purchase.Moderator = ""
 	orderID, _, paymentAmount, err := network.Nodes()[1].PurchaseListing(purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Validate the expected amount is correct.
 	expectedAmount = "4992221"
 	if paymentAmount.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
 		t.Errorf("Returned incorrect amount. Expected %s, got %s", expectedAmount, paymentAmount.Amount)
 	}
 
+	// Load the order from node 1 and make sure it was saved correctly.
 	var order6 models.Order
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderID.String()).Last(&order6).Error
@@ -286,6 +323,8 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// Validate the order was saved as type cancelable.
 	if orderOpen.Payment.Method != pb.OrderOpen_Payment_CANCELABLE {
 		t.Errorf("Expected cancelable order, got %s", orderOpen.Payment.Method)
 	}
