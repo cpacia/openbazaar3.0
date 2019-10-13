@@ -16,6 +16,7 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/ipfs/go-cid"
 	ipath "github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/jinzhu/gorm"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/microcosm-cc/bluemonday"
@@ -272,12 +273,20 @@ func (n *OpenBazaarNode) GetListings(peerID peer.ID, useCache bool) (models.List
 func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.SignedListing, error) {
 	var (
 		listing *pb.SignedListing
+		coupons []models.Coupon
 		err     error
 	)
 	err = n.repo.DB().View(func(tx database.Tx) error {
 		listing, err = tx.GetListing(slug)
-		return err
+		if err != nil {
+			return err
+		}
+		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !gorm.IsRecordNotFoundError(err) {
+			return err
+		}
+		return nil
 	})
+	swapCouponHashesWithDiscountCodes(listing, coupons)
 	return listing, err
 }
 
@@ -285,6 +294,7 @@ func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.SignedListing, err
 func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, error) {
 	var (
 		listing *pb.SignedListing
+		coupons []models.Coupon
 		err     error
 	)
 	err = n.repo.DB().View(func(tx database.Tx) error {
@@ -297,8 +307,15 @@ func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, erro
 			return err
 		}
 		listing, err = tx.GetListing(slug)
-		return err
+		if err != nil {
+			return err
+		}
+		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !gorm.IsRecordNotFoundError(err) {
+			return err
+		}
+		return nil
 	})
+	swapCouponHashesWithDiscountCodes(listing, coupons)
 	return listing, err
 }
 
@@ -938,4 +955,21 @@ func validShippingRegion(shippingOption *pb.Listing_ShippingOption) error {
 		}
 	}
 	return nil
+}
+
+// swapCouponHashesWithDiscountCodes swaps a listing's coupon hashes for the underlying
+// discount code (the hash preimage). We do this for our own listings before sending them
+// out of the API so that API consumers can see the discount code for our own listings.
+func swapCouponHashesWithDiscountCodes(listing *pb.SignedListing, coupons []models.Coupon) *pb.SignedListing {
+	couponMap := make(map[string]string)
+	for _, coupon := range coupons {
+		couponMap[coupon.Hash] = coupon.Code
+	}
+	for i, listingCoupon := range listing.Listing.Coupons {
+		code, ok := couponMap[listingCoupon.GetHash()]
+		if ok {
+			listing.Listing.Coupons[i].Code = &pb.Listing_Coupon_DiscountCode{DiscountCode: code}
+		}
+	}
+	return listing
 }
