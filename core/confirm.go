@@ -9,10 +9,10 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
-// RejectOrder sends a ORDER_REJECT message to the remote peer and updates the node's
+// ConfirmOrder sends a ORDER_CONFIRMATION message to the remote peer and updates the node's
 // order state. Only a vendor can call this method and only if the order has been opened
 // and no other actions have been taken.
-func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done chan struct{}) error {
+func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}) error {
 	var order models.Order
 	err := n.repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderID.String()).First(&order).Error
@@ -21,8 +21,8 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 		return err
 	}
 
-	if !order.CanReject(n.Identity()) {
-		return errors.New("order is not in a state where it can be rejected")
+	if !order.CanConfirm(n.Identity()) {
+		return errors.New("order is not in a state where it can be confirmed")
 	}
 
 	buyer, err := order.Buyer()
@@ -34,20 +34,15 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 		return err
 	}
 
-	reject := pb.OrderReject{
-		Type:   pb.OrderReject_USER_REJECT,
-		Reason: reason,
-	}
-
-	rejectAny, err := ptypes.MarshalAny(&reject)
+	confirmAny, err := ptypes.MarshalAny(&pb.OrderConfirmation{})
 	if err != nil {
 		return err
 	}
 
 	resp := npb.OrderMessage{
 		OrderID:     order.ID.String(),
-		MessageType: npb.OrderMessage_ORDER_REJECT,
-		Message:     rejectAny,
+		MessageType: npb.OrderMessage_ORDER_CONFIRMATION,
+		Message:     confirmAny,
 	}
 
 	payload, err := ptypes.MarshalAny(&resp)

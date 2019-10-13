@@ -119,6 +119,36 @@ func (o *Order) SetRole(role OrderRole) {
 	o.MyRole = role
 }
 
+// Buyer returns the peer ID of the buyer for this order.
+func (o *Order) Buyer() (peer.ID, error) {
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return "", err
+	}
+	return peer.IDB58Decode(orderOpen.BuyerID.PeerID)
+}
+
+// Vendor returns the peer ID of the vendor for this order.
+func (o *Order) Vendor() (peer.ID, error) {
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return "", err
+	}
+	return peer.IDB58Decode(orderOpen.Listings[0].Listing.VendorID.PeerID)
+}
+
+// Moderator returns the peer ID of the moderator for this order.
+func (o *Order) Moderator() (peer.ID, error) {
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return "", err
+	}
+	if orderOpen.Payment.Moderator == "" {
+		return "", errors.New("no moderator for order")
+	}
+	return peer.IDB58Decode(orderOpen.Payment.Moderator)
+}
+
 // GetTransactions returns all the transactions associated with this order.
 func (o *Order) GetTransactions() ([]iwallet.Transaction, error) {
 	if o.Transactions == nil || len(o.Transactions) == 0 {
@@ -456,6 +486,34 @@ func (o *Order) CanReject(ourPeerID peer.ID) bool {
 	}
 
 	// Cannot cancel if the order has progressed passed order open.
+	if o.SerializedOrderReject != nil || o.SerializedOrderCancel != nil ||
+		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillment != nil ||
+		o.SerializedOrderComplete != nil || o.SerializedDisputeOpen != nil ||
+		o.SerializedDisputeUpdate != nil || o.SerializedDisputeClosed != nil ||
+		o.SerializedRefund != nil || o.SerializedPaymentFinalized != nil {
+
+		return false
+	}
+	return true
+}
+
+// CanConfirm returns whether or not this order is in a state where the user can
+// confirmed the order.
+func (o *Order) CanConfirm(ourPeerID peer.ID) bool {
+	// OrderOpen must exist.
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return false
+	}
+	if orderOpen.BuyerID == nil {
+		return false
+	}
+	// Only vendors can confirm.
+	if orderOpen.BuyerID.PeerID == ourPeerID.Pretty() {
+		return false
+	}
+
+	// Cannot confirm if the order has progressed passed order open.
 	if o.SerializedOrderReject != nil || o.SerializedOrderCancel != nil ||
 		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillment != nil ||
 		o.SerializedOrderComplete != nil || o.SerializedDisputeOpen != nil ||

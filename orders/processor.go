@@ -182,6 +182,8 @@ func (op *OrderProcessor) handleMessage(dbtx database.Tx, order *models.Order, p
 		event, err = op.handlePaymentSentMessage(dbtx, order, peer, message)
 	case npb.OrderMessage_ORDER_REJECT:
 		event, err = op.handleOrderRejectMessage(dbtx, order, peer, message)
+	case npb.OrderMessage_ORDER_CONFIRMATION:
+		event, err = op.handleOrderConfirmationMessage(dbtx, order, peer, message)
 	default:
 		return nil, errors.New("unknown order message type")
 	}

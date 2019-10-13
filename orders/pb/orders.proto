@@ -78,8 +78,9 @@ message OrderReject {
     }
 }
 
-message OrderCancel {}
 message OrderConfirmation {}
+
+message OrderCancel {}
 message OrderFulfillment {}
 message OrderComplete {}
 message DisputeOpen {}

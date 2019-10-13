@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestOpenBazaarNode_RejectOrder(t *testing.T) {
+func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 	network, err := NewMocknet(3)
 	if err != nil {
 		t.Fatal(err)
@@ -98,18 +98,18 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Error("Node 1 failed to record order open ACK")
 	}
 
-	rejectSub, err := network.Nodes()[1].eventBus.Subscribe(&events.OrderDeclinedNotification{})
+	confirmSub, err := network.Nodes()[1].eventBus.Subscribe(&events.OrderConfirmationNotification{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	done4 := make(chan struct{})
-	if err := network.Nodes()[0].RejectOrder(orderID, "sucks to be you", done4); err != nil {
+	if err := network.Nodes()[0].ConfirmOrder(orderID, done4); err != nil {
 		t.Fatal(err)
 	}
 	<-done4
 
-	<-rejectSub.Out()
+	<-confirmSub.Out()
 
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderID.String()).Last(&order).Error
@@ -118,8 +118,8 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if order.SerializedOrderReject == nil {
-		t.Error("Node 0 failed to save order reject")
+	if order.SerializedOrderConfirmation == nil {
+		t.Error("Node 0 failed to save order confirmation")
 	}
 
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
@@ -129,7 +129,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if order2.SerializedOrderReject == nil {
-		t.Error("Node 1 failed to save order reject")
+	if order2.SerializedOrderConfirmation == nil {
+		t.Error("Node 1 failed to save order confirmation")
 	}
 }
