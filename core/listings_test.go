@@ -255,14 +255,6 @@ func Test_validateCryptocurrencyListing(t *testing.T) {
 			},
 			valid: false,
 		},
-		{
-			// Divisibility does not match currency definitions
-			listing: factory.NewCryptoListing("test-listing"),
-			transform: func(listing *pb.Listing) {
-				listing.Metadata.PricingCurrency.Divisibility = 10
-			},
-			valid: false,
-		},
 	}
 
 	for i, test := range tests {
@@ -297,7 +289,7 @@ func Test_validateMarketPriceListing(t *testing.T) {
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
 				listing.Item.Price = ""
-				listing.Metadata.PriceModifier = -99.99
+				listing.Item.CryptoListingPriceModifier = -99.99
 			},
 			valid: true,
 		},
@@ -307,7 +299,7 @@ func Test_validateMarketPriceListing(t *testing.T) {
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
 				listing.Item.Price = ""
-				listing.Metadata.PriceModifier = 1000
+				listing.Item.CryptoListingPriceModifier = 1000
 			},
 			valid: true,
 		},
@@ -317,7 +309,7 @@ func Test_validateMarketPriceListing(t *testing.T) {
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
 				listing.Item.Price = ""
-				listing.Metadata.PriceModifier = -100
+				listing.Item.CryptoListingPriceModifier = -100
 			},
 			valid: false,
 		},
@@ -327,7 +319,7 @@ func Test_validateMarketPriceListing(t *testing.T) {
 			transform: func(listing *pb.Listing) {
 				listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
 				listing.Item.Price = ""
-				listing.Metadata.PriceModifier = 1001
+				listing.Item.CryptoListingPriceModifier = 1001
 			},
 			valid: false,
 		},
@@ -696,42 +688,10 @@ func Test_validateListing(t *testing.T) {
 			valid: false,
 		},
 		{
-			// Pricing currency name is ""
-			listing: factory.NewSignedListing(),
-			transform: func(sl *pb.SignedListing) {
-				sl.Listing.Metadata.PricingCurrency.Name = ""
-			},
-			valid: false,
-		},
-		{
-			// Pricing currency type is ""
-			listing: factory.NewSignedListing(),
-			transform: func(sl *pb.SignedListing) {
-				sl.Listing.Metadata.PricingCurrency.CurrencyType = ""
-			},
-			valid: false,
-		},
-		{
 			// Pricing currency code too long
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.PricingCurrency.Code = strings.Repeat("s", WordMaxCharacters+1)
-			},
-			valid: false,
-		},
-		{
-			// Pricing currency name too long
-			listing: factory.NewSignedListing(),
-			transform: func(sl *pb.SignedListing) {
-				sl.Listing.Metadata.PricingCurrency.Name = strings.Repeat("s", WordMaxCharacters+1)
-			},
-			valid: false,
-		},
-		{
-			// Pricing currency type too long
-			listing: factory.NewSignedListing(),
-			transform: func(sl *pb.SignedListing) {
-				sl.Listing.Metadata.PricingCurrency.CurrencyType = strings.Repeat("s", WordMaxCharacters+1)
 			},
 			valid: false,
 		},

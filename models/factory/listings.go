@@ -16,8 +16,6 @@ func NewPhysicalListing(slug string) *pb.Listing {
 			AcceptedCurrencies: []string{"TMCK"},
 			PricingCurrency: &pb.Currency{
 				Code:         "USD",
-				CurrencyType: "fiat",
-				Name:         "United State Dollar",
 				Divisibility: 2,
 			},
 			Expiry:       &timestamp.Timestamp{Seconds: 2147483647},
@@ -66,12 +64,12 @@ func NewPhysicalListing(slug string) *pb.Listing {
 						},
 					},
 					Surcharge: "0",
-					Quantity:  12,
+					Quantity:  "12",
 					ProductID: "1",
 				},
 				{
 					Surcharge: "0",
-					Quantity:  44,
+					Quantity:  "44",
 					ProductID: "2",
 					Selections: []*pb.Listing_Item_Sku_Selection{
 						{
@@ -128,8 +126,6 @@ func NewDigitalListing(slug string) *pb.Listing {
 			AcceptedCurrencies: []string{"TMCK"},
 			PricingCurrency: &pb.Currency{
 				Code:         "USD",
-				CurrencyType: "fiat",
-				Name:         "United State Dollar",
 				Divisibility: 2,
 			},
 			Expiry:       &timestamp.Timestamp{Seconds: 2147483647},
@@ -150,7 +146,7 @@ func NewDigitalListing(slug string) *pb.Listing {
 			Skus: []*pb.Listing_Item_Sku{
 				{
 					Surcharge: "0",
-					Quantity:  12,
+					Quantity:  "12",
 					ProductID: "1",
 				},
 			},
@@ -175,14 +171,9 @@ func NewDigitalListing(slug string) *pb.Listing {
 
 func NewCryptoListing(slug string) *pb.Listing {
 	listing := NewPhysicalListing(slug)
-	listing.Metadata.PricingCurrency = &pb.Currency{
-		Divisibility: 18,
-		Name:         "Testnet Ethereum",
-		CurrencyType: "crypto",
-		Code:         "TETH",
-	}
+	listing.Item.CryptoListingCurrencyCode = "TETH"
 	listing.Metadata.ContractType = pb.Listing_Metadata_CRYPTOCURRENCY
-	listing.Item.Skus = []*pb.Listing_Item_Sku{{Quantity: 1e8}}
+	listing.Item.Skus = []*pb.Listing_Item_Sku{{Quantity: "100000000"}}
 	listing.ShippingOptions = nil
 	listing.Item.Condition = ""
 	listing.Item.Options = nil
@@ -196,37 +187,31 @@ func NewSignedListing() *pb.SignedListing {
     "listing": {
         "slug": "ron-swanson-shirt",
         "vendorID": {
-            "peerID": "12D3KooWNGaua3tvyZh9EU8jR68XUohUmpXk8AUvjrCWQV3RyVnK",
-            "handle": "",
+            "peerID": "12D3KooWDtKsJoBQFawv18Z2R2rv2LH1B16rH7E17rxmgrsyimEA",
             "pubkeys": {
-                "identity": "CAESILkDv1tUwzqB20K9jxJ+RqeTM40YbYvqVwTgwQPIebc0",
-                "escrow": "A71fXMWY0Vl0H+78SiSd8EuVKPahPo4cHftAEVoQ1Hkk"
+                "identity": "CAESIDxyeDgYwu97EvgnnmO26VlpbJRPZtnAN3QpIbHLKswT",
+                "escrow": "At1sTCxyq1LJDOW+ufKGQ+vcvWqIXTrYfp7aN9S2P4kA"
             },
-            "sig": "MEQCIAL0roNWGzOSFOmQsKjzknKQRI0Ldpg2VuVhiZkUwQzFAiBw0Fze9gkNZQBY7snuEY9vyPYERwXQYeq8dCVNfdlrJw=="
+            "sig": "MEQCIHU5Q7h0Yt9DWdwpodtWtyUc39lRHa6+nbmOm9C4BRH/AiBtGkBARJvLS5aH1JyhyqtSp7dV4MwCNo0oN3SrgqpZww=="
         },
         "metadata": {
-            "version": 4,
+            "version": 1,
             "contractType": "PHYSICAL_GOOD",
             "format": "FIXED_PRICE",
             "expiry": "2038-01-19T03:14:07.000Z",
             "acceptedCurrencies": [
                 "TMCK"
             ],
-            "language": "",
             "escrowTimeoutHours": 1080,
-            "priceModifier": 0,
             "pricingCurrency": {
                 "code": "USD",
-                "divisibility": 2,
-                "name": "United State Dollar",
-                "currencyType": "fiat"
+                "divisibility": 2
             }
         },
         "item": {
             "title": "Ron Swanson Tshirt",
             "description": "Example item",
             "processingTime": "3 days",
-            "nsfw": false,
             "tags": [
                 "tshirts"
             ],
@@ -324,7 +309,7 @@ func NewSignedListing() *pb.SignedListing {
                         }
                     ],
                     "productID": "1",
-                    "quantity": 12,
+                    "quantity": "12",
                     "surcharge": "0"
                 },
                 {
@@ -339,7 +324,7 @@ func NewSignedListing() *pb.SignedListing {
                         }
                     ],
                     "productID": "2",
-                    "quantity": 44,
+                    "quantity": "44",
                     "surcharge": "0"
                 }
             ],
@@ -356,8 +341,7 @@ func NewSignedListing() *pb.SignedListing {
                     {
                         "name": "standard",
                         "estimatedDelivery": "3 days",
-                        "price": "20",
-                        "additionalItemPrice": ""
+                        "price": "20"
                     }
                 ]
             }
@@ -375,15 +359,14 @@ func NewSignedListing() *pb.SignedListing {
         "coupons": [
             {
                 "title": "Insider's Discount",
-                "hash": "QmYCS6GX6CWukvGgJjQLtRqAPBgtVw2AxHzofDrKGHDPuQ",
+                "discountCode": "insider",
                 "percentDiscount": 5
             }
         ],
         "termsAndConditions": "Sample Terms and Conditions",
         "refundPolicy": "Sample Refund policy"
     },
-    "cid": "",
-    "signature": "69HHKFIHE5jfPW4hHciBPZqD/froguHS92jruCg4zuZuM8TcsSn7Mprn4bcYT/S2/EaoYShI3147zOhc9VmfBg=="
+    "signature": "uk5F2sZm88ubcmADbqxmss5k0FV72tUdj0rij0SQJ6CT6M8Bljo9BI1RVEtsgruWf8xXQ5n/vGvxuzrBlvD6DQ=="
 }`
 	sl := new(pb.SignedListing)
 	jsonpb.UnmarshalString(j, sl)

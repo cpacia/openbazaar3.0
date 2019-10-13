@@ -85,7 +85,9 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 		}
 
 		// Set listing version
-		listing.Metadata.Version = ListingVersion
+		if listing.Metadata.Version <= 0 {
+			listing.Metadata.Version = ListingVersion
+		}
 
 		// Add the vendor ID to the listing
 		profile, err := tx.GetProfile()
@@ -444,20 +446,8 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	if sl.Listing.Metadata.PricingCurrency.Code == "" {
 		return ErrMissingField("metadata.pricingcurrency.code")
 	}
-	if sl.Listing.Metadata.PricingCurrency.Name == "" {
-		return ErrMissingField("metadata.pricingcurrency.name")
-	}
-	if sl.Listing.Metadata.PricingCurrency.CurrencyType == "" {
-		return ErrMissingField("metadata.pricingcurrency.currencytype")
-	}
 	if len(sl.Listing.Metadata.PricingCurrency.Code) > WordMaxCharacters {
 		return ErrTooManyCharacters{"metadata.pricingcurrency.code", strconv.Itoa(WordMaxCharacters)}
-	}
-	if len(sl.Listing.Metadata.PricingCurrency.CurrencyType) > WordMaxCharacters {
-		return ErrTooManyCharacters{"metadata.pricingcurrency.currencyType", strconv.Itoa(WordMaxCharacters)}
-	}
-	if len(sl.Listing.Metadata.PricingCurrency.Name) > WordMaxCharacters {
-		return ErrTooManyCharacters{"metadata.pricingcurrency.name", strconv.Itoa(WordMaxCharacters)}
 	}
 	// TODO: validate divisibility
 
@@ -902,25 +892,6 @@ func (n *OpenBazaarNode) validateCryptocurrencyListing(listing *pb.Listing) erro
 		return ErrCryptocurrencyListingIllegalField("item.condition")
 	}
 
-	var (
-		expectedDivisibility uint32
-		currencyCode         string
-	)
-	currencyCode = listing.Metadata.PricingCurrency.Code
-	if strings.HasPrefix(normalizeCurrencyCode(listing.Metadata.PricingCurrency.Code), "T") {
-		currencyCode = strings.TrimPrefix(currencyCode, "T")
-	}
-	currency, ok := models.CurrencyDefinitions[normalizeCurrencyCode(currencyCode)]
-	if !ok {
-		expectedDivisibility = models.DefaultCurrencyDivisibility
-	} else {
-		expectedDivisibility = uint32(currency.Divisibility)
-	}
-
-	if listing.Metadata.PricingCurrency.Divisibility != expectedDivisibility {
-		return ErrListingCoinDivisibilityIncorrect
-	}
-
 	return nil
 }
 
@@ -934,12 +905,12 @@ func validateMarketPriceListing(listing *pb.Listing) error {
 		}
 	}
 
-	if listing.Metadata.PriceModifier != 0 {
-		listing.Metadata.PriceModifier = float32(int(listing.Metadata.PriceModifier*100.0)) / 100.0
+	if listing.Item.CryptoListingPriceModifier != 0 {
+		listing.Item.CryptoListingPriceModifier = float32(int(listing.Item.CryptoListingPriceModifier*100.0)) / 100.0
 	}
 
-	if listing.Metadata.PriceModifier < PriceModifierMin ||
-		listing.Metadata.PriceModifier > PriceModifierMax {
+	if listing.Item.CryptoListingPriceModifier < PriceModifierMin ||
+		listing.Item.CryptoListingPriceModifier > PriceModifierMax {
 		return ErrPriceModifierOutOfRange{
 			Min: PriceModifierMin,
 			Max: PriceModifierMax,

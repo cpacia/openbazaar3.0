@@ -105,7 +105,7 @@ func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models
 			Price: events.ListingPrice{
 				Amount:        orderOpen.Payment.Amount,
 				CurrencyCode:  orderOpen.Payment.Coin,
-				PriceModifier: orderOpen.Listings[0].Listing.Metadata.PriceModifier,
+				PriceModifier: orderOpen.Listings[0].Listing.Item.CryptoListingPriceModifier,
 			},
 			Slug: orderOpen.Listings[0].Listing.Slug,
 			Thumbnail: events.Thumbnail{
@@ -175,10 +175,10 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 			// Zero out the inventory on each listing. We will check
 			// inventory later.
 			for i := range myListing.Listing.Item.Skus {
-				myListing.Listing.Item.Skus[i].Quantity = 0
+				myListing.Listing.Item.Skus[i].Quantity = "0"
 			}
 			for i := range theirListing.Listing.Item.Skus {
-				theirListing.Listing.Item.Skus[i].Quantity = 0
+				theirListing.Listing.Item.Skus[i].Quantity = "0"
 			}
 
 			// We can tell if we have the listing for sale if the serialized bytes match
@@ -224,8 +224,8 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		if listing.Metadata.ContractType == pb.Listing_Metadata_CRYPTOCURRENCY && item.PaymentAddress == "" {
 			return fmt.Errorf("payment address for cryptocurrency item %d is empty", i)
 		}
-		if item.Quantity == 0 {
-			return fmt.Errorf("item %d quantity is zero", i)
+		if item.Quantity == "" {
+			return fmt.Errorf("item %d quantity is empty", i)
 		}
 
 		// Validate selected options
@@ -432,12 +432,16 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 	)
 
 	// Calculate the price of each item
-	for _, item := range order.Items {
+	for i, item := range order.Items {
+		if item.Quantity == "" {
+			return orderTotal, fmt.Errorf("item %d quantity is empty", i)
+		}
+
 		// Step one is we just want to get the price, in the payment currency,
 		// for the listing.
 		var (
 			itemTotal    iwallet.Amount
-			itemQuantity = item.Quantity
+			itemQuantity = iwallet.NewAmount(item.Quantity)
 		)
 
 		listing, err := extractListing(item.ListingHash, order.Listings)
@@ -459,11 +463,15 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 		}
 
 		if listing.Metadata.Format == pb.Listing_Metadata_MARKET_PRICE {
+			cryptoListingCurrency, err := models.CurrencyDefinitions.Lookup(listing.Item.CryptoListingCurrencyCode)
+			if err != nil {
+				return orderTotal, err
+			}
 			// To calculate the market price we just use the exchange rate between
 			// the two coins. However in this case we use the item quantity being
 			// purchased as the amount as we want to find the exchange rate of
 			// the given quantity.
-			price := models.NewCurrencyValueFromUint(itemQuantity, pricingCurrency)
+			price := models.NewCurrencyValue(item.Quantity, cryptoListingCurrency)
 			itemTotal, err = convertCurrencyAmount(price, paymentCurrency, erp)
 			if err != nil {
 				return orderTotal, err
@@ -471,13 +479,13 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 
 			// Now we add or subtract the price modifier.
 			f, _ := new(big.Float).SetString(itemTotal.String())
-			f.Mul(f, big.NewFloat(float64(listing.Metadata.PriceModifier/100)))
+			f.Mul(f, big.NewFloat(float64(listing.Item.CryptoListingPriceModifier/100)))
 			priceMod, _ := f.Int(nil)
 			itemTotal = itemTotal.Add(iwallet.NewAmount(priceMod))
 
 			// Since we already used the quantity to calculate the price we can
 			// just set this to 1 to avoid multiplying by the quantity again below.
-			itemQuantity = 1
+			itemQuantity = iwallet.NewAmount(1)
 		} else {
 			price := models.NewCurrencyValue(listing.Item.Price, pricingCurrency)
 			itemTotal, err = convertCurrencyAmount(price, paymentCurrency, erp)
@@ -506,7 +514,7 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 				return orderTotal, err
 			}
 			for _, vendorCoupon := range listing.Coupons {
-				if couponHash.B58String() == vendorCoupon.GetHash() {
+				if couponCode == vendorCoupon.GetDiscountCode() || couponHash.B58String() == vendorCoupon.GetHash() {
 					if discount := vendorCoupon.GetPriceDiscount(); discount != "" && iwallet.NewAmount(discount).Cmp(iwallet.NewAmount(0)) > 0 {
 						price := models.NewCurrencyValue(discount, pricingCurrency)
 						discountAmount, err := convertCurrencyAmount(price, paymentCurrency, erp)
@@ -539,7 +547,7 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 		// Multiply the item total by the quantity being purchased
 		// In the case of a crypto listing, itemQuantity was set to
 		// one above so this should have no effect.
-		itemTotal = itemTotal.Mul(iwallet.NewAmount(itemQuantity))
+		itemTotal = itemTotal.Mul(itemQuantity)
 
 		// Finally add the item total to the order total.
 		orderTotal = orderTotal.Add(itemTotal)
@@ -559,9 +567,8 @@ func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]
 	type itemShipping struct {
 		primary               iwallet.Amount
 		secondary             iwallet.Amount
-		quantity              uint64
+		quantity              string
 		shippingTaxPercentage float32
-		version               uint32
 	}
 	var (
 		is            []itemShipping
@@ -569,7 +576,11 @@ func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]
 	)
 
 	// First loop through to validate and filter out non-physical items
-	for _, item := range order.Items {
+	for i, item := range order.Items {
+		if item.Quantity == "" {
+			return shippingTotal, fmt.Errorf("item %d quantity is empty", i)
+		}
+
 		listing, ok := listings[item.ListingHash]
 		if !ok {
 			continue
@@ -656,7 +667,6 @@ func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]
 			secondary:             secondaryTotal,
 			quantity:              item.Quantity,
 			shippingTaxPercentage: shippingTaxPercentage,
-			version:               listing.Metadata.Version,
 		})
 	}
 
@@ -669,9 +679,9 @@ func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]
 	if len(is) == 1 {
 		shippingTotal = shippingTotal.Add(is[0].primary)
 		shippingTotal = shippingTotal.Add(calculateShippingTax(is[0].shippingTaxPercentage, is[0].primary))
-		if is[0].quantity > 1 {
-			shippingTotal = shippingTotal.Add(is[0].secondary.Mul(iwallet.NewAmount(is[0].quantity - 1)))
-			shippingTotal = shippingTotal.Add(calculateShippingTax(is[0].shippingTaxPercentage, is[0].secondary.Mul(iwallet.NewAmount(is[0].quantity-1))))
+		if iwallet.NewAmount(is[0].quantity).Cmp(iwallet.NewAmount(1)) > 0 {
+			shippingTotal = shippingTotal.Add(is[0].secondary.Mul(iwallet.NewAmount(is[0].quantity).Sub(iwallet.NewAmount(1))))
+			shippingTotal = shippingTotal.Add(calculateShippingTax(is[0].shippingTaxPercentage, is[0].secondary.Mul(iwallet.NewAmount(is[0].quantity).Sub(iwallet.NewAmount(1)))))
 		}
 		return shippingTotal, nil
 	}

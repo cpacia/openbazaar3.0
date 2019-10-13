@@ -2,7 +2,7 @@ package core
 
 const (
 	// ListingVersion - current listing version
-	ListingVersion = 4
+	ListingVersion = 1
 	// TitleMaxCharacters - max size for title
 	TitleMaxCharacters = 140
 	// DescriptionMaxCharacters - max length for description

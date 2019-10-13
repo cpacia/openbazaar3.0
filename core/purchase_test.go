@@ -30,6 +30,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	// Start the mock wallets for each node
 	go network.StartWalletNetwork()
 
+	// Start the order processors for each node.
 	for _, node := range network.Nodes() {
 		go node.orderProcessor.Start()
 	}
@@ -182,13 +183,13 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := network.WalletNetwork().GenerateToAddress(walletAddr, iwallet.NewAmount(100000000)); err != nil {
-		t.Fatal(err)
-	}
-
 	// Block until node 1 receives the mock coins.
 	txSub, err := network.Nodes()[1].eventBus.Subscribe(&events.TransactionReceived{})
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := network.WalletNetwork().GenerateToAddress(walletAddr, iwallet.NewAmount(100000000)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -363,7 +364,7 @@ func TestOpenBazaarNode_EstimateOrderSubtotal(t *testing.T) {
 		Items: []models.PurchaseItem{
 			{
 				ListingHash: index[0].Hash,
-				Quantity:    1,
+				Quantity:    "1",
 				Options: []models.PurchaseItemOption{
 					{
 						Name:  "size",
@@ -461,7 +462,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 				Items: []models.PurchaseItem{
 					{
 						ListingHash: index[0].Hash,
-						Quantity:    1,
+						Quantity:    "1",
 						Options: []models.PurchaseItemOption{
 							{
 								Name:  "size",
@@ -611,7 +612,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 				Items: []models.PurchaseItem{
 					{
 						ListingHash: index[0].Hash,
-						Quantity:    1,
+						Quantity:    "1",
 						Options: []models.PurchaseItemOption{
 							{
 								Name:  "size",
@@ -643,7 +644,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 				Items: []models.PurchaseItem{
 					{
 						ListingHash: index[0].Hash,
-						Quantity:    1,
+						Quantity:    "1",
 						Options: []models.PurchaseItemOption{
 							{
 								Name:  "size",
@@ -704,5 +705,56 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 		if err := test.checkOrder(test.purchase, order); err != nil {
 			t.Errorf("Test %d: Order check failed: %s", i, err)
 		}
+	}
+}
+
+func Test_createOrderUnkownVersion(t *testing.T) {
+	network, err := NewMocknet(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer network.TearDown()
+
+	listing := factory.NewPhysicalListing("tshirt")
+	listing.Metadata.Version = ListingVersion + 1
+
+	done := make(chan struct{})
+	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
+		t.Fatal(err)
+	}
+	<-done
+
+	index, err := network.Nodes()[0].GetMyListings()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	purchase := &models.Purchase{
+		Items: []models.PurchaseItem{
+			{
+				ListingHash: index[0].Hash,
+				Quantity:    "1",
+				Options: []models.PurchaseItemOption{
+					{
+						Name:  "size",
+						Value: "large",
+					},
+					{
+						Name:  "color",
+						Value: "red",
+					},
+				},
+				Shipping: models.PurchaseShippingOption{
+					Name:    "usps",
+					Service: "standard",
+				},
+			},
+		},
+		PaymentCoin: "TMCK",
+	}
+
+	_, err = network.Nodes()[0].createOrder(purchase)
+	if err != ErrUnknownListingVersion {
+		t.Errorf("Expected test to failed due to unknown listing version")
 	}
 }

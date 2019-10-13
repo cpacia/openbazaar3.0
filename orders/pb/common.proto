@@ -4,8 +4,6 @@ option go_package = "pb";
 message Currency {
     string code         = 1;
     uint32 divisibility = 2;
-    string name         = 3;
-    string currencyType = 4;
 }
 
 message CurrencyValue {

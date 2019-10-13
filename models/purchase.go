@@ -15,7 +15,7 @@ type PurchaseShippingOption struct {
 // PurchaseItem is information about the item in the purchase.
 type PurchaseItem struct {
 	ListingHash    string                 `json:"listingHash"`
-	Quantity       uint64                 `json:"quantity"`
+	Quantity       string                 `json:"quantity"`
 	Options        []PurchaseItemOption   `json:"options"`
 	Shipping       PurchaseShippingOption `json:"shipping"`
 	Memo           string                 `json:"memo"`

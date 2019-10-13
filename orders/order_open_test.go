@@ -69,7 +69,7 @@ func TestOrderProcessor_OrderOpen(t *testing.T) {
 					Price: events.ListingPrice{
 						Amount:        orderOpen.Payment.Amount,
 						CurrencyCode:  orderOpen.Payment.Coin,
-						PriceModifier: orderOpen.Listings[0].Listing.Metadata.PriceModifier,
+						PriceModifier: orderOpen.Listings[0].Listing.Item.CryptoListingPriceModifier,
 					},
 					Slug: orderOpen.Listings[0].Listing.Slug,
 					Thumbnail: events.Thumbnail{
@@ -264,7 +264,7 @@ func TestCalculateOrderTotal(t *testing.T) {
 		{
 			// Quantity 2
 			transform: func(order *pb.OrderOpen) error {
-				order.Items[0].Quantity = 2
+				order.Items[0].Quantity = "2"
 				return nil
 			},
 			expectedTotal: iwallet.NewAmount("9152406"),
@@ -277,7 +277,7 @@ func TestCalculateOrderTotal(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				order.Items[0].Quantity = 2
+				order.Items[0].Quantity = "2"
 				order.Items[0].ListingHash = hash.B58String()
 				return nil
 			},
@@ -332,12 +332,7 @@ func TestCalculateOrderTotal(t *testing.T) {
 			transform: func(order *pb.OrderOpen) error {
 				order.Listings[0].Listing.Metadata.ContractType = pb.Listing_Metadata_CRYPTOCURRENCY
 				order.Listings[0].Listing.Metadata.Format = pb.Listing_Metadata_MARKET_PRICE
-				order.Listings[0].Listing.Metadata.PricingCurrency = &pb.Currency{
-					Code:         "BTC",
-					Divisibility: 8,
-					Name:         "Bitcoin Cash",
-					CurrencyType: "Crypto",
-				}
+				order.Listings[0].Listing.Item.CryptoListingCurrencyCode = "BTC"
 				order.Listings[0].Listing.ShippingOptions = nil
 				order.Listings[0].Listing.Taxes = nil
 				hash, err := utils.HashListing(order.Listings[0])
@@ -345,7 +340,7 @@ func TestCalculateOrderTotal(t *testing.T) {
 					return err
 				}
 				order.Items[0].ListingHash = hash.B58String()
-				order.Items[0].Quantity = 10000
+				order.Items[0].Quantity = "10000"
 				order.Items[0].ShippingOption = nil
 				return nil
 			},
@@ -560,7 +555,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				order.Items[0].Quantity = 0
+				order.Items[0].Quantity = "0"
 				return order, nil
 			},
 			valid: false,

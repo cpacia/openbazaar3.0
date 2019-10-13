@@ -8,6 +8,10 @@ import (
 var (
 	// ErrListingCoinDivisibilityIncorrect - coin divisibility err
 	ErrListingCoinDivisibilityIncorrect = errors.New("incorrect coinDivisibility")
+
+	// ErrUnknownListingVersion is returned when creating an order for a listing version
+	// greater than our largest known version.
+	ErrUnknownListingVersion = errors.New("upgraded needed to purchase listing version")
 )
 
 type ErrTooManyItems []string

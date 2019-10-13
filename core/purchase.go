@@ -269,6 +269,11 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		if err := n.validateListing(listing); err != nil {
 			return nil, err
 		}
+
+		if listing.Listing.Metadata.Version > ListingVersion {
+			return nil, ErrUnknownListingVersion
+		}
+
 		vendors[listing.Listing.VendorID.PeerID] = true
 		if len(vendors) > 1 {
 			return nil, errors.New("order can only purchase items from a single vendor")

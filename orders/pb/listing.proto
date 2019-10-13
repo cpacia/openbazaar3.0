@@ -25,7 +25,6 @@ message Listing {
         repeated string acceptedCurrencies = 5;
         string language                    = 6;
         uint32 escrowTimeoutHours          = 7;
-        float priceModifier                = 8;
         Currency pricingCurrency           = 9;
 
         enum ContractType {
@@ -43,18 +42,20 @@ message Listing {
     }
 
     message Item {
-        string title               = 1;
-        string description         = 2;
-        string processingTime      = 3;
-        bool nsfw                  = 4;
-        repeated string tags       = 5;
-        repeated Image images      = 6;
-        repeated string categories = 7;
-        float grams                = 8;
-        string condition           = 9;
-        repeated Option options    = 10;
-        repeated Sku skus          = 11;
-        string price               = 12;
+        string title                     = 1;
+        string description               = 2;
+        string processingTime            = 3;
+        bool nsfw                        = 4;
+        repeated string tags             = 5;
+        repeated Image images            = 6;
+        repeated string categories       = 7;
+        float grams                      = 8;
+        string condition                 = 9;
+        repeated Option options          = 10;
+        repeated Sku skus                = 11;
+        string price                     = 12;
+        string cryptoListingCurrencyCode = 13;
+        float cryptoListingPriceModifier = 14;
 
         message Option {
             string name                = 1;
@@ -70,7 +71,7 @@ message Listing {
         message Sku {
             repeated Selection selections = 1;
             string productID              = 2;
-            int64 quantity                = 3;
+            string quantity               = 3;
             string surcharge              = 4;
 
             message Selection {

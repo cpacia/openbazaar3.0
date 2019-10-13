@@ -17,7 +17,7 @@ func NewPurchase() *models.Purchase {
 		Moderator:    "",
 		Items: []models.PurchaseItem{
 			{
-				Quantity: 1,
+				Quantity: "1",
 				Options: []models.PurchaseItemOption{
 					{
 						Name:  "size",

@@ -153,7 +153,7 @@ func (op *OrderProcessor) handleIncomingPayment(dbtx database.Tx, order *models.
 				Price: events.ListingPrice{
 					Amount:        orderOpen.Payment.Amount,
 					CurrencyCode:  orderOpen.Payment.Coin,
-					PriceModifier: orderOpen.Listings[0].Listing.Metadata.PriceModifier,
+					PriceModifier: orderOpen.Listings[0].Listing.Item.CryptoListingPriceModifier,
 				},
 				Slug: orderOpen.Listings[0].Listing.Slug,
 				Thumbnail: events.Thumbnail{
