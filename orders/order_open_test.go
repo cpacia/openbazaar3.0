@@ -25,7 +25,7 @@ import (
 	"testing"
 )
 
-func TestOrderProcessor_OrderOpen(t *testing.T) {
+func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
 	op, err := newMockOrderProcessor()
 	if err != nil {
 		t.Fatal(err)
@@ -136,7 +136,7 @@ func TestOrderProcessor_OrderOpen(t *testing.T) {
 			Message:     openAny,
 		}
 		err = op.db.Update(func(tx database.Tx) error {
-			event, err := op.handleOrderOpenMessage(tx, order, remotePeer, orderMsg)
+			event, err := op.processOrderOpenMessage(tx, order, remotePeer, orderMsg)
 			if err != test.expectedError {
 				t.Errorf("Test %d: Incorrect error returned. Expected %t, got %t", i, test.expectedError, err)
 			}

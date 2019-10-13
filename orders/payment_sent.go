@@ -11,7 +11,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
-func (op *OrderProcessor) handlePaymentSentMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
+func (op *OrderProcessor) processPaymentSentMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
 	payment := new(pb.PaymentSent)
 	if err := ptypes.UnmarshalAny(message.Message, payment); err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (op *OrderProcessor) handlePaymentSentMessage(dbtx database.Tx, order *mode
 	if err == nil {
 		for _, to := range tx.To {
 			if to.Address.String() == order.PaymentAddress {
-				if err := op.handleIncomingPayment(dbtx, order, tx); err != nil {
+				if err := op.processIncomingPayment(dbtx, order, tx); err != nil {
 					return nil, err
 				}
 			}

@@ -14,10 +14,10 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
-// handleWalletTransaction scan's through a transaction's inputs and outputs and attempts
+// processWalletTransaction scan's through a transaction's inputs and outputs and attempts
 // to load the order for that address from the database. If an order is found, the transaction
 // is handed off to the appropriate handler for further processing.
-func (op *OrderProcessor) handleWalletTransaction(transaction iwallet.Transaction) {
+func (op *OrderProcessor) processWalletTransaction(transaction iwallet.Transaction) {
 	err := op.db.Update(func(tx database.Tx) error {
 		for _, to := range transaction.To {
 			var order models.Order
@@ -28,7 +28,7 @@ func (op *OrderProcessor) handleWalletTransaction(transaction iwallet.Transactio
 				return err
 			}
 
-			if err := op.handleIncomingPayment(tx, &order, transaction); err != nil {
+			if err := op.processIncomingPayment(tx, &order, transaction); err != nil {
 				return err
 			}
 
@@ -45,7 +45,7 @@ func (op *OrderProcessor) handleWalletTransaction(transaction iwallet.Transactio
 				return err
 			}
 
-			if err := op.handleOutgoingPayment(tx, &order, transaction); err != nil {
+			if err := op.processOutgoingPayment(tx, &order, transaction); err != nil {
 				return err
 			}
 
@@ -61,8 +61,8 @@ func (op *OrderProcessor) handleWalletTransaction(transaction iwallet.Transactio
 	}
 }
 
-// handleIncomingPayment processes payments into an order's payment address.
-func (op *OrderProcessor) handleIncomingPayment(dbtx database.Tx, order *models.Order, tx iwallet.Transaction) error {
+// processIncomingPayment processes payments into an order's payment address.
+func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models.Order, tx iwallet.Transaction) error {
 	err := order.PutTransaction(tx)
 	if models.IsDuplicateTransactionError(err) {
 		log.Debugf("Received duplicate transaction %s", tx.ID.String())
@@ -171,8 +171,8 @@ func (op *OrderProcessor) handleIncomingPayment(dbtx database.Tx, order *models.
 	return nil
 }
 
-// handleOutgoingPayment processes payments coming out of an order's payment address.
-func (op *OrderProcessor) handleOutgoingPayment(dbtx database.Tx, order *models.Order, tx iwallet.Transaction) error {
+// processOutgoingPayment processes payments coming out of an order's payment address.
+func (op *OrderProcessor) processOutgoingPayment(dbtx database.Tx, order *models.Order, tx iwallet.Transaction) error {
 	err := order.PutTransaction(tx)
 	if models.IsDuplicateTransactionError(err) {
 		log.Debugf("Received duplicate transaction %s", tx.ID.String())

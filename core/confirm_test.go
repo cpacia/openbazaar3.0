@@ -103,6 +103,11 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	confirmAck, err := network.Nodes()[0].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	done4 := make(chan struct{})
 	if err := network.Nodes()[0].ConfirmOrder(orderID, done4); err != nil {
 		t.Fatal(err)
@@ -110,6 +115,7 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 	<-done4
 
 	<-confirmSub.Out()
+	<-confirmAck.Out()
 
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderID.String()).Last(&order).Error
@@ -120,6 +126,9 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 
 	if order.SerializedOrderConfirmation == nil {
 		t.Error("Node 0 failed to save order confirmation")
+	}
+	if !order.OrderConfirmationAcked {
+		t.Error("Node 0 failed to save order confirmation ack")
 	}
 
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {

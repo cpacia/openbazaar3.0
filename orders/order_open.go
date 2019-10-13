@@ -26,7 +26,7 @@ import (
 	"strings"
 )
 
-func (op *OrderProcessor) handleOrderOpenMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
+func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
 	order.ID = models.OrderID(message.OrderID)
 
 	orderOpen := new(pb.OrderOpen)

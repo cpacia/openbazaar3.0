@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestOrderProcessor_handleWalletTransaction(t *testing.T) {
+func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 	tests := []struct {
 		setup    func() (*OrderProcessor, error)
 		tx       iwallet.Transaction
@@ -220,7 +220,7 @@ func TestOrderProcessor_handleWalletTransaction(t *testing.T) {
 			t.Errorf("Test %d setup failed: %s", i, err)
 			continue
 		}
-		op.handleWalletTransaction(test.tx)
+		op.processWalletTransaction(test.tx)
 		if err := test.validate(op); err != nil {
 			t.Errorf("Test %d validation failed: %s", i, err)
 		}

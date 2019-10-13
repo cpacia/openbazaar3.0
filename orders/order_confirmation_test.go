@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-func TestOrderProcessor_OrderConfirmation(t *testing.T) {
+func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 	op, err := newMockOrderProcessor()
 	if err != nil {
 		t.Fatal(err)
@@ -137,7 +137,7 @@ func TestOrderProcessor_OrderConfirmation(t *testing.T) {
 			continue
 		}
 		err := op.db.Update(func(tx database.Tx) error {
-			event, err := op.handleOrderConfirmationMessage(tx, order, remotePeer, orderMsg)
+			event, err := op.processOrderConfirmationMessage(tx, order, remotePeer, orderMsg)
 			if err != test.expectedError {
 				return fmt.Errorf("incorrect error returned. Expected %t, got %t", test.expectedError, err)
 			}

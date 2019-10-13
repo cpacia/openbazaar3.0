@@ -10,7 +10,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
-func (op *OrderProcessor) handleOrderRejectMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
+func (op *OrderProcessor) processOrderRejectMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
 	orderReject := new(pb.OrderReject)
 	if err := ptypes.UnmarshalAny(message.Message, orderReject); err != nil {
 		return nil, err

@@ -17,7 +17,7 @@ import (
 	"testing"
 )
 
-func Test_handlePaymentSentMessage(t *testing.T) {
+func Test_processPaymentSentMessage(t *testing.T) {
 	op, err := newMockOrderProcessor()
 	if err != nil {
 		t.Fatal(err)
@@ -117,7 +117,7 @@ func Test_handlePaymentSentMessage(t *testing.T) {
 			continue
 		}
 		err := op.db.Update(func(tx database.Tx) error {
-			event, err := op.handlePaymentSentMessage(tx, order, remotePeer, orderMsg)
+			event, err := op.processPaymentSentMessage(tx, order, remotePeer, orderMsg)
 			if err != test.expectedError {
 				return fmt.Errorf("incorrect error returned. Expected %t, got %t", test.expectedError, err)
 			}

@@ -10,7 +10,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
-func (op *OrderProcessor) handleOrderConfirmationMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
+func (op *OrderProcessor) processOrderConfirmationMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
 	orderConfirmation := new(pb.OrderConfirmation)
 	if err := ptypes.UnmarshalAny(message.Message, orderConfirmation); err != nil {
 		return nil, err

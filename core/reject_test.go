@@ -103,6 +103,11 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	rejectAck, err := network.Nodes()[0].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	done4 := make(chan struct{})
 	if err := network.Nodes()[0].RejectOrder(orderID, "sucks to be you", done4); err != nil {
 		t.Fatal(err)
@@ -110,6 +115,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	<-done4
 
 	<-rejectSub.Out()
+	<-rejectAck.Out()
 
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderID.String()).Last(&order).Error
@@ -120,6 +126,9 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	if order.SerializedOrderReject == nil {
 		t.Error("Node 0 failed to save order reject")
+	}
+	if !order.OrderRejectAcked {
+		t.Error("Node 0 failed to save order reject ack")
 	}
 
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
