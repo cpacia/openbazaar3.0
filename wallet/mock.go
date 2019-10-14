@@ -97,7 +97,7 @@ func (n *MockWalletNetwork) GenerateToAddress(addr iwallet.Address, amount iwall
 	prevHashBytes := make([]byte, 36)
 	rand.Read(prevHashBytes)
 
-	prevAddrBytes := make([]byte, 32)
+	prevAddrBytes := make([]byte, 20)
 	rand.Read(prevAddrBytes)
 
 	txn := iwallet.Transaction{

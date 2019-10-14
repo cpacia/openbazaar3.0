@@ -86,7 +86,10 @@ message OrderComplete {}
 message DisputeOpen {}
 message DisputeUpdate {}
 message DisputeClose {}
-message Refund {}
+
+message Refund {
+    string transactionID = 1;
+}
 
 message PaymentSent {
     string transactionID = 1;

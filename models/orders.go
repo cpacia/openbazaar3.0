@@ -13,7 +13,7 @@ import (
 
 var (
 	// ErrMessageDoesNotExist signifies the order message does not exist in the order.
-	ErrMessageDoesNotExist = errors.New("order message not saved in order")
+	ErrMessageDoesNotExist = errors.New("message not saved in order")
 
 	// ErrDuplicateTransaction signifies a duplicate transaction was saved in the order.
 	ErrDuplicateTransaction = errors.New("duplicate transaction")

@@ -184,6 +184,10 @@ func (op *OrderProcessor) processMessage(dbtx database.Tx, order *models.Order, 
 		event, err = op.processOrderRejectMessage(dbtx, order, peer, message)
 	case npb.OrderMessage_ORDER_CONFIRMATION:
 		event, err = op.processOrderConfirmationMessage(dbtx, order, peer, message)
+	case npb.OrderMessage_ORDER_CANCEL:
+		event, err = op.processOrderCancelMessage(dbtx, order, peer, message)
+	case npb.OrderMessage_REFUND:
+		event, err = op.processRefundMessage(dbtx, order, peer, message)
 	default:
 		return nil, errors.New("unknown order message type")
 	}

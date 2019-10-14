@@ -12,13 +12,13 @@ import (
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
-	crypto "github.com/libp2p/go-libp2p-crypto"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-peer"
 	"reflect"
 	"testing"
 )
 
-func Test_processPaymentSentMessage(t *testing.T) {
+func TestOrderProcessor_processRefundMessage(t *testing.T) {
 	op, err := newMockOrderProcessor()
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +31,26 @@ func Test_processPaymentSentMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	addr2, err := wn.Wallets()[0].NewAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(addr, addr2)
 	if err := wn.GenerateToAddress(addr, iwallet.NewAmount(100000)); err != nil {
+		t.Fatal(err)
+	}
+
+	wdbtx, err := wn.Wallets()[0].Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = wn.Wallets()[0].Spend(wdbtx, addr2, iwallet.NewAmount(1000), iwallet.FlNormal)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := wdbtx.Commit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,19 +70,50 @@ func Test_processPaymentSentMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	paymentMsg := &pb.PaymentSent{
-		TransactionID: txs[0].ID.String(),
+	refundMsg := &pb.Refund{
+		TransactionID: txs[1].ID.String(),
 	}
 
-	paymentAny, err := ptypes.MarshalAny(paymentMsg)
+	refundAny, err := ptypes.MarshalAny(refundMsg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	orderMsg := &npb.OrderMessage{
 		OrderID:     "1234",
-		MessageType: npb.OrderMessage_PAYMENT_SENT,
-		Message:     paymentAny,
+		MessageType: npb.OrderMessage_REFUND,
+		Message:     refundAny,
+	}
+
+	var (
+		vendorPeerID   = "xyz"
+		vendorHandle   = "abc"
+		smallImageHash = "aaaa"
+		tinyImageHash  = "bbbb"
+	)
+	orderOpen := &pb.OrderOpen{
+		Listings: []*pb.SignedListing{
+			{
+				Listing: &pb.Listing{
+					VendorID: &pb.ID{
+						PeerID: vendorPeerID,
+						Handle: vendorHandle,
+					},
+					Item: &pb.Listing_Item{
+						Images: []*pb.Listing_Item_Image{
+							{
+								Small: smallImageHash,
+								Tiny:  tinyImageHash,
+							},
+						},
+					},
+				},
+			},
+		},
+		Payment: &pb.OrderOpen_Payment{
+			Coin:    "TMCK",
+			Address: addr.String(),
+		},
 	}
 
 	tests := []struct {
@@ -77,17 +127,17 @@ func Test_processPaymentSentMessage(t *testing.T) {
 			setup: func(order *models.Order) error {
 				order.ID = "1234"
 				order.PaymentAddress = addr.String()
-				return order.PutMessage(&pb.OrderOpen{
-					Payment: &pb.OrderOpen_Payment{
-						Coin:   "TMCK",
-						Amount: "1000",
-					},
-				})
+				return order.PutMessage(orderOpen)
 			},
 			expectedError: nil,
-			expectedEvent: &events.PaymentSentNotification{
+			expectedEvent: &events.RefundNotification{
 				OrderID: "1234",
-				Txid:    txs[0].ID.String(),
+				Thumbnail: events.Thumbnail{
+					Tiny:  tinyImageHash,
+					Small: smallImageHash,
+				},
+				VendorHandle: vendorHandle,
+				VendorID:     vendorPeerID,
 			},
 			checkTxs: func(order *models.Order) error {
 				orderTxs, err := order.GetTransactions()
@@ -95,23 +145,33 @@ func Test_processPaymentSentMessage(t *testing.T) {
 					return err
 				}
 				if len(orderTxs) == 0 {
-					return errors.New("failed to record tx")
+					return errors.New("failed to record any tx")
 				}
-				if orderTxs[0].ID != txs[0].ID {
+				if orderTxs[0].ID != txs[1].ID {
 					return errors.New("failed to record tx")
 				}
 				return nil
 			},
 		},
 		{
-			// Duplicate payment
+			// Duplicate order refund.
 			setup: func(order *models.Order) error {
-				payment := &pb.PaymentSent{
-					TransactionID: "xyz",
-				}
-				return order.PutMessage(payment)
+				return order.PutMessage(refundMsg)
 			},
 			expectedError: nil,
+			expectedEvent: nil,
+			checkTxs: func(order *models.Order) error {
+				return nil
+			},
+		},
+		{
+			// Duplicate but different.
+			setup: func(order *models.Order) error {
+				msg2 := *refundMsg
+				msg2.TransactionID = "abc"
+				return order.PutMessage(&msg2)
+			},
+			expectedError: ErrChangedMessage,
 			expectedEvent: nil,
 			checkTxs: func(order *models.Order) error {
 				return nil
@@ -138,14 +198,13 @@ func Test_processPaymentSentMessage(t *testing.T) {
 			continue
 		}
 		err := op.db.Update(func(tx database.Tx) error {
-			event, err := op.processPaymentSentMessage(tx, order, remotePeer, orderMsg)
+			event, err := op.processRefundMessage(tx, order, remotePeer, orderMsg)
 			if err != test.expectedError {
 				return fmt.Errorf("incorrect error returned. Expected %t, got %t", test.expectedError, err)
 			}
 			if !reflect.DeepEqual(event, test.expectedEvent) {
 				return fmt.Errorf("incorrect event returned")
 			}
-
 			return test.checkTxs(order)
 		})
 		if err != nil {
