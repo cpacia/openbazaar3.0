@@ -47,7 +47,7 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 
 	// If this fails it's OK as the processor's unfunded order checking loop will
 	// retry at it's next interval.
-	tx, err := wallet.GetTransaction(iwallet.TransactionID(refund.TransactionID))
+	tx, err := wallet.GetTransaction(iwallet.TransactionID(refund.GetTransactionID()))
 	if err == nil {
 		for _, from := range tx.From {
 			if from.Address.String() == order.PaymentAddress {
@@ -57,6 +57,8 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 			}
 		}
 	}
+
+	// TODO: If moderated release funds
 
 	log.Infof("Received REFUND message for order %s", order.ID)
 

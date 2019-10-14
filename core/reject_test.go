@@ -141,4 +141,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	if order2.SerializedOrderReject == nil {
 		t.Error("Node 1 failed to save order reject")
 	}
+
+	// TODO: test sending refund when direct
+	// TODO: test sending refund when moderated
 }

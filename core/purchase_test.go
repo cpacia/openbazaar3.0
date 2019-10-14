@@ -14,6 +14,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/orders/utils"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/ipfs/go-cid"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	"testing"
 )
@@ -419,7 +420,11 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sl, err := network.Nodes()[0].GetMyListingBySlug("tshirt")
+	lid, err := cid.Decode(index[0].Hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sl, err := network.Nodes()[1].GetListingByCID(lid)
 	if err != nil {
 		t.Fatal(err)
 	}

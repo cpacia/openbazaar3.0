@@ -21,11 +21,7 @@ import (
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
-)
-
-const (
-	// orderOpenVersion is the current order open version number.
-	orderOpenVersion = 1
+	"time"
 )
 
 // PurchaseListing attempts to purchase the listing using the provided data in the
@@ -215,10 +211,11 @@ func (n *OpenBazaarNode) EstimateOrderSubtotal(purchase *models.Purchase) (*mode
 // if the vendor is not online to respond to the DIRECT payment request.
 func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, error) {
 	var (
-		listings      []*pb.SignedListing
-		items         []*pb.OrderOpen_Item
-		options       []*pb.OrderOpen_Item_Option
-		refundAddress string
+		listings           []*pb.SignedListing
+		items              []*pb.OrderOpen_Item
+		options            []*pb.OrderOpen_Item_Option
+		refundAddress      string
+		escrowTimeoutHours uint32
 	)
 	wallet, err := n.multiwallet.WalletForCurrencyCode(purchase.PaymentCoin)
 	if err != nil {
@@ -302,6 +299,10 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 			return nil, err
 		}
 
+		if listing.Listing.Metadata.EscrowTimeoutHours > escrowTimeoutHours {
+			escrowTimeoutHours = listing.Listing.Metadata.EscrowTimeoutHours
+		}
+
 		orderItem := &pb.OrderOpen_Item{
 			ListingHash:    listingHash.B58String(),
 			Quantity:       item.Quantity,
@@ -346,7 +347,6 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 			Country:      pb.CountryCode(pb.CountryCode_value[purchase.CountryCode]),
 			AddressNotes: purchase.AddressNotes,
 		},
-		Version:       orderOpenVersion,
 		RefundAddress: refundAddress,
 		Payment:       &pb.OrderOpen_Payment{},
 	}
@@ -409,10 +409,28 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		if err != nil {
 			return nil, err
 		}
-		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
-		if err != nil {
-			return nil, err
+		var (
+			address iwallet.Address
+			script  []byte
+		)
+		if escrowTimeoutHours > 0 {
+			escrowTimeoutWallet, ok := wallet.(iwallet.EscrowWithTimeout)
+			if !ok {
+				return nil, errors.New("wallet for selected currency does not support escrow timeouts")
+			}
+
+			timeout := time.Hour * time.Duration(escrowTimeoutHours)
+			address, script, err = escrowTimeoutWallet.CreateMultisigWithTimeout([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2, timeout, *vendorKey)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			address, script, err = escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
+			if err != nil {
+				return nil, err
+			}
 		}
+
 		order.Payment.ModeratorKey = moderatorPubkeyBytes
 		order.Payment.Address = address.String()
 		order.Payment.Script = hex.EncodeToString(script)

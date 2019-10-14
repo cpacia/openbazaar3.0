@@ -16,8 +16,7 @@ message OrderOpen {
     Payment payment                     = 7;
     repeated bytes ratingKeys           = 8;
     string alternateContactInfo         = 9;
-    uint32 version                      = 10;
-    bytes signature                     = 11;
+    bytes signature                     = 10;
 
     message Shipping {
         string shipTo       = 1;
@@ -88,7 +87,19 @@ message DisputeUpdate {}
 message DisputeClose {}
 
 message Refund {
-    string transactionID = 1;
+    oneof refundInfo {
+        string transactionID      = 1;
+        EscrowRelease releaseInfo = 2;
+    }
+
+    message EscrowRelease {
+        repeated Signature escrowSignatures = 1;
+    }
+
+    message Signature {
+        bytes signature = 1;
+        uint32 index = 2;
+    }
 }
 
 message PaymentSent {

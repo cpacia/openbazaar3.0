@@ -443,8 +443,8 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	if len(sl.Listing.Metadata.Language) > WordMaxCharacters {
 		return ErrTooManyCharacters{"metadata.language", strconv.Itoa(WordMaxCharacters)}
 	}
-	if !n.testnet && sl.Listing.Metadata.EscrowTimeoutHours != EscrowTimeout {
-		return fmt.Errorf("escrow timeout must be %d hours", EscrowTimeout)
+	if !n.testnet && sl.Listing.Metadata.EscrowTimeoutHours > EscrowTimeout {
+		return fmt.Errorf("escrow timeout must be less than or equal to %d hours", EscrowTimeout)
 	}
 	if len(sl.Listing.Metadata.AcceptedCurrencies) == 0 {
 		return ErrMissingField("metadata.acceptedcurrencies")

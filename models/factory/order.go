@@ -117,7 +117,6 @@ func NewOrder() (*pb.OrderOpen, crypto.PrivKey, error) {
 		},
 		RatingKeys:           [][]byte{ratingKey},
 		AlternateContactInfo: "peter@familyguy.net",
-		Version:              1,
 	}
 
 	ser, err = proto.Marshal(order)
