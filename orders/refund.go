@@ -36,6 +36,7 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 		return nil, err
 	}
 
+	// FIXME: refund messages should be stored as a list to handle the case where the buyer sends multiple payments
 	if err := order.PutMessage(refund); err != nil {
 		return nil, err
 	}
@@ -45,20 +46,22 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 		return nil, err
 	}
 
-	// If this fails it's OK as the processor's unfunded order checking loop will
-	// retry at it's next interval.
-	tx, err := wallet.GetTransaction(iwallet.TransactionID(refund.GetTransactionID()))
-	if err == nil {
-		for _, from := range tx.From {
-			if from.Address.String() == order.PaymentAddress {
-				if err := op.processOutgoingPayment(dbtx, order, tx); err != nil {
-					return nil, err
+	if refund.GetTransactionID() != "" && orderOpen.Payment.Method == pb.OrderOpen_Payment_DIRECT {
+		// If this fails it's OK as the processor's unfunded order checking loop will
+		// retry at it's next interval.
+		tx, err := wallet.GetTransaction(iwallet.TransactionID(refund.GetTransactionID()))
+		if err == nil {
+			for _, from := range tx.From {
+				if from.Address.String() == order.PaymentAddress {
+					if err := op.processOutgoingPayment(dbtx, order, tx); err != nil {
+						return nil, err
+					}
 				}
 			}
 		}
+	} else if refund.GetReleaseInfo() != nil && orderOpen.Payment.Method == pb.OrderOpen_Payment_MODERATED {
+		// FIXME: If moderated release funds
 	}
-
-	// TODO: If moderated release funds
 
 	log.Infof("Received REFUND message for order %s", order.ID)
 

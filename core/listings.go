@@ -286,8 +286,13 @@ func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.SignedListing, err
 		}
 		return nil
 	})
-	swapCouponHashesWithDiscountCodes(listing, coupons)
-	return listing, err
+	if err != nil {
+		return nil, err
+	}
+	if listing.Listing.Coupons != nil {
+		swapCouponHashesWithDiscountCodes(listing, coupons)
+	}
+	return listing, nil
 }
 
 // GetMyListingByCID returns our own listing given the cid.
@@ -315,8 +320,13 @@ func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, erro
 		}
 		return nil
 	})
-	swapCouponHashesWithDiscountCodes(listing, coupons)
-	return listing, err
+	if err != nil {
+		return nil, err
+	}
+	if listing.Listing.Coupons != nil {
+		swapCouponHashesWithDiscountCodes(listing, coupons)
+	}
+	return listing, nil
 }
 
 // GetListingBySlug returns a listing for node with the given peer ID.

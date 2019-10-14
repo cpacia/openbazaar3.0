@@ -142,6 +142,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 				for _, tx := range txs {
 					for _, to := range tx.To {
 						if to.Address.String() == orderOpen.Payment.Address {
+							// FIXME: don't add spent inputs
 							txn.From = append(txn.From, to)
 							totalOut.Add(to.Amount)
 						}

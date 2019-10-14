@@ -284,11 +284,11 @@ func TestMockWallet_SignMultisigTransaction(t *testing.T) {
 		},
 	}
 
-	sig1, err := w1.SignMultisigTransaction(txn, k1, rs)
+	sig1, err := w1.SignMultisigTransaction(txn, *k1, rs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sig2, err := w2.SignMultisigTransaction(txn, k2, rs)
+	sig2, err := w2.SignMultisigTransaction(txn, *k2, rs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,6 +299,73 @@ func TestMockWallet_SignMultisigTransaction(t *testing.T) {
 	}
 
 	err = w1.BuildAndSend(dbtx, txn, [][]iwallet.EscrowSignature{sig1, sig2}, rs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := dbtx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	txs, err := w1.Transactions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(txs) != 1 {
+		t.Error("Failed to record transaction")
+	}
+}
+
+func TestMockWallet_SignMultisigAfterTimeout(t *testing.T) {
+	var (
+		w1 = NewMockWallet()
+	)
+
+	k1, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Fatal(err)
+	}
+	k2, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Fatal(err)
+	}
+	k3, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr, rs, err := w1.CreateMultisigWithTimeout([]btcec.PublicKey{*k1.PubKey(), *k2.PubKey(), *k3.PubKey()}, 2, time.Nanosecond, *k2.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	outAddrBytes := make([]byte, 20)
+	rand.Read(outAddrBytes)
+
+	outpoint := make([]byte, 36)
+	rand.Read(outpoint)
+	txn := iwallet.Transaction{
+		From: []iwallet.SpendInfo{
+			{
+				ID:      outpoint,
+				Amount:  iwallet.NewAmount(10000),
+				Address: addr,
+			},
+		},
+		To: []iwallet.SpendInfo{
+			{
+				Address: iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtTestnetMock),
+				Amount:  iwallet.NewAmount(9000),
+			},
+		},
+	}
+
+	dbtx, err := w1.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = w1.ReleaseFundsAfterTimeout(dbtx, txn, *k2, rs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,7 +421,7 @@ func TestMockWallet_1of2(t *testing.T) {
 		},
 	}
 
-	sig1, err := w1.SignMultisigTransaction(txn, k1, rs)
+	sig1, err := w1.SignMultisigTransaction(txn, *k1, rs)
 	if err != nil {
 		t.Fatal(err)
 	}

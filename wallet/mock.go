@@ -785,10 +785,70 @@ func (w *MockWallet) CreateMultisigWithTimeout(keys []btcec.PublicKey, threshold
 	binary.BigEndian.PutUint32(t, uint32(threshold))
 	redeemScript = append(redeemScript, t...)
 	redeemScript = append(redeemScript, timeoutKey.SerializeCompressed()...)
+	u := time.Now().Add(timeout).Unix()
+	expiry := make([]byte, 8)
+	binary.BigEndian.PutUint64(expiry, uint64(u))
+	redeemScript = append(redeemScript, expiry...)
 
 	h := sha256.Sum256(redeemScript)
 	addr := iwallet.NewAddress(hex.EncodeToString(h[:]), iwallet.CtTestnetMock)
 	return addr, redeemScript, nil
+}
+
+// ReleaseFundsAfterTimeout will release funds from the escrow. The signature will
+// be created using the timeoutKey.
+func (w *MockWallet) ReleaseFundsAfterTimeout(tx iwallet.Tx, txn iwallet.Transaction, timeoutKey btcec.PrivateKey, redeemScript []byte) error {
+	w.mtx.RLock()
+	defer w.mtx.RUnlock()
+
+	dbtx := tx.(*dbTx)
+
+	txidBytes := make([]byte, 32)
+	rand.Read(txidBytes)
+	txn.ID = iwallet.TransactionID(hex.EncodeToString(txidBytes))
+
+	expiry := binary.BigEndian.Uint64(redeemScript[len(redeemScript)-8:])
+	ts := time.Unix(int64(expiry), 0)
+
+	if ts.After(time.Now()) {
+		return errors.New("timeout has not yet passed")
+	}
+
+	var utxosToAdd []mockUtxo
+	for i, out := range txn.To {
+		if _, ok := w.addrs[out.Address]; ok {
+			idx := make([]byte, 4)
+			binary.BigEndian.PutUint32(idx, uint32(i))
+			utxosToAdd = append(utxosToAdd, mockUtxo{
+				address:  out.Address,
+				value:    out.Amount,
+				outpoint: append(txidBytes, idx...),
+			})
+		}
+	}
+
+	dbtx.onCommit = func() error {
+		w.mtx.Lock()
+
+		for _, utxo := range utxosToAdd {
+			w.utxos[hex.EncodeToString(utxo.outpoint)] = utxo
+			w.addrs[utxo.address] = true
+		}
+
+		w.transactions[txn.ID] = txn
+		w.mtx.Unlock()
+
+		if w.outgoing != nil {
+			w.outgoing <- txn
+		}
+
+		for _, sub := range w.txSubs {
+			sub <- txn
+		}
+		return nil
+	}
+
+	return nil
 }
 
 // SignMultisigTransaction should use the provided key to create a signature for
@@ -799,7 +859,7 @@ func (w *MockWallet) CreateMultisigWithTimeout(keys []btcec.PublicKey, threshold
 //
 // For coins like bitcoin you may need to return one signature *per input* which is
 // why a slice of signatures is returned.
-func (w *MockWallet) SignMultisigTransaction(txn iwallet.Transaction, key *btcec.PrivateKey, redeemScript []byte) ([]iwallet.EscrowSignature, error) {
+func (w *MockWallet) SignMultisigTransaction(txn iwallet.Transaction, key btcec.PrivateKey, redeemScript []byte) ([]iwallet.EscrowSignature, error) {
 	var sigs []iwallet.EscrowSignature
 	for i := range txn.From {
 		sigBytes := make([]byte, 64)

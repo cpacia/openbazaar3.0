@@ -67,7 +67,7 @@ type Order struct {
 
 	Transactions []byte
 
-	MyRole OrderRole
+	MyRole uint8
 
 	SerializedOrderOpen []byte
 	OrderOpenAcked      bool
@@ -111,12 +111,12 @@ type Order struct {
 
 // Role returns the role of the user for this order.
 func (o *Order) Role() OrderRole {
-	return o.MyRole
+	return OrderRole(o.MyRole)
 }
 
 // SetRole sets the role of the user for this order.
 func (o *Order) SetRole(role OrderRole) {
-	o.MyRole = role
+	o.MyRole = uint8(role)
 }
 
 // Buyer returns the peer ID of the buyer for this order.

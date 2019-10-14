@@ -70,6 +70,7 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// FIXME: test both direct and moderated
 	refundMsg := &pb.Refund{
 		TransactionID: txs[1].ID.String(),
 	}

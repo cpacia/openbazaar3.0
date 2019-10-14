@@ -142,6 +142,6 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Error("Node 1 failed to save order reject")
 	}
 
-	// TODO: test sending refund when direct
-	// TODO: test sending refund when moderated
+	// FIXME: test sending refund when direct
+	// FIXME: test sending refund when moderated
 }
