@@ -16,6 +16,7 @@ import (
 	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/op/go-logging"
+	"sync"
 )
 
 var (
@@ -42,6 +43,7 @@ type OrderProcessor struct {
 	multiwallet wallet.Multiwallet
 	erp         *wallet.ExchangeRateProvider
 	bus         events.Bus
+	mtx         sync.Mutex
 	shutdown    chan struct{}
 }
 
@@ -54,6 +56,7 @@ func NewOrderProcessor(cfg *Config) *OrderProcessor {
 		multiwallet: cfg.Multiwallet,
 		erp:         cfg.ExchangeRateProvider,
 		bus:         cfg.EventBus,
+		mtx:         sync.Mutex{},
 		shutdown:    make(chan struct{}),
 	}
 }
@@ -67,7 +70,9 @@ func (op *OrderProcessor) Start() {
 			for {
 				select {
 				case tx := <-sub:
+					op.mtx.Lock()
 					op.processWalletTransaction(tx)
+					op.mtx.Unlock()
 				case <-op.shutdown:
 					return
 				}
@@ -94,6 +99,9 @@ func (op *OrderProcessor) Stop() {
 // If the processing of the message triggers an event to emitted onto the bus, the event is
 // returned.
 func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
+	op.mtx.Lock()
+	defer op.mtx.Unlock()
+
 	// Load the order if it exists.
 	var (
 		order models.Order
@@ -112,16 +120,14 @@ func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message
 		if err := order.ParkMessage(message); err != nil {
 			return nil, err
 		}
-		if err := dbtx.Read().Save(&order).Error; err != nil {
-			return nil, err
-		}
-		return nil, nil
+		return nil, dbtx.Save(&order)
 	}
 
+	orderCopy := order
 	event, err = op.processMessage(dbtx, &order, peer, message)
 	if err != nil {
-		if err := order.PutErrorMessage(message); err != nil {
-			return nil, err
+		if err := orderCopy.PutErrorMessage(message); err != nil {
+			return nil, dbtx.Save(&orderCopy)
 		}
 	}
 
@@ -131,6 +137,9 @@ func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message
 
 // ProcessACK loads the order from the database and sets the ACK for the message type.
 func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage) error {
+	op.mtx.Lock()
+	defer op.mtx.Unlock()
+
 	message := new(npb.Message)
 	if err := proto.Unmarshal(om.SerializedMessage, message); err != nil {
 		return err
