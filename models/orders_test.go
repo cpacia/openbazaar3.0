@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/OpenBazaar/jsonpb"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
@@ -18,6 +19,68 @@ func TestOrder_Role(t *testing.T) {
 	if ret != RoleVendor {
 		t.Errorf("Expected RoleVendor, got %d", ret)
 	}
+}
+
+func TestOrder_ReturnRole(t *testing.T) {
+	orderOpen := &pb.OrderOpen{
+		Listings: []*pb.SignedListing{
+			{
+				Listing: &pb.Listing{
+					VendorID: &pb.ID{
+						PeerID: "QmbN1x5opuJ8FwNyQDaasCRRiTami1WcbNV5oguwHX83g9",
+					},
+				},
+			},
+		},
+		BuyerID: &pb.ID{
+			PeerID: "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+		},
+		Payment: &pb.OrderOpen_Payment{
+			Moderator: "QmW4cc8jh8vNDza49YVCmFX56tb7QtEGfvcihXEWAKwdcf",
+		},
+	}
+	var order Order
+	if err := order.PutMessage(orderOpen); err != nil {
+		t.Fatal(err)
+	}
+
+	buyerID, err := order.Buyer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if buyerID.Pretty() != orderOpen.BuyerID.PeerID {
+		t.Errorf("Incorrect peerID. Expected %s, got %s", orderOpen.BuyerID.PeerID, buyerID.Pretty())
+	}
+
+	vendorID, err := order.Vendor()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if vendorID.Pretty() != orderOpen.Listings[0].Listing.VendorID.PeerID {
+		t.Errorf("Incorrect peerID. Expected %s, got %s", orderOpen.Listings[0].Listing.VendorID.PeerID, vendorID.Pretty())
+	}
+
+	moderatorID, err := order.Moderator()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if moderatorID.Pretty() != orderOpen.Payment.Moderator {
+		t.Errorf("Incorrect peerID. Expected %s, got %s", orderOpen.Payment.Moderator, moderatorID.Pretty())
+	}
+
+	orderOpen.Payment.Moderator = ""
+	if err := order.PutMessage(orderOpen); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = order.Moderator()
+	if err == nil {
+		t.Error("Expected error from Moderator() method")
+	}
+
 }
 
 func TestOrder_Transactions(t *testing.T) {
@@ -146,11 +209,11 @@ func TestOrder_PutAndGet(t *testing.T) {
 	if disputeUpdate == nil {
 		t.Error("Message is nil")
 	}
-	refund, err := order.RefundMessage()
+	refunds, err := order.Refunds()
 	if err != nil {
 		t.Errorf("Get failed: %s", err)
 	}
-	if refund == nil {
+	if refunds == nil {
 		t.Error("Message is nil")
 	}
 	paymentFinalized, err := order.PaymentFinalizedMessage()
@@ -198,7 +261,7 @@ func TestOrder_PutAndGet(t *testing.T) {
 	if err != ErrMessageDoesNotExist {
 		t.Errorf("Get failed to return correct error: %s", err)
 	}
-	refund, err = order.RefundMessage()
+	refunds, err = order.Refunds()
 	if err != ErrMessageDoesNotExist {
 		t.Errorf("Get failed to return correct error: %s", err)
 	}
@@ -246,6 +309,134 @@ func TestOrder_Payments(t *testing.T) {
 	}
 	for payments[1].TransactionID != id1 {
 		t.Errorf("Incorrect txid returned. Expected %s, got %s", id1, payments[1].TransactionID)
+	}
+}
+
+func TestOrder_Refunds(t *testing.T) {
+	var (
+		order    Order
+		id0      = "xyz"
+		id1      = "abc"
+		release0 = &pb.Refund_ReleaseInfo{ReleaseInfo: &pb.Refund_EscrowRelease{
+			EscrowSignatures: []*pb.Refund_Signature{
+				{
+					From:      []byte{0x00},
+					Signature: []byte{0x01},
+					Index:     0,
+				},
+			},
+			Address: "abc",
+			Amount:  "0",
+		}}
+		release1 = &pb.Refund_ReleaseInfo{ReleaseInfo: &pb.Refund_EscrowRelease{
+			EscrowSignatures: []*pb.Refund_Signature{
+				{
+					From:      []byte{0x00},
+					Signature: []byte{0x02},
+					Index:     0,
+				},
+			},
+			Address: "abc",
+			Amount:  "1",
+		}}
+	)
+
+	err := order.PutMessage(&pb.Refund{
+		RefundInfo: &pb.Refund_TransactionID{
+			TransactionID: id0,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = order.PutMessage(&pb.Refund{
+		RefundInfo: &pb.Refund_TransactionID{
+			TransactionID: id1,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = order.PutMessage(&pb.Refund{
+		RefundInfo: &pb.Refund_TransactionID{
+			TransactionID: id1,
+		},
+	})
+	if err != ErrDuplicateTransaction {
+		t.Errorf("Failed to return duplicate transaction error")
+	}
+
+	refunds, err := order.Refunds()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for refunds[0].GetTransactionID() != id0 {
+		t.Errorf("Incorrect txid returned. Expected %s, got %s", id0, refunds[0].GetTransactionID())
+	}
+	for refunds[1].GetTransactionID() != id1 {
+		t.Errorf("Incorrect txid returned. Expected %s, got %s", id1, refunds[1].GetTransactionID())
+	}
+
+	err = order.PutMessage(&pb.Refund{
+		RefundInfo: release0,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = order.PutMessage(&pb.Refund{
+		RefundInfo: release1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = order.PutMessage(&pb.Refund{
+		RefundInfo: release1,
+	})
+	if err != ErrDuplicateTransaction {
+		t.Errorf("Failed to return duplicate transaction error")
+	}
+
+	refunds, err = order.Refunds()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	marshaler := jsonpb.Marshaler{}
+
+	releaseInfo0, err := marshaler.MarshalToString(&pb.Refund{
+		RefundInfo: release0,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	releaseInfo1, err := marshaler.MarshalToString(&pb.Refund{
+		RefundInfo: release1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	saved0, err := marshaler.MarshalToString(refunds[2])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	saved1, err := marshaler.MarshalToString(refunds[3])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if releaseInfo0 != saved0 {
+		t.Error("Incorrect release info returned")
+	}
+	if releaseInfo1 != saved1 {
+		t.Error("Incorrect release info returned")
 	}
 }
 
@@ -508,7 +699,7 @@ func TestOrder_CanReject(t *testing.T) {
 		{
 			// Non nil refund
 			setup: func(order *Order) error {
-				order.SerializedRefund = []byte{0x00}
+				order.SerializedRefunds = []byte{0x00}
 				err := order.PutMessage(&pb.OrderOpen{
 					BuyerID: &pb.ID{
 						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
@@ -549,6 +740,215 @@ func TestOrder_CanReject(t *testing.T) {
 		canReject := order.CanReject(pid)
 		if canReject != test.canReject {
 			t.Errorf("Got incorrect result. Expected %t, got %t", test.canReject, canReject)
+		}
+	}
+}
+
+func TestOrder_CanConfirm(t *testing.T) {
+	tests := []struct {
+		setup      func(order *Order) error
+		ourID      string
+		canConfirm bool
+	}{
+		{
+			// Success
+			setup: func(order *Order) error {
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: true,
+		},
+		{
+			// Nil buyerID
+			setup: func(order *Order) error {
+				err := order.PutMessage(&pb.OrderOpen{})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Is buyer
+			setup: func(order *Order) error {
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Order is nil
+			setup: func(order *Order) error {
+				return nil
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil reject
+			setup: func(order *Order) error {
+				order.SerializedOrderReject = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil cancel
+			setup: func(order *Order) error {
+				order.SerializedOrderCancel = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil confirmation
+			setup: func(order *Order) error {
+				order.SerializedOrderConfirmation = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil fulfillment
+			setup: func(order *Order) error {
+				order.SerializedOrderFulfillment = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil complete
+			setup: func(order *Order) error {
+				order.SerializedOrderComplete = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil dispute open
+			setup: func(order *Order) error {
+				order.SerializedDisputeOpen = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil dispute close
+			setup: func(order *Order) error {
+				order.SerializedDisputeClosed = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil dispute update
+			setup: func(order *Order) error {
+				order.SerializedDisputeUpdate = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil refund
+			setup: func(order *Order) error {
+				order.SerializedRefunds = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+		{
+			// Non nil payment finalized
+			setup: func(order *Order) error {
+				order.SerializedPaymentFinalized = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+				})
+				return err
+			},
+			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canConfirm: false,
+		},
+	}
+
+	for i, test := range tests {
+		var order Order
+		if err := test.setup(&order); err != nil {
+			t.Errorf("Test %d setup failed: %s", i, err)
+		}
+
+		pid, err := peer.IDB58Decode(test.ourID)
+		if err != nil {
+			t.Errorf("Test %d peerID decode error: %s", i, err)
+		}
+
+		canConfirm := order.CanConfirm(pid)
+		if canConfirm != test.canConfirm {
+			t.Errorf("Got incorrect result. Expected %t, got %t", test.canConfirm, canConfirm)
 		}
 	}
 }

@@ -26,6 +26,8 @@ type MockWalletNetwork struct {
 	shutdown chan struct{}
 
 	height uint64
+
+	mtx sync.Mutex
 }
 
 // NewMockWalletNetwork creates a network of numWallets mock wallets
@@ -75,6 +77,9 @@ func (n *MockWalletNetwork) Wallets() []*MockWallet {
 // wallets. All wallets will increment the confirmations on
 // their transactions if applicable.
 func (n *MockWalletNetwork) GenerateBlock() {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+
 	h := make([]byte, 32)
 	rand.Read(h)
 
@@ -91,6 +96,9 @@ func (n *MockWalletNetwork) GenerateBlock() {
 // GenerateToAddress creates new coins out of thin air and sends them to the
 // requested address.
 func (n *MockWalletNetwork) GenerateToAddress(addr iwallet.Address, amount iwallet.Amount) error {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+
 	txidBytes := make([]byte, 32)
 	rand.Read(txidBytes)
 

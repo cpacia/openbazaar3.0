@@ -96,8 +96,8 @@ type Order struct {
 	SerializedDisputeClosed []byte
 	DisputeClosedAcked      bool
 
-	SerializedRefund []byte
-	RefundAcked      bool
+	SerializedRefunds []byte
+	RefundAcked       bool
 
 	SerializedPaymentSent []byte
 	PaymentSentAcked      bool
@@ -296,15 +296,19 @@ func (o *Order) DisputeClosedMessage() (*pb.DisputeClose, error) {
 }
 
 // RefundMessage returns the unmarshalled proto object if it exists in the order.
-func (o *Order) RefundMessage() (*pb.Refund, error) {
-	if o.SerializedRefund == nil || len(o.SerializedRefund) == 0 {
+func (o *Order) Refunds() ([]*pb.Refund, error) {
+	if o.SerializedRefunds == nil || len(o.SerializedRefunds) == 0 {
 		return nil, ErrMessageDoesNotExist
 	}
-	refund := new(pb.Refund)
-	if err := jsonpb.UnmarshalString(string(o.SerializedRefund), refund); err != nil {
+	refundList := new(pb.RefundList)
+	if err := jsonpb.UnmarshalString(string(o.SerializedRefunds), refundList); err != nil {
 		return nil, err
 	}
-	return refund, nil
+	var refunds []*pb.Refund
+	for _, r := range refundList.Refunds {
+		refunds = append(refunds, r)
+	}
+	return refunds, nil
 }
 
 // PaymentSentMessages returns a list of PaymentSent objects.
@@ -363,7 +367,38 @@ func (o *Order) PutMessage(message proto.Message) error {
 	case *pb.DisputeClose:
 		o.SerializedDisputeClosed = ser
 	case *pb.Refund:
-		o.SerializedRefund = ser
+		refundList := new(pb.RefundList)
+		if o.SerializedRefunds != nil {
+			if err := jsonpb.UnmarshalString(string(o.SerializedRefunds), refundList); err != nil {
+				return err
+			}
+		}
+		for _, r := range refundList.Refunds {
+			if r.GetTransactionID() != "" && r.GetTransactionID() == message.(*pb.Refund).GetTransactionID() {
+				return ErrDuplicateTransaction
+			}
+			if r.GetReleaseInfo() != nil && message.(*pb.Refund).GetReleaseInfo() != nil {
+				out1, err := marshaler.MarshalToString(r.GetReleaseInfo())
+				if err != nil {
+					return err
+				}
+				out2, err := marshaler.MarshalToString(message.(*pb.Refund).GetReleaseInfo())
+				if err != nil {
+					return err
+				}
+
+				if out1 == out2 {
+					return ErrDuplicateTransaction
+				}
+			}
+		}
+		refundList.Refunds = append(refundList.Refunds, message.(*pb.Refund))
+		ser, err := marshaler.MarshalToString(refundList)
+		if err != nil {
+			return err
+		}
+
+		o.SerializedRefunds = []byte(ser)
 	case *pb.PaymentSent:
 		paymentList := new(pb.PaymentSentList)
 		if o.SerializedPaymentSent != nil {
@@ -490,7 +525,7 @@ func (o *Order) CanReject(ourPeerID peer.ID) bool {
 		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillment != nil ||
 		o.SerializedOrderComplete != nil || o.SerializedDisputeOpen != nil ||
 		o.SerializedDisputeUpdate != nil || o.SerializedDisputeClosed != nil ||
-		o.SerializedRefund != nil || o.SerializedPaymentFinalized != nil {
+		o.SerializedRefunds != nil || o.SerializedPaymentFinalized != nil {
 
 		return false
 	}
@@ -518,7 +553,7 @@ func (o *Order) CanConfirm(ourPeerID peer.ID) bool {
 		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillment != nil ||
 		o.SerializedOrderComplete != nil || o.SerializedDisputeOpen != nil ||
 		o.SerializedDisputeUpdate != nil || o.SerializedDisputeClosed != nil ||
-		o.SerializedRefund != nil || o.SerializedPaymentFinalized != nil {
+		o.SerializedRefunds != nil || o.SerializedPaymentFinalized != nil {
 
 		return false
 	}

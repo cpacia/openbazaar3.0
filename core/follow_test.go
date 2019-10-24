@@ -277,5 +277,4 @@ func TestOpenBazaarNode_FollowSequence(t *testing.T) {
 	if seq.Num != 2 {
 		t.Errorf("Expected follow sequence number of 2, got %d", seq.Num)
 	}
-
 }

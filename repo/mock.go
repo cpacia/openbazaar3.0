@@ -11,7 +11,7 @@ import (
 
 // MockDB returns an in-memory sqlite db.
 func MockDB() (database.Database, error) {
-	n := rand.Intn(1000000)
+	n := rand.Intn(100000000)
 	dataDir := path.Join(os.TempDir(), "openbazaar-test", strconv.Itoa(n))
 	db, err := ffsqlite.NewFFMemoryDB(dataDir)
 	if err != nil {

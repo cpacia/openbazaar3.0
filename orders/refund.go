@@ -17,15 +17,9 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 		return nil, err
 	}
 
-	dup, err := isDuplicate(refund, order.SerializedRefund)
-	if err != nil {
-		return nil, err
-	}
-	if order.SerializedRefund != nil && !dup {
-		log.Errorf("Duplicate ORDER_REFUND message does not match original for order: %s", order.ID)
-		return nil, ErrChangedMessage
-	} else if dup {
-		return nil, nil
+	if order.SerializedOrderCancel != nil {
+		log.Errorf("Received REFUND message for order %s after ORDER_CANCEL", order.ID)
+		return nil, ErrUnexpectedMessage
 	}
 
 	orderOpen, err := order.OrderOpenMessage()
@@ -36,8 +30,10 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 		return nil, err
 	}
 
-	// FIXME: refund messages should be stored as a list to handle the case where the buyer sends multiple payments
 	if err := order.PutMessage(refund); err != nil {
+		if models.IsDuplicateTransactionError(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 

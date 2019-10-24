@@ -284,5 +284,4 @@ func TestOpenBazaarNode_republish(t *testing.T) {
 	go mocknet.Nodes()[0].republish()
 
 	<-sub.Out()
-
 }

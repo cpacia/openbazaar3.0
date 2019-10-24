@@ -94,11 +94,14 @@ message Refund {
 
     message EscrowRelease {
         repeated Signature escrowSignatures = 1;
+        string address                      = 2;
+        string amount                       = 3;
     }
 
     message Signature {
-        bytes signature = 1;
-        uint32 index = 2;
+        bytes from      = 1;
+        bytes signature = 2;
+        uint32 index    = 3;
     }
 }
 
@@ -110,4 +113,8 @@ message PaymentFinalized {}
 
 message PaymentSentList {
     repeated PaymentSent messages = 1;
+}
+
+message RefundList {
+    repeated Refund refunds = 1;
 }

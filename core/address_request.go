@@ -14,7 +14,7 @@ import (
 const (
 	// addressRequestTimeout is the amount of time to wait for a response
 	// to a ADDRESS_REQUEST message.
-	addressRequestTimeout = time.Second * 5
+	addressRequestTimeout = time.Second * 3
 )
 
 // ErrNoResponse response a failed address request due to the remote peer not responding.

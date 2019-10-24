@@ -144,4 +144,5 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	// FIXME: test sending refund when direct
 	// FIXME: test sending refund when moderated
+	// FIXME: test sending additional refund
 }

@@ -31,6 +31,8 @@ func (op *OrderProcessor) processOrderConfirmationMessage(dbtx database.Tx, orde
 		return nil, ErrUnexpectedMessage
 	}
 
+	// FIXME: we should allow the message to be saved here and decide whether the cancel or confirmation
+	// will be considered valid based on which transaction confirmed in the blockchain.
 	if order.SerializedOrderCancel != nil {
 		log.Errorf("Received ORDER_CONFIRMATION message for order %s after ORDER_CANCEL", order.ID)
 		return nil, ErrUnexpectedMessage

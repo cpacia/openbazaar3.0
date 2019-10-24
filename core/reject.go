@@ -139,10 +139,15 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 					txn      iwallet.Transaction
 					totalOut = iwallet.NewAmount(0)
 				)
+				spent := make(map[string]bool)
+				for _, tx := range txs {
+					for _, from := range tx.From {
+						spent[hex.EncodeToString(from.ID)] = true
+					}
+				}
 				for _, tx := range txs {
 					for _, to := range tx.To {
-						if to.Address.String() == orderOpen.Payment.Address {
-							// FIXME: don't add spent inputs
+						if !spent[hex.EncodeToString(to.ID)] && to.Address.String() == orderOpen.Payment.Address {
 							txn.From = append(txn.From, to)
 							totalOut.Add(to.Amount)
 						}
