@@ -24,6 +24,7 @@ import (
 	"math"
 	"math/big"
 	"strings"
+	"time"
 )
 
 func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
@@ -209,6 +210,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		}
 	}
 
+	var escrowTimeoutHours uint32
 	for i, item := range order.Items {
 		if item == nil {
 			return fmt.Errorf("item %d is nil", i)
@@ -226,6 +228,10 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		}
 		if item.Quantity == "" {
 			return fmt.Errorf("item %d quantity is empty", i)
+		}
+
+		if listing.Metadata.EscrowTimeoutHours > escrowTimeoutHours {
+			escrowTimeoutHours = listing.Metadata.EscrowTimeoutHours
 		}
 
 		// Validate selected options
@@ -347,14 +353,33 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		if err != nil {
 			return err
 		}
-		escrowWallet, ok := wal.(iwallet.Escrow)
-		if !ok {
-			return errors.New("wallet does not support escrow")
+
+		var (
+			address iwallet.Address
+			script []byte
+		)
+		if escrowTimeoutHours > 0 {
+			escrowTimeoutWallet, ok := wal.(iwallet.EscrowWithTimeout)
+			if !ok {
+				return errors.New("wallet for selected currency does not support escrow timeouts")
+			}
+
+			timeout := time.Hour * time.Duration(escrowTimeoutHours)
+			address, script, err = escrowTimeoutWallet.CreateMultisigWithTimeout([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2, timeout, *vendorKey)
+			if err != nil {
+				return err
+			}
+		} else {
+			escrowWallet, ok := wal.(iwallet.Escrow)
+			if !ok {
+				return errors.New("wallet does not support escrow")
+			}
+			address, script, err = escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
+			if err != nil {
+				return err
+			}
 		}
-		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
-		if err != nil {
-			return err
-		}
+
 		if order.Payment.Address != address.String() {
 			return errors.New("invalid moderated payment address")
 		}

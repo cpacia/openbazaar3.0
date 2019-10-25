@@ -17,6 +17,7 @@ import (
 	"github.com/ipfs/go-cid"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	"testing"
+	"time"
 )
 
 func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
@@ -56,7 +57,11 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Fetch the listing index form node 0.
 	index, err := network.Nodes()[0].GetMyListings()
@@ -69,7 +74,11 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	if err := network.Nodes()[2].SetProfile(&models.Profile{Name: "Ron Paul"}, done2); err != nil {
 		t.Fatal(err)
 	}
-	<-done2
+	select {
+	case <-done2:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Create and save the moderator info in node 2 and block until the saving is finished.
 	modInfo := &models.ModeratorInfo{
@@ -83,7 +92,11 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	if err := network.Nodes()[2].SetSelfAsModerator(context.Background(), modInfo, done3); err != nil {
 		t.Fatal(err)
 	}
-	<-done3
+	select {
+	case <-done3:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Create a purchase from the factory.
 	purchase := factory.NewPurchase()
@@ -102,9 +115,18 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 
 	// Block until node 1 receives the message ACK for the purchase.
-	<-ackSub1.Out()
+	select {
+	case <-ackSub1.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 	// Block until node 0 receives the order message.
-	orderEvent := <-orderSub0.Out()
+	var orderEvent interface{}
+	select {
+	case orderEvent = <-orderSub0.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Validate the event is correct.
 	orderNotif := orderEvent.(*events.OrderNotification)
@@ -194,7 +216,11 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	<-txSub.Out()
+	select {
+	case <-txSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Send the payment for the order from node 1 to node 0 and block until node 1 detects the payment.
 	paymentSub, err := network.Nodes()[1].eventBus.Subscribe(&events.PaymentNotification{})
@@ -214,7 +240,11 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	<-paymentSub.Out()
+	select {
+	case <-paymentSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Load the order from node 1 and make sure it is set to funded.
 	var order5 models.Order
@@ -248,10 +278,18 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 
 	// Block until node 1 receives the order ACK.
-	<-ackSub1.Out()
+	select {
+	case <-ackSub1.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Block until node 0 receives the order.
-	orderEvent = <-orderSub0.Out()
+	select {
+	case orderEvent = <-orderSub0.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 	orderNotif = orderEvent.(*events.OrderNotification)
 
 	// Load the order from node 0 and make sure it was saved correctly.
@@ -346,7 +384,12 @@ func TestOpenBazaarNode_EstimateOrderSubtotal(t *testing.T) {
 	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	index, err := network.Nodes()[0].GetMyListings()
 	if err != nil {
@@ -413,7 +456,11 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	index, err := network.Nodes()[0].GetMyListings()
 	if err != nil {
@@ -434,7 +481,11 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 	if err := network.Nodes()[1].SetProfile(&models.Profile{Name: "Ron Paul"}, done2); err != nil {
 		t.Fatal(err)
 	}
-	<-done2
+	select {
+	case <-done2:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	modInfo := &models.ModeratorInfo{
 		AcceptedCurrencies: []string{"TMCK"},
@@ -447,7 +498,11 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 	if err := network.Nodes()[1].SetSelfAsModerator(context.Background(), modInfo, done3); err != nil {
 		t.Fatal(err)
 	}
-	<-done3
+	select {
+	case <-done3:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	tests := []struct {
 		purchase   *models.Purchase
@@ -727,7 +782,11 @@ func Test_createOrderUnkownVersion(t *testing.T) {
 	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	index, err := network.Nodes()[0].GetMyListings()
 	if err != nil {

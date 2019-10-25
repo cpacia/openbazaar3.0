@@ -5,6 +5,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestOpenBazaarNode_Profile(t *testing.T) {
@@ -50,7 +51,11 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	pro, err := mocknet.Nodes()[1].GetProfile(mocknet.Nodes()[0].Identity(), false)
 	if err != nil {
@@ -71,7 +76,11 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Test fetching from cache
 	pro, err = mocknet.Nodes()[1].GetProfile(mocknet.Nodes()[0].Identity(), true)

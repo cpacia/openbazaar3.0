@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"testing"
+	"time"
 )
 
 func TestOpenBazaarNode_SendChatMessage(t *testing.T) {
@@ -29,7 +30,11 @@ func TestOpenBazaarNode_SendChatMessage(t *testing.T) {
 	if err := node.SendChatMessage(p, message, subject, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	var messages []models.ChatMessage
 	err = node.repo.DB().View(func(tx database.Tx) error {
@@ -87,7 +92,12 @@ func TestOpenBazaarNode_SendTypingMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	event := <-sub.Out()
+	var event interface{}
+	select {
+	case event = <-sub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	notif, ok := event.(*events.ChatTypingNotification)
 	if !ok {
@@ -126,7 +136,12 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	}
 
 	// Wait for 1 to receive the message.
-	event := <-sub.Out()
+	var event interface{}
+	select {
+	case event = <-sub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 	notif, ok := event.(*events.ChatMessageNotification)
 	if !ok {
 		t.Fatal("Failed to type assert ChatMessageNotification")
@@ -155,7 +170,12 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	}
 
 	// Wait for node 0 to receive the read notification.
-	event2 := <-sub2.Out()
+	var event2 interface{}
+	select {
+	case event2 = <-sub2.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 	notif2, ok := event2.(*events.ChatReadNotification)
 	if !ok {
 		t.Fatal("Failed to type assert ChatReadNotification")
@@ -324,7 +344,11 @@ func TestOpenBazaarNode_ChatSequence(t *testing.T) {
 	if err := node.SendChatMessage(p, message, subject, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	var messages []models.ChatMessage
 	err = node.repo.DB().View(func(tx database.Tx) error {

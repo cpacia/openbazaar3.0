@@ -16,6 +16,7 @@ import (
 	"os"
 	gpath "path"
 	"testing"
+	"time"
 )
 
 func Test_ipfsCat(t *testing.T) {
@@ -201,7 +202,11 @@ func Test_ipfsFetchGraph(t *testing.T) {
 	if err := mocknet.Nodes()[0].SetProfile(&models.Profile{Name: "Ron Paul"}, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	graph, err := mocknet.Nodes()[0].fetchGraph()
 	if err != nil {

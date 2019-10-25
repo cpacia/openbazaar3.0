@@ -229,16 +229,28 @@ func TestOpenBazaarNode_PublishToFollowers(t *testing.T) {
 	if err := mocknet.Nodes()[0].SetProfile(&models.Profile{Name: "Peter Griffin"}, done1); err != nil {
 		t.Fatal(err)
 	}
-	<-done1
+	select {
+	case <-done1:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Node 1 send follow
 	done2 := make(chan struct{})
 	if err := mocknet.Nodes()[1].FollowNode(mocknet.Nodes()[0].Identity(), done2); err != nil {
 		t.Fatal(err)
 	}
-	<-done2
+	select {
+	case <-done2:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
-	<-followSub.Out()
+	select {
+	case <-followSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Run the follower tracker to load node 1 as a follower in node 0.
 	mocknet.Nodes()[0].followerTracker.tryConnectFollowers()
@@ -248,10 +260,18 @@ func TestOpenBazaarNode_PublishToFollowers(t *testing.T) {
 	if err := mocknet.Nodes()[0].SetProfile(&models.Profile{Name: "Peter Griffin2"}, done3); err != nil {
 		t.Fatal(err)
 	}
-	<-done3
+	select {
+	case <-done3:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	// Make sure 1 node is pinning the correct cids.
-	<-storeSub.Out()
+	select {
+	case <-storeSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	graph, err := mocknet.Nodes()[0].fetchGraph()
 	if err != nil {
@@ -283,5 +303,9 @@ func TestOpenBazaarNode_republish(t *testing.T) {
 
 	go mocknet.Nodes()[0].republish()
 
-	<-sub.Out()
+	select {
+	case <-sub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 }

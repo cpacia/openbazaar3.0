@@ -7,6 +7,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
 	"testing"
+	"time"
 )
 
 func TestOpenBazaarNode_RejectOrder(t *testing.T) {
@@ -34,7 +35,11 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	index, err := network.Nodes()[0].GetMyListings()
 	if err != nil {
@@ -45,7 +50,11 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	if err := network.Nodes()[2].SetProfile(&models.Profile{Name: "Ron Paul"}, done2); err != nil {
 		t.Fatal(err)
 	}
-	<-done2
+	select {
+	case <-done2:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	modInfo := &models.ModeratorInfo{
 		AcceptedCurrencies: []string{"TMCK"},
@@ -58,7 +67,11 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	if err := network.Nodes()[2].SetSelfAsModerator(context.Background(), modInfo, done3); err != nil {
 		t.Fatal(err)
 	}
-	<-done3
+	select {
+	case <-done3:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	purchase := factory.NewPurchase()
 	purchase.Items[0].ListingHash = index[0].Hash
@@ -69,7 +82,11 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	<-orderSub0.Out()
+	select {
+	case <-orderSub0.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	var order models.Order
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
@@ -112,10 +129,22 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	if err := network.Nodes()[0].RejectOrder(orderID, "sucks to be you", done4); err != nil {
 		t.Fatal(err)
 	}
-	<-done4
+	select {
+	case <-done4:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
-	<-rejectSub.Out()
-	<-rejectAck.Out()
+	select {
+	case <-rejectSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+	select {
+	case <-rejectAck.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderID.String()).Last(&order).Error

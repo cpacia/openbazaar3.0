@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"testing"
+	"time"
 )
 
 func TestFollowerTracker_ConnectDisconnect(t *testing.T) {
@@ -24,7 +25,11 @@ func TestFollowerTracker_ConnectDisconnect(t *testing.T) {
 	ft := NewFollowerTracker(node.repo, node.eventBus, node.ipfsNode.PeerHost.Network())
 	ft.Start()
 
-	<-startSub.Out()
+	select {
+	case <-startSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	connectSub, err := node.SubscribeEvent(&events.TrackerPeerConnected{})
 	if err != nil {
@@ -38,7 +43,11 @@ func TestFollowerTracker_ConnectDisconnect(t *testing.T) {
 	node.eventBus.Emit(&events.FollowNotification{PeerID: p.Pretty()})
 	node.eventBus.Emit(&events.PeerConnected{Peer: p})
 
-	<-connectSub.Out()
+	select {
+	case <-connectSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	if _, ok := ft.connected[p]; !ok {
 		t.Error("Peer is disconnected")
@@ -51,7 +60,11 @@ func TestFollowerTracker_ConnectDisconnect(t *testing.T) {
 
 	node.eventBus.Emit(&events.PeerDisconnected{Peer: p})
 
-	<-disconnectSub.Out()
+	select {
+	case <-disconnectSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	if _, ok := ft.connected[p]; ok {
 		t.Error("Peer is connected")

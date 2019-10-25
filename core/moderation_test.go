@@ -5,6 +5,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"testing"
+	"time"
 )
 
 func TestOpenBazaarNode_SetAndRemoveSelfAsModerator(t *testing.T) {
@@ -30,13 +31,21 @@ func TestOpenBazaarNode_SetAndRemoveSelfAsModerator(t *testing.T) {
 	if err := node.SetSelfAsModerator(context.Background(), modInfo, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	done2 := make(chan struct{})
 	if err := node.RemoveSelfAsModerator(context.Background(), done2); err != nil {
 		t.Fatal(err)
 	}
-	<-done2
+	select {
+	case <-done2:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 }
 
 func TestOpenBazaarNode_GetModerators(t *testing.T) {
@@ -63,7 +72,11 @@ func TestOpenBazaarNode_GetModerators(t *testing.T) {
 	if err := mocknet.Nodes()[0].SetSelfAsModerator(context.Background(), modInfo, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	mods := mocknet.Nodes()[1].GetModerators(context.Background())
 

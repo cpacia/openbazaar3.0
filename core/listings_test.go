@@ -24,7 +24,11 @@ func TestOpenBazaarNode_SaveListing(t *testing.T) {
 	if err := node.SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	_, err = node.GetMyListingBySlug("ron-swanson-shirt")
 	if err != nil {
@@ -64,13 +68,21 @@ func TestOpenBazaarNode_DeleteListing(t *testing.T) {
 	if err := node.SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	done2 := make(chan struct{})
 	if err := node.DeleteListing(listing.Slug, done2); err != nil {
 		t.Fatal(err)
 	}
-	<-done2
+	select {
+	case <-done2:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	_, err = node.GetMyListingBySlug("ron-swanson-shirt")
 	if err == nil {
@@ -101,7 +113,11 @@ func TestOpenBazaarNode_ListingsGet(t *testing.T) {
 	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	listing2, err := network.Nodes()[1].GetListingBySlug(network.Nodes()[0].Identity(), listing.Slug, false)
 	if err != nil {
@@ -149,7 +165,11 @@ func Test_generateListingSlug(t *testing.T) {
 	if err := node.SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	tests := []struct {
 		title    string

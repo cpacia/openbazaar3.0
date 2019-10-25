@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"testing"
+	"time"
 )
 
 func TestOpenBazaarNode_Follow(t *testing.T) {
@@ -28,7 +29,11 @@ func TestOpenBazaarNode_Follow(t *testing.T) {
 	if err := node.FollowNode(p, done); err != nil {
 		t.Fatal(err)
 	}
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	following, err := node.GetMyFollowing()
 	if err != nil {
@@ -53,7 +58,11 @@ func TestOpenBazaarNode_Follow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	following, err = node.GetMyFollowing()
 	if err != nil {
@@ -100,7 +109,12 @@ func TestOpenBazaarNode_GetFollowing(t *testing.T) {
 
 	done := make(chan struct{})
 	mocknet.Nodes()[0].Publish(done)
-	<-done
+
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	following, err := mocknet.Nodes()[1].GetFollowing(mocknet.Nodes()[0].Identity(), false)
 	if err != nil {
@@ -137,7 +151,12 @@ func TestOpenBazaarNode_GetFollowers(t *testing.T) {
 
 	done := make(chan struct{})
 	mocknet.Nodes()[0].Publish(done)
-	<-done
+
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	followers, err := mocknet.Nodes()[1].GetFollowers(mocknet.Nodes()[0].Identity(), false)
 	if err != nil {
@@ -170,7 +189,12 @@ func Test_handleFollowAndUnfollow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	event := <-sub.Out()
+	var event interface{}
+	select {
+	case event = <-sub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	notif, ok := event.(*events.FollowNotification)
 	if !ok {
@@ -204,7 +228,12 @@ func Test_handleFollowAndUnfollow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	event2 := <-sub2.Out()
+	var event2 interface{}
+	select {
+	case event2 = <-sub2.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	notif2, ok := event2.(*events.UnfollowNotification)
 	if !ok {
@@ -246,7 +275,11 @@ func TestOpenBazaarNode_FollowSequence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	var seq models.FollowSequence
 	err = node.repo.DB().View(func(tx database.Tx) error {
@@ -265,7 +298,11 @@ func TestOpenBazaarNode_FollowSequence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	<-done
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 
 	err = node.repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("peer_id = ?", p.Pretty()).First(&seq).Error
