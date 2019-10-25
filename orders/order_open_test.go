@@ -23,6 +23,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
@@ -902,11 +903,11 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				escrowWallet, ok := wal.(iwallet.Escrow)
+				escrowWallet, ok := wal.(iwallet.EscrowWithTimeout)
 				if !ok {
 					return nil, errors.New("wallet does not support escrow")
 				}
-				address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
+				address, script, err := escrowWallet.CreateMultisigWithTimeout([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2, time.Hour * time.Duration(order.Listings[0].Listing.Metadata.EscrowTimeoutHours), *vendorKey)
 				if err != nil {
 					return nil, err
 				}

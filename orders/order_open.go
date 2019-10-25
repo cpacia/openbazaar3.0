@@ -356,7 +356,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 
 		var (
 			address iwallet.Address
-			script []byte
+			script  []byte
 		)
 		if escrowTimeoutHours > 0 {
 			escrowTimeoutWallet, ok := wal.(iwallet.EscrowWithTimeout)
