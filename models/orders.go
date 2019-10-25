@@ -305,9 +305,7 @@ func (o *Order) Refunds() ([]*pb.Refund, error) {
 		return nil, err
 	}
 	var refunds []*pb.Refund
-	for _, r := range refundList.Refunds {
-		refunds = append(refunds, r)
-	}
+	refunds = append(refunds, refundList.Refunds...)
 	return refunds, nil
 }
 

@@ -173,7 +173,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 					return err
 				}
 
-				sigs, err := escrowWallet.SignMultisigTransaction(txn, vendorKey, script)
+				sigs, err := escrowWallet.SignMultisigTransaction(txn, *vendorKey, script)
 				if err != nil {
 					return err
 				}

@@ -35,7 +35,6 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(addr, addr2)
 	if err := wn.GenerateToAddress(addr, iwallet.NewAmount(100000)); err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +71,7 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 
 	// FIXME: test both direct and moderated
 	refundMsg := &pb.Refund{
-		TransactionID: txs[1].ID.String(),
+		RefundInfo: &pb.Refund_TransactionID{TransactionID: txs[1].ID.String()},
 	}
 
 	refundAny, err := ptypes.MarshalAny(refundMsg)
@@ -160,19 +159,6 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 				return order.PutMessage(refundMsg)
 			},
 			expectedError: nil,
-			expectedEvent: nil,
-			checkTxs: func(order *models.Order) error {
-				return nil
-			},
-		},
-		{
-			// Duplicate but different.
-			setup: func(order *models.Order) error {
-				msg2 := *refundMsg
-				msg2.TransactionID = "abc"
-				return order.PutMessage(&msg2)
-			},
-			expectedError: ErrChangedMessage,
 			expectedEvent: nil,
 			checkTxs: func(order *models.Order) error {
 				return nil

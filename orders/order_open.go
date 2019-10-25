@@ -349,7 +349,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		}
 		escrowWallet, ok := wal.(iwallet.Escrow)
 		if !ok {
-			return errors.New("wallet does not support escorw")
+			return errors.New("wallet does not support escrow")
 		}
 		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
 		if err != nil {
@@ -364,7 +364,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	} else if order.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
 		escrowWallet, ok := wal.(iwallet.Escrow)
 		if !ok {
-			return errors.New("wallet does not support escorw")
+			return errors.New("wallet does not support escrow")
 		}
 		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey}, 1)
 		if err != nil {

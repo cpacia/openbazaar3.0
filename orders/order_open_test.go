@@ -904,7 +904,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				}
 				escrowWallet, ok := wal.(iwallet.Escrow)
 				if !ok {
-					return nil, errors.New("wallet does not support escorw")
+					return nil, errors.New("wallet does not support escrow")
 				}
 				address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
 				if err != nil {
@@ -993,7 +993,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				}
 				escrowWallet, ok := wal.(iwallet.Escrow)
 				if !ok {
-					return nil, errors.New("wallet does not support escorw")
+					return nil, errors.New("wallet does not support escrow")
 				}
 				address, _, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
 				if err != nil {
@@ -1042,7 +1042,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				}
 				escrowWallet, ok := wal.(iwallet.Escrow)
 				if !ok {
-					return nil, errors.New("wallet does not support escorw")
+					return nil, errors.New("wallet does not support escrow")
 				}
 				address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey}, 1)
 				if err != nil {
@@ -1089,7 +1089,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				}
 				escrowWallet, ok := wal.(iwallet.Escrow)
 				if !ok {
-					return nil, errors.New("wallet does not support escorw")
+					return nil, errors.New("wallet does not support escrow")
 				}
 				address, _, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey}, 1)
 				if err != nil {
