@@ -28,3 +28,11 @@ func HashListing(sl *pb.SignedListing) (*multihash.Multihash, error) {
 	}
 	return MultihashSha256(ser)
 }
+
+func CalcOrderID(orderOpen *pb.OrderOpen) (*multihash.Multihash, error) {
+	ser, err := proto.Marshal(orderOpen)
+	if err != nil {
+		return nil, err
+	}
+	return MultihashSha256(ser)
+}

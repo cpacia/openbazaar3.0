@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
@@ -135,13 +134,14 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 		return
 	}
 
-	orderIDBytes := make([]byte, 20)
-	if _, err := rand.Read(orderIDBytes); err != nil {
-		return orderID, paymentAddress, paymentAmount, err
+	// Calculate order ID
+	orderHash, err := utils.CalcOrderID(orderOpen)
+	if err != nil {
+		return
 	}
 
 	order := npb.OrderMessage{
-		OrderID:     base58.Encode(orderIDBytes),
+		OrderID:     orderHash.B58String(),
 		MessageType: npb.OrderMessage_ORDER_OPEN,
 		Message:     orderAny,
 	}

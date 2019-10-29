@@ -77,7 +77,9 @@ message OrderReject {
     }
 }
 
-message OrderConfirmation {}
+message OrderConfirmation {
+    bytes signature = 10;
+}
 
 message OrderCancel {}
 message OrderFulfillment {}

@@ -21,6 +21,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/multiformats/go-multihash"
 	"reflect"
 	"testing"
 	"time"
@@ -57,16 +58,16 @@ func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
 		{
 			// Normal case order validates
 			setup: func(order *models.Order, orderOpen *pb.OrderOpen) error {
-				order.ID = "1234"
 				return nil
 			},
 			expectedError: nil,
 			expectedEvent: func(orderOpen *pb.OrderOpen) interface{} {
+				orderID, _ := utils.CalcOrderID(orderOpen)
 				return &events.OrderNotification{
 					BuyerHandle: orderOpen.BuyerID.Handle,
 					BuyerID:     orderOpen.BuyerID.PeerID,
 					ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),
-					OrderID:     "1234",
+					OrderID:     orderID.B58String(),
 					Price: events.ListingPrice{
 						Amount:        orderOpen.Payment.Amount,
 						CurrencyCode:  orderOpen.Payment.Coin,
@@ -126,13 +127,24 @@ func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
 			continue
 		}
 
+		ser, err := proto.Marshal(orderOpen)
+		if err != nil {
+			t.Errorf("Test %d order serialization error: %s", i, err)
+			continue
+		}
+		orderHash, err := utils.MultihashSha256(ser)
+		if err != nil {
+			t.Errorf("Test %d order hash error: %s", i, err)
+			continue
+		}
+
 		openAny, err := ptypes.MarshalAny(orderOpen)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		orderMsg := &npb.OrderMessage{
-			OrderID:     "1234",
+			OrderID:     orderHash.B58String(),
 			MessageType: npb.OrderMessage_ORDER_OPEN,
 			Message:     openAny,
 		}
@@ -160,6 +172,9 @@ func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
 			}
 			if test.expectedEvent != nil {
 				expectedEvent := test.expectedEvent(orderOpen)
+				if err != nil {
+					t.Errorf("Test %d: error calculating orderID", i)
+				}
 				if !reflect.DeepEqual(event, expectedEvent) {
 					t.Errorf("Test %d: incorrect event returned", i)
 				}
@@ -393,8 +408,9 @@ func Test_validateOrderOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 	tests := []struct {
-		order func() (*pb.OrderOpen, error)
-		valid bool
+		order   func() (*pb.OrderOpen, error)
+		valid   bool
+		orderID func(order *pb.OrderOpen) (*multihash.Multihash, error)
 	}{
 		{
 			// Normal listing
@@ -406,6 +422,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: true,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Listing slug not found
@@ -418,6 +437,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Listing serialization not found
@@ -430,6 +452,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Listing doesn't exist for order item
@@ -442,6 +467,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Nil listings
@@ -454,6 +482,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Nil payment
@@ -466,6 +497,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Nil items
@@ -478,6 +512,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Nil timestamp
@@ -490,6 +527,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Nil buyerID
@@ -502,6 +542,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Nil ratings
@@ -514,6 +557,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Nil item
@@ -526,6 +572,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.MultihashSha256([]byte{0x00})
+			},
 		},
 		{
 			// Cryptocurrency listing with "" address.
@@ -548,6 +597,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Item quantity zero
@@ -560,6 +612,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Too few options
@@ -572,6 +627,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Option does not exist
@@ -584,6 +642,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Option value does not exist
@@ -596,6 +657,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Shipping option does not exist
@@ -608,6 +672,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Shipping option service does not exist
@@ -620,6 +687,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Order payment amount is ""
@@ -632,6 +702,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Order payment amount is not base 10
@@ -644,6 +717,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Order payment address is ""
@@ -656,6 +732,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Unknown payment coin
@@ -668,6 +747,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Correct direct payment address
@@ -700,6 +782,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: true,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Direct payment address where wallet doesn't have the key
@@ -713,6 +798,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Escrow release fee is ""
@@ -725,6 +813,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Escrow release fee is invalid
@@ -737,6 +828,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Invalid moderator peer ID
@@ -750,6 +844,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Moderator key is nil
@@ -764,6 +861,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Moderator key is invalid
@@ -778,6 +878,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Invalid rating keys
@@ -790,6 +893,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Buyer ID pubkeys is nil
@@ -802,6 +908,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Invalid buyer ID pubkey
@@ -814,6 +923,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// ID pubkey does not match peer ID
@@ -826,6 +938,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Invalid escrow pubkey
@@ -838,6 +953,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Signature parse error
@@ -850,6 +968,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Signature invalid
@@ -862,6 +983,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Valid moderated address
@@ -907,7 +1031,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if !ok {
 					return nil, errors.New("wallet does not support escrow")
 				}
-				address, script, err := escrowWallet.CreateMultisigWithTimeout([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2, time.Hour * time.Duration(order.Listings[0].Listing.Metadata.EscrowTimeoutHours), *vendorKey)
+				address, script, err := escrowWallet.CreateMultisigWithTimeout([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2, time.Hour*time.Duration(order.Listings[0].Listing.Metadata.EscrowTimeoutHours), *vendorKey)
 				if err != nil {
 					return nil, err
 				}
@@ -931,6 +1055,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: true,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Invalid moderated address
@@ -951,6 +1078,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Invalid moderated script
@@ -1009,6 +1139,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Valid cancelable address
@@ -1056,6 +1189,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: true,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Invalid cancelable script
@@ -1103,6 +1239,9 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
 		},
 		{
 			// Invalid cancelable script
@@ -1117,6 +1256,23 @@ func Test_validateOrderOpen(t *testing.T) {
 				return order, nil
 			},
 			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
+		},
+		{
+			// Invalid orderID
+			order: func() (*pb.OrderOpen, error) {
+				order, _, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				return order, nil
+			},
+			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.MultihashSha256([]byte{0x00})
+			},
 		},
 	}
 
@@ -1126,8 +1282,13 @@ func Test_validateOrderOpen(t *testing.T) {
 			t.Errorf("Test %d order build error: %s", i, err)
 			continue
 		}
+		orderHash, err := test.orderID(order)
+		if err != nil {
+			t.Errorf("Test %d order ID error: %s", i, err)
+			continue
+		}
 		processor.db.Update(func(tx database.Tx) error {
-			err := processor.validateOrderOpen(tx, order)
+			err := processor.validateOrderOpen(tx, order, models.OrderID(orderHash.B58String()))
 			if test.valid && err != nil {
 				t.Errorf("Test %d failed when it should not have: %s", i, err)
 			} else if !test.valid && err == nil {
