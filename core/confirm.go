@@ -34,7 +34,16 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 		return err
 	}
 
-	confirmAny, err := ptypes.MarshalAny(&pb.OrderConfirmation{})
+	signature, err := n.ipfsNode.PrivateKey.Sign([]byte(order.ID.String()))
+	if err != nil {
+		return err
+	}
+
+	confirmation := &pb.OrderConfirmation{
+		Signature: signature,
+	}
+
+	confirmAny, err := ptypes.MarshalAny(confirmation)
 	if err != nil {
 		return err
 	}

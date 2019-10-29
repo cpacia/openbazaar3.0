@@ -21,7 +21,11 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, pub, err := crypto.GenerateEd25519Key(rand.Reader)
+	priv, pub, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pubkeyBytes, err := crypto.MarshalPublicKey(pub)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +34,12 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	confirmMsg := &pb.OrderConfirmation{}
+	orderID := "1234"
+	signature, err := priv.Sign([]byte(orderID))
+
+	confirmMsg := &pb.OrderConfirmation{
+		Signature: signature,
+	}
 
 	confirmationAny, err := ptypes.MarshalAny(confirmMsg)
 	if err != nil {
@@ -38,13 +47,13 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 	}
 
 	orderMsg := &npb.OrderMessage{
-		OrderID:     "1234",
+		OrderID:     orderID,
 		MessageType: npb.OrderMessage_ORDER_CONFIRMATION,
 		Message:     confirmationAny,
 	}
 
 	var (
-		vendorPeerID   = "xyz"
+		vendorPeerID   = remotePeer.Pretty()
 		vendorHandle   = "abc"
 		smallImageHash = "aaaa"
 		tinyImageHash  = "bbbb"
@@ -56,6 +65,9 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 					VendorID: &pb.ID{
 						PeerID: vendorPeerID,
 						Handle: vendorHandle,
+						Pubkeys: &pb.ID_Pubkeys{
+							Identity: pubkeyBytes,
+						},
 					},
 					Item: &pb.Listing_Item{
 						Images: []*pb.Listing_Item_Image{
@@ -78,12 +90,12 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 		{
 			// Normal case where order open exists.
 			setup: func(order *models.Order) error {
-				order.ID = "1234"
+				order.ID = models.OrderID(orderID)
 				return order.PutMessage(orderOpen)
 			},
 			expectedError: nil,
 			expectedEvent: &events.OrderConfirmationNotification{
-				OrderID: "1234",
+				OrderID: orderID,
 				Thumbnail: events.Thumbnail{
 					Tiny:  tinyImageHash,
 					Small: smallImageHash,
