@@ -86,9 +86,10 @@ func (n *MockWalletNetwork) GenerateBlock() {
 	n.height++
 
 	for _, wallet := range n.wallets {
-		wallet.block <- iwallet.BlockchainInfo{
+		wallet.block <- iwallet.BlockInfo{
+			BlockID:   iwallet.BlockID(hex.EncodeToString(h)),
 			Height:    n.height,
-			BestBlock: iwallet.BlockID(hex.EncodeToString(h)),
+			BlockTime: time.Now(),
 		}
 	}
 }
@@ -144,14 +145,14 @@ type MockWallet struct {
 
 	utxos map[string]mockUtxo
 
-	blockchainInfo iwallet.BlockchainInfo
+	blockchainInfo iwallet.BlockInfo
 
 	outgoing chan iwallet.Transaction
 	incoming chan iwallet.Transaction
-	block    chan iwallet.BlockchainInfo
+	block    chan iwallet.BlockInfo
 
 	txSubs    []chan iwallet.Transaction
-	blockSubs []chan iwallet.BlockchainInfo
+	blockSubs []chan iwallet.BlockInfo
 
 	bus events.Bus
 
@@ -166,7 +167,7 @@ func NewMockWallet() *MockWallet {
 		transactions: make(map[iwallet.TransactionID]iwallet.Transaction),
 		utxos:        make(map[string]mockUtxo),
 		incoming:     make(chan iwallet.Transaction),
-		block:        make(chan iwallet.BlockchainInfo),
+		block:        make(chan iwallet.BlockInfo),
 		done:         make(chan struct{}),
 	}
 
@@ -291,10 +292,12 @@ func (w *MockWallet) Start() {
 				w.mtx.Unlock()
 			case blockInfo := <-w.block:
 				w.mtx.Lock()
+				blockInfo.PrevBlock = w.blockchainInfo.BlockID
 				w.blockchainInfo = blockInfo
 				for txid, txn := range w.transactions {
 					if txn.Height == 0 {
 						txn.Height = blockInfo.Height
+						txn.BlockInfo = &blockInfo
 						w.transactions[txid] = txn
 					}
 				}
@@ -305,7 +308,7 @@ func (w *MockWallet) Start() {
 					}
 				}
 				if w.bus != nil {
-					w.bus.Emit(&events.BlockReceived{CurrencyCode: "TMCK", BlockchainInfo: blockInfo})
+					w.bus.Emit(&events.BlockReceived{CurrencyCode: "TMCK", BlockInfo: blockInfo})
 				}
 				w.mtx.Unlock()
 			case <-w.done:
@@ -360,7 +363,7 @@ func (w *MockWallet) Begin() (iwallet.Tx, error) {
 }
 
 // BlockchainInfo returns the best hash and height of the chain.
-func (w *MockWallet) BlockchainInfo() (iwallet.BlockchainInfo, error) {
+func (w *MockWallet) BlockchainInfo() (iwallet.BlockInfo, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
@@ -699,8 +702,8 @@ func (w *MockWallet) SubscribeTransactions() <-chan iwallet.Transaction {
 
 // SubscribeBlocks returns a chan over which the wallet is expected
 // to push info about new blocks when they arrive.
-func (w *MockWallet) SubscribeBlocks() <-chan iwallet.BlockchainInfo {
-	ch := make(chan iwallet.BlockchainInfo)
+func (w *MockWallet) SubscribeBlocks() <-chan iwallet.BlockInfo {
+	ch := make(chan iwallet.BlockInfo)
 	w.blockSubs = append(w.blockSubs, ch)
 	return ch
 }

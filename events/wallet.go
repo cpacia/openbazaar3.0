@@ -11,6 +11,6 @@ type TransactionReceived struct {
 // BlockReceived is an event that fires when a new block is
 // received by a wallet.
 type BlockReceived struct {
-	iwallet.BlockchainInfo
+	iwallet.BlockInfo
 	CurrencyCode string
 }
