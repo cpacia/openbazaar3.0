@@ -258,26 +258,22 @@ func (w *MockWallet) Start() {
 								value:    out.Amount,
 							}
 						}
-						tx.To[i].IsRelevant = true
 						w.addrs[out.Address] = true
 						relevant = true
 					}
 					if _, ok := w.watchedAddrs[out.Address]; ok {
 						watched = true
-						tx.To[i].IsWatched = true
 					}
 				}
-				for i, in := range tx.From {
+				for _, in := range tx.From {
 					if _, ok := w.addrs[in.Address]; ok {
 						if _, ok := w.utxos[hex.EncodeToString(in.ID)]; ok {
 							delete(w.utxos, hex.EncodeToString(in.ID))
 						}
 						relevant = true
-						tx.From[i].IsRelevant = true
 					}
 					if _, ok := w.watchedAddrs[in.Address]; ok {
 						watched = true
-						tx.From[i].IsWatched = true
 					}
 				}
 				if relevant || watched {
@@ -558,7 +554,6 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 			{
 				Address:    to,
 				Amount:     amt,
-				IsRelevant: false,
 				ID:         append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
 			},
 		},
@@ -574,7 +569,6 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 		change := iwallet.SpendInfo{
 			Address:    changeAddr,
 			Amount:     totalUtxo.Sub(amt.Add(fee)),
-			IsRelevant: true,
 			ID:         append(txidBytes, []byte{0x00, 0x00, 0x00, 0x01}...),
 		}
 		txn.To = append(txn.To, change)
@@ -593,7 +587,6 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 			ID:         utxo.outpoint,
 			Address:    utxo.address,
 			Amount:     utxo.value,
-			IsRelevant: true,
 		}
 		txn.From = append(txn.From, in)
 		utxosToDelete = append(utxosToDelete, hex.EncodeToString(utxo.outpoint))
@@ -656,7 +649,6 @@ func (w *MockWallet) SweepWallet(tx iwallet.Tx, to iwallet.Address, feeLevel iwa
 			{
 				Address:    to,
 				Amount:     totalUtxo.Sub(fee),
-				IsRelevant: false,
 				ID:         append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
 			},
 		},
@@ -668,7 +660,6 @@ func (w *MockWallet) SweepWallet(tx iwallet.Tx, to iwallet.Address, feeLevel iwa
 			ID:         utxo.outpoint,
 			Address:    utxo.address,
 			Amount:     utxo.value,
-			IsRelevant: true,
 		}
 		txn.From = append(txn.From, in)
 		utxosToDelete = append(utxosToDelete, hex.EncodeToString(utxo.outpoint))
