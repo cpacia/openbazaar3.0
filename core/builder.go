@@ -162,6 +162,33 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	return obNode, nil
 }
 
+func NewIPFSOnlyNode(ctx context.Context, dataDir string, testnet bool) (*core.IpfsNode, error) {
+	// Load the IPFS Repo
+	ipfsRepo, err := fsrepo.Open(dataDir)
+	if err != nil {
+		return nil, err
+	}
+	ncfg := &core.BuildCfg{
+		Repo:   ipfsRepo,
+		Online: true,
+		ExtraOpts: map[string]bool{
+			"mplex":  true,
+			"ipnsps": true,
+		},
+		Routing: constructRouting,
+	}
+
+	updateIPFSGlobalProtocolVars(testnet)
+	if !testnet {
+		ProtocolDHT = net.ProtocolKademliaMainnetTwo
+	} else {
+		ProtocolDHT = net.ProtocolKademliaTestnetTwo
+	}
+
+	// Construct IPFS node.
+	return core.NewNode(ctx, ncfg)
+}
+
 // constructRouting behaves exactly like the default constructRouting function in the IPFS package
 // with the loan exception of setting the dhtopts.Protocols to use our custom protocol ID. By using
 // a different ID we ensure that we segregate the OpenBazaar DHT from the main IPFS DHT.

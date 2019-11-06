@@ -325,9 +325,9 @@ func (w *MockWallet) WalletExists() bool {
 //
 // The xPriv may be used to create a bip44 keychain. The xPriv is
 // `cointype` level in the bip44 path. For example in the following
-// path the wallet should only derive the paths after `cointype` as
-// m and purpose' are kept private by OpenBazaar so this wallet cannot
-// derive keys from other wallets.
+// path the wallet should only derive the paths after `account` as
+// m, purpose', and coin_type' are kept private by OpenBazaar so this
+// wallet cannot derive keys from other wallets.
 //
 // m / purpose' / coin_type' / account' / change / address_index
 //
@@ -552,9 +552,9 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 		ID: iwallet.TransactionID(hex.EncodeToString(txidBytes)),
 		To: []iwallet.SpendInfo{
 			{
-				Address:    to,
-				Amount:     amt,
-				ID:         append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
+				Address: to,
+				Amount:  amt,
+				ID:      append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
 			},
 		},
 	}
@@ -567,9 +567,9 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 			return txn.ID, err
 		}
 		change := iwallet.SpendInfo{
-			Address:    changeAddr,
-			Amount:     totalUtxo.Sub(amt.Add(fee)),
-			ID:         append(txidBytes, []byte{0x00, 0x00, 0x00, 0x01}...),
+			Address: changeAddr,
+			Amount:  totalUtxo.Sub(amt.Add(fee)),
+			ID:      append(txidBytes, []byte{0x00, 0x00, 0x00, 0x01}...),
 		}
 		txn.To = append(txn.To, change)
 
@@ -584,9 +584,9 @@ func (w *MockWallet) Spend(tx iwallet.Tx, to iwallet.Address, amt iwallet.Amount
 	var utxosToDelete []string
 	for _, utxo := range utxos {
 		in := iwallet.SpendInfo{
-			ID:         utxo.outpoint,
-			Address:    utxo.address,
-			Amount:     utxo.value,
+			ID:      utxo.outpoint,
+			Address: utxo.address,
+			Amount:  utxo.value,
 		}
 		txn.From = append(txn.From, in)
 		utxosToDelete = append(utxosToDelete, hex.EncodeToString(utxo.outpoint))
@@ -647,9 +647,9 @@ func (w *MockWallet) SweepWallet(tx iwallet.Tx, to iwallet.Address, feeLevel iwa
 		ID: iwallet.TransactionID(hex.EncodeToString(txidBytes)),
 		To: []iwallet.SpendInfo{
 			{
-				Address:    to,
-				Amount:     totalUtxo.Sub(fee),
-				ID:         append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
+				Address: to,
+				Amount:  totalUtxo.Sub(fee),
+				ID:      append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
 			},
 		},
 	}
@@ -657,9 +657,9 @@ func (w *MockWallet) SweepWallet(tx iwallet.Tx, to iwallet.Address, feeLevel iwa
 	var utxosToDelete []string
 	for _, utxo := range utxos {
 		in := iwallet.SpendInfo{
-			ID:         utxo.outpoint,
-			Address:    utxo.address,
-			Amount:     utxo.value,
+			ID:      utxo.outpoint,
+			Address: utxo.address,
+			Amount:  utxo.value,
 		}
 		txn.From = append(txn.From, in)
 		utxosToDelete = append(utxosToDelete, hex.EncodeToString(utxo.outpoint))
