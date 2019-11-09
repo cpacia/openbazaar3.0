@@ -18,6 +18,7 @@ import (
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
+	ipfslogging "github.com/ipfs/go-log/writer"
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
@@ -26,10 +27,24 @@ import (
 	"github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p-routing"
 	"github.com/op/go-logging"
+	"gopkg.in/natefinch/lumberjack.v2"
+	"os"
+	"path"
+	"strings"
 )
 
 var (
-	log         = logging.MustGetLogger("CORE")
+	log             = logging.MustGetLogger("CORE")
+	stdoutLogFormat = logging.MustStringFormatter(`%{color:reset}%{color}%{time:15:04:05.000} [%{level}] [%{module}/%{shortfunc}] %{message}`)
+	fileLogFormat   = logging.MustStringFormatter(`%{time:15:04:05.000} [%{level}] [%{module}/%{shortfunc}] %{message}`)
+	logLevelMap     = map[string]logging.Level{
+		"debug":    logging.DEBUG,
+		"info":     logging.INFO,
+		"notice":   logging.NOTICE,
+		"warning":  logging.WARNING,
+		"error":    logging.ERROR,
+		"critical": logging.CRITICAL,
+	}
 	ProtocolDHT protocol.ID
 )
 
@@ -49,6 +64,38 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	ipfsConfig, err := ipfsRepo.Config()
 	if err != nil {
 		return nil, err
+	}
+
+	// Setup logging
+	backendStdout := logging.NewLogBackend(os.Stdout, "", 0)
+	backendStdoutFormatter := logging.NewBackendFormatter(backendStdout, stdoutLogFormat)
+
+	filerLogger := &lumberjack.Logger{
+		Filename:   path.Join(cfg.LogDir, "ob.log"),
+		MaxSize:    10, // Megabytes
+		MaxBackups: 3,
+		MaxAge:     30, // Days
+	}
+
+	backendFile := logging.NewLogBackend(filerLogger, "", 0)
+	backendFileFormatter := logging.NewBackendFormatter(backendFile, fileLogFormat)
+
+	logging.SetBackend(backendFileFormatter, backendStdoutFormatter)
+
+	ipfslogging.LdJSONFormatter()
+	w2 := &lumberjack.Logger{
+		Filename:   path.Join(cfg.LogDir, "ipfs.log"),
+		MaxSize:    10, // Megabytes
+		MaxBackups: 3,
+		MaxAge:     30, // Days
+	}
+	ipfslogging.Output(w2)()
+
+	logging.SetLevel(logLevelMap[strings.ToLower(cfg.LogLevel)], "")
+
+	// Disable MDNS
+	ipfsConfig.Discovery.MDNS = config.MDNS{
+		Enabled: false,
 	}
 
 	// If bootstrap addresses were provided in the config, override the IPFS defaults.

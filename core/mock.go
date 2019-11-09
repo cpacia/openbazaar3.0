@@ -96,6 +96,7 @@ func MockNode() (*OpenBazaarNode, error) {
 
 	node.registerHandlers()
 	node.listenNetworkEvents()
+	node.publishHandler()
 	return node, nil
 }
 
@@ -194,6 +195,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		}
 
 		node.registerHandlers()
+		node.publishHandler()
 		node.listenNetworkEvents()
 
 		nodes = append(nodes, node)
@@ -250,7 +252,7 @@ func (mn *Mocknet) TearDown() error {
 		if n == nil {
 			return nil
 		}
-		n.Stop()
+		n.Stop(true)
 		if err := n.repo.DestroyRepo(); err != nil {
 			return err
 		}

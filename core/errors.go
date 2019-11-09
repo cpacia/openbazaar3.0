@@ -12,6 +12,8 @@ var (
 	// ErrUnknownListingVersion is returned when creating an order for a listing version
 	// greater than our largest known version.
 	ErrUnknownListingVersion = errors.New("upgraded needed to purchase listing version")
+
+	ErrPublishingActive = errors.New("publishing active - use force to shutdown")
 )
 
 type ErrTooManyItems []string

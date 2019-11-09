@@ -239,7 +239,7 @@ func (n *OpenBazaarNode) resolveOnce(p peer.ID, timeout time.Duration, quorum ui
 }
 
 // fetchGraph returns a list of CIDs in the root directory.
-func (n *OpenBazaarNode) fetchGraph() ([]cid.Cid, error) {
+func (n *OpenBazaarNode) fetchGraph(ctx context.Context) ([]cid.Cid, error) {
 	id, err := n.ipnsRecordValue()
 	if err != nil {
 		return nil, err
@@ -248,7 +248,6 @@ func (n *OpenBazaarNode) fetchGraph() ([]cid.Cid, error) {
 	var ret []cid.Cid
 	l := new(sync.Mutex)
 	m := make(map[string]bool)
-	ctx := context.Background()
 	m[id.String()] = true
 	for {
 		if len(m) == 0 {

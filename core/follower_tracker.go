@@ -83,7 +83,7 @@ func (t *FollowerTracker) Start() {
 	for _, follower := range followers {
 		pid, err := peer.IDB58Decode(follower)
 		if err != nil {
-			log.Error(err)
+			log.Errorf("Error unmarshalling peerID: %s", err)
 			continue
 		}
 		t.followers[pid] = true
@@ -114,7 +114,7 @@ func (t *FollowerTracker) Close() {
 			return tx.Save(&stat)
 		})
 		if err != nil {
-			log.Error(err)
+			log.Errorf("Follower Tracker Close Error: %s", err)
 		}
 		delete(t.connected, pid)
 	}
@@ -214,7 +214,7 @@ func (t *FollowerTracker) listenEvents() {
 			}
 			pid, err := peer.IDB58Decode(notif.PeerID)
 			if err != nil {
-				log.Error(err)
+				log.Errorf("Error unmarshalling peerID: %s", err)
 				continue
 			}
 			t.mtx.Lock()
@@ -277,8 +277,8 @@ func (t *FollowerTracker) tryConnectFollowers() {
 	err := t.repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Order("connected_duration asc").Order("last_connection asc").Find(&stats).Error
 	})
-	if err != nil {
-		log.Error(err)
+	if err != nil && !gorm.IsRecordNotFoundError(err) {
+		log.Errorf("Error loading followers from db %s", err)
 	}
 
 	attempts := 0
@@ -296,9 +296,6 @@ func (t *FollowerTracker) tryConnectFollowers() {
 		followers, err = tx.GetFollowers()
 		return err
 	})
-	if err != nil {
-		log.Error(err)
-	}
 	if err != nil && !os.IsNotExist(err) {
 		log.Error(err)
 	}

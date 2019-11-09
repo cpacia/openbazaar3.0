@@ -208,7 +208,7 @@ func Test_ipfsFetchGraph(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	graph, err := mocknet.Nodes()[0].fetchGraph()
+	graph, err := mocknet.Nodes()[0].fetchGraph(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

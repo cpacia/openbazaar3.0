@@ -331,7 +331,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 
 	// Finally we're going to make an offline direct order. Shut down node 0 so that it is offline.
-	network.Nodes()[0].Stop()
+	network.Nodes()[0].Stop(true)
 	network.nodes[0] = nil
 
 	// Send the direct purchase from node 1 to node 0.

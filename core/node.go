@@ -9,8 +9,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/wallet"
 	"github.com/ipfs/go-ipfs/core"
 	peer "github.com/libp2p/go-libp2p-peer"
-	"os"
-	"os/signal"
+	"sync/atomic"
 )
 
 // OpenBazaarNode holds all the components that make up a network node
@@ -70,9 +69,11 @@ type OpenBazaarNode struct {
 	// testnet is whether the this node is configured to use the test network.
 	testnet bool
 
-	// republishChan is used to signal to the republish loop that a publish
+	publishActive int32
+
+	// publishChan is used to signal to the republish loop that a publish
 	// has just completed and it should update it's last published time.
-	republishChan chan struct{}
+	publishChan chan pubCloser
 
 	// shutdown is closed when the node is stopped. Any listening
 	// goroutines can use this to terminate.
@@ -81,31 +82,27 @@ type OpenBazaarNode struct {
 
 // Start gets the node up and running and listens for a signal interrupt.
 func (n *OpenBazaarNode) Start() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for range c {
-			log.Info("OpenBazaar shutting down...")
-			n.Stop()
-			os.Exit(1)
-		}
-	}()
 	go n.messenger.Start()
 	go n.followerTracker.Start()
 	go n.orderProcessor.Start()
 	go n.syncMessages()
-	go n.republish()
+	go n.publishHandler()
 }
 
 // Stop cleanly shutsdown the OpenBazaarNode and signals to any
 // listening goroutines that it's time to stop.
-func (n *OpenBazaarNode) Stop() {
+func (n *OpenBazaarNode) Stop(force bool) error {
+	if atomic.LoadInt32(&n.publishActive) > 0 && !force {
+		return ErrPublishingActive
+	}
+
 	close(n.shutdown)
 	n.ipfsNode.Close()
 	n.repo.Close()
 	n.networkService.Close()
 	n.messenger.Stop()
 	n.orderProcessor.Stop()
+	return nil
 }
 
 // UsingTestnet returns whether or not this node is running on
@@ -118,7 +115,7 @@ func (n *OpenBazaarNode) UsingTestnet() bool {
 // This should only be used during testing as destroying a live node will
 // result in data loss.
 func (n *OpenBazaarNode) DestroyNode() {
-	n.Stop()
+	n.Stop(true)
 	n.repo.DestroyRepo()
 }
 

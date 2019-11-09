@@ -21,6 +21,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"sync/atomic"
 	"time"
 )
 
@@ -32,120 +33,121 @@ const republishInterval = time.Hour * 36
 //
 // This cannot be called with the database lock held.
 func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
-	go func() {
-		log.Info("Publishing to IPNS...")
+	n.publishChan <- pubCloser{done}
+}
 
-		publishID := rand.Intn(math.MaxInt32)
-		n.eventBus.Emit(&events.PublishStarted{
+func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
+	atomic.AddInt32(&n.publishActive, 1)
+	log.Info("Publishing to IPNS...")
+
+	publishID := rand.Intn(math.MaxInt32)
+	n.eventBus.Emit(&events.PublishStarted{
+		ID: publishID,
+	})
+
+	defer func() {
+		n.eventBus.Emit(&events.PublishFinished{
 			ID: publishID,
 		})
+		atomic.AddInt32(&n.publishActive, -1)
+		log.Info("Publishing complete")
+	}()
 
-		defer func() {
-			n.eventBus.Emit(&events.PublishFinished{
-				ID: publishID,
-			})
-			if n.republishChan != nil {
-				n.republishChan <- struct{}{}
-			}
-			log.Info("Publishing complete")
-		}()
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		go func() {
-			select {
-			case <-ctx.Done():
-			case <-n.shutdown:
-				cancel()
-			}
-			if done != nil {
-				close(done)
-			}
-		}()
-
-		api, err := coreapi.NewCoreAPI(n.ipfsNode)
-		if err != nil {
-			log.Errorf("Error building core API: %s", err.Error())
-			return
+	go func() {
+		select {
+		case <-cctx.Done():
+		case <-n.shutdown:
+			cancel()
 		}
-
-		currentRoot, err := n.ipnsRecordValue()
-
-		// First uppin old root hash
-		if err == nil {
-			rp, err := api.ResolvePath(context.Background(), path.IpfsPath(currentRoot))
-			if err != nil {
-				log.Errorf("Error resolving path: %s", err.Error())
-				return
-			}
-
-			if err := api.Pin().Rm(context.Background(), rp, options.Pin.RmRecursive(true)); err != nil {
-				log.Errorf("Error unpinning root: %s", err.Error())
-				return
-			}
-		}
-
-		// Add the directory to IPFS
-		stat, err := os.Lstat(n.repo.DB().PublicDataPath())
-		if err != nil {
-			log.Errorf("Error calling Lstat: %s", err.Error())
-			return
-		}
-
-		f, err := files.NewSerialFile(n.repo.DB().PublicDataPath(), false, stat)
-		if err != nil {
-			log.Errorf("Error serializing file: %s", err.Error())
-			return
-		}
-
-		opts := []options.UnixfsAddOption{
-			options.Unixfs.Pin(true),
-		}
-		pth, err := api.Unixfs().Add(context.Background(), files.ToDir(f), opts...)
-		if err != nil {
-			log.Errorf("Error adding root: %s", err.Error())
-			return
-		}
-
-		// Publish
-		if err := n.ipfsNode.Namesys.Publish(ctx, n.ipfsNode.PrivateKey, fpath.FromString(pth.Root().String())); err != nil {
-			log.Errorf("Error namesys publish: %s", err.Error())
-			return
-		}
-
-		err = n.repo.DB().Update(func(tx database.Tx) error {
-			return tx.Save(&models.Event{Name: "last_publish", Time: time.Now()})
-		})
-		if err != nil {
-			log.Errorf("Error saving last publish time to the db: %s", err.Error())
-		}
-
-		// Send the new graph to our connected followers.
-		graph, err := n.fetchGraph()
-		if err != nil {
-			log.Errorf("Error fetching graph: %s", err.Error())
-			return
-		}
-
-		storeMsg := &pb.StoreMessage{}
-		for _, cid := range graph {
-			storeMsg.Cids = append(storeMsg.Cids, cid.Bytes())
-		}
-
-		any, err := ptypes.MarshalAny(storeMsg)
-		if err != nil {
-			log.Errorf("Error marshalling store message: %s", err.Error())
-			return
-		}
-
-		msg := newMessageWithID()
-		msg.MessageType = pb.Message_STORE
-		msg.Payload = any
-		for _, peer := range n.followerTracker.ConnectedFollowers() {
-			go n.networkService.SendMessage(context.Background(), peer, msg)
+		if done != nil {
+			close(done)
 		}
 	}()
+
+	api, err := coreapi.NewCoreAPI(n.ipfsNode)
+	if err != nil {
+		log.Errorf("Error building core API: %s", err.Error())
+		return
+	}
+
+	currentRoot, err := n.ipnsRecordValue()
+
+	// First uppin old root hash
+	if err == nil {
+		rp, err := api.ResolvePath(context.Background(), path.IpfsPath(currentRoot))
+		if err != nil {
+			log.Errorf("Error resolving path: %s", err.Error())
+			return
+		}
+
+		if err := api.Pin().Rm(context.Background(), rp, options.Pin.RmRecursive(true)); err != nil {
+			log.Errorf("Error unpinning root: %s", err.Error())
+			return
+		}
+	}
+
+	// Add the directory to IPFS
+	stat, err := os.Lstat(n.repo.DB().PublicDataPath())
+	if err != nil {
+		log.Errorf("Error calling Lstat: %s", err.Error())
+		return
+	}
+
+	f, err := files.NewSerialFile(n.repo.DB().PublicDataPath(), false, stat)
+	if err != nil {
+		log.Errorf("Error serializing file: %s", err.Error())
+		return
+	}
+
+	opts := []options.UnixfsAddOption{
+		options.Unixfs.Pin(true),
+	}
+	pth, err := api.Unixfs().Add(context.Background(), files.ToDir(f), opts...)
+	if err != nil {
+		log.Errorf("Error adding root: %s", err.Error())
+		return
+	}
+
+	// Publish
+	if err := n.ipfsNode.Namesys.Publish(cctx, n.ipfsNode.PrivateKey, fpath.FromString(pth.Root().String())); err != nil {
+		log.Errorf("Error namesys publish: %s", err.Error())
+		return
+	}
+
+	err = n.repo.DB().Update(func(tx database.Tx) error {
+		return tx.Save(&models.Event{Name: "last_publish", Time: time.Now()})
+	})
+	if err != nil {
+		log.Errorf("Error saving last publish time to the db: %s", err.Error())
+	}
+
+	// Send the new graph to our connected followers.
+	graph, err := n.fetchGraph(cctx)
+	if err != nil {
+		log.Errorf("Error fetching graph: %s", err.Error())
+		return
+	}
+
+	storeMsg := &pb.StoreMessage{}
+	for _, cid := range graph {
+		storeMsg.Cids = append(storeMsg.Cids, cid.Bytes())
+	}
+
+	any, err := ptypes.MarshalAny(storeMsg)
+	if err != nil {
+		log.Errorf("Error marshalling store message: %s", err.Error())
+		return
+	}
+
+	msg := newMessageWithID()
+	msg.MessageType = pb.Message_STORE
+	msg.Payload = any
+	for _, peer := range n.followerTracker.ConnectedFollowers() {
+		go n.networkService.SendMessage(context.Background(), peer, msg)
+	}
 }
 
 // sendAckMessage saves the incoming message ID in the database so we can
@@ -322,10 +324,14 @@ func (n *OpenBazaarNode) syncMessages() {
 	}
 }
 
-// republish is a loop that runs and republishes the IPNS record. It shoots for
-// 36 hours from the last republish so as to not slam the network on startup
-// every time.
-func (n *OpenBazaarNode) republish() {
+type pubCloser struct {
+	done chan<- struct{}
+}
+
+// publishHandler is a loop that runs and handles IPNS record publishes and republishes. It shoots to
+// republish 36 hours from the last publish so as to not slam the network on startup every time.
+// If a current publish is active it will be canceled and the new publish will supersede it.
+func (n *OpenBazaarNode) publishHandler() {
 	var lastPublish time.Time
 	err := n.repo.DB().View(func(tx database.Tx) error {
 		var event models.Event
@@ -339,26 +345,32 @@ func (n *OpenBazaarNode) republish() {
 		log.Error("Error loading last republish time: %s", err.Error())
 	}
 
-	n.republishChan = make(chan struct{})
+	n.publishChan = make(chan pubCloser)
 
-	tick := time.After(republishInterval - time.Since(lastPublish))
-	for {
-		select {
-		case <-tick:
-			lastPublish = time.Now()
-			tick = time.After(republishInterval - time.Since(lastPublish))
-			err = n.repo.DB().Update(func(tx database.Tx) error {
-				return tx.Save(&models.Event{Name: "last_publish", Time: lastPublish})
-			})
-			if err != nil {
-				log.Errorf("Error saving last publish time to the db: %s", err.Error())
+	go func() {
+		tick := time.After(republishInterval - time.Since(lastPublish))
+		publishCtx, publishCancel := context.WithCancel(context.Background())
+		for {
+			select {
+			case <-tick:
+				lastPublish = time.Now()
+				tick = time.After(republishInterval - time.Since(lastPublish))
+				err = n.repo.DB().Update(func(tx database.Tx) error {
+					return tx.Save(&models.Event{Name: "last_publish", Time: lastPublish})
+				})
+				if err != nil {
+					log.Errorf("Error saving last publish time to the db: %s", err.Error())
+				}
+				go n.Publish(nil)
+			case p := <-n.publishChan:
+				publishCancel()
+				publishCtx, publishCancel = context.WithCancel(context.Background())
+				lastPublish = time.Now()
+				tick = time.After(republishInterval - time.Since(lastPublish))
+				go n.publish(publishCtx, p.done)
+			case <-n.shutdown:
+				return
 			}
-			n.Publish(nil)
-		case <-n.republishChan:
-			lastPublish = time.Now()
-			tick = time.After(republishInterval - time.Since(lastPublish))
-		case <-n.shutdown:
-			return
 		}
-	}
+	}()
 }
