@@ -84,7 +84,6 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 	)
 	if !fsrepo.IsInitialized(dataDir) {
 		if err := checkWriteable(dataDir); err != nil {
-			fmt.Println(err)
 			return nil, err
 		}
 		if mnemonicSeed == "" {

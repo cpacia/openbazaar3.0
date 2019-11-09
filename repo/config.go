@@ -24,9 +24,9 @@ const (
 )
 
 var (
-	defaultHomeDir    = AppDataDir("openbazaar", false)
-	defaultConfigFile = filepath.Join(defaultHomeDir, defaultConfigFilename)
-	defaultLogDir     = filepath.Join(defaultHomeDir, defaultLogDirname)
+	DefaultHomeDir    = AppDataDir("openbazaar", false)
+	defaultConfigFile = filepath.Join(DefaultHomeDir, defaultConfigFilename)
+	defaultLogDir     = filepath.Join(DefaultHomeDir, defaultLogDirname)
 
 	fileLogFormat   = logging.MustStringFormatter(`%{time:2006-01-02T15:04:05} [%{level}] [%{module}] %{message}`)
 	stdoutLogFormat = logging.MustStringFormatter(`%{color:reset}%{color}%{time:15:04:05.000} [%{level}] [%{module}] %{message}`)
@@ -64,7 +64,7 @@ type Config struct {
 func LoadConfig() (*Config, []string, error) {
 	// Default config.
 	cfg := Config{
-		DataDir:    defaultHomeDir,
+		DataDir:    DefaultHomeDir,
 		ConfigFile: defaultConfigFile,
 		LogDir:     defaultLogDir,
 	}
@@ -192,7 +192,7 @@ func createDefaultConfigFile(destinationPath string) error {
 func cleanAndExpandPath(path string) string {
 	// Expand initial ~ to OS specific home directory.
 	if strings.HasPrefix(path, "~") {
-		homeDir := filepath.Dir(defaultHomeDir)
+		homeDir := filepath.Dir(DefaultHomeDir)
 		path = strings.Replace(path, "~", homeDir, 1)
 	}
 
