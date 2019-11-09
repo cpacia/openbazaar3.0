@@ -104,6 +104,7 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 	}
 
 	close(n.shutdown)
+	n.ipfsNode.Context().Done()
 	n.ipfsNode.Close()
 	n.repo.Close()
 	n.networkService.Close()

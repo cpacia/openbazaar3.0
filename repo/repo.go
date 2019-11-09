@@ -82,8 +82,9 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 		dbIdentity, dbEscrowKey, dbRatingKey, dbBip44Key, dbMnemonic *models.Key
 		err                                                          error
 	)
-	if !fsrepo.IsInitialized(dataDir) {
-		if err := checkWriteable(dataDir); err != nil {
+	ipfsDir := path.Join(dataDir, "ipfs")
+	if !fsrepo.IsInitialized(ipfsDir) {
+		if err := checkWriteable(ipfsDir); err != nil {
 			return nil, err
 		}
 		if mnemonicSeed == "" {
@@ -104,11 +105,11 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 		}
 		conf := mustDefaultConfig()
 		conf.Identity = identity
-		if err := fsrepo.Init(dataDir, conf); err != nil {
+		if err := fsrepo.Init(ipfsDir, conf); err != nil {
 			return nil, err
 		}
 
-		if err := initializeIpnsKeyspace(dataDir, identityKey); err != nil {
+		if err := initializeIpnsKeyspace(ipfsDir, identityKey); err != nil {
 			return nil, err
 		}
 
@@ -137,7 +138,7 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 			Name:  "mnemonic",
 			Value: []byte(mnemonicSeed),
 		}
-		if err := cleanIdentityFromConfig(dataDir); err != nil {
+		if err := cleanIdentityFromConfig(ipfsDir); err != nil {
 			return nil, err
 		}
 	}

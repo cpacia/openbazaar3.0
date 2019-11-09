@@ -29,7 +29,7 @@ type DB struct {
 
 // NewFFSqliteDB instantiates a new db which satisfies the Database interface.
 func NewFFSqliteDB(dataDir string) (database.Database, error) {
-	db, err := gorm.Open("sqlite3", path.Join(dataDir, "datastore", dbName))
+	db, err := gorm.Open("sqlite3", path.Join(dataDir, dbName))
 	if err != nil {
 		return nil, err
 	}

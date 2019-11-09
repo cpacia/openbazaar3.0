@@ -62,8 +62,9 @@ type Config struct {
 	APIUsername           string   `short:"u" long:"apiusername" description:"The username to use with the API authentication"`
 	APIPassword           string   `short:"P" long:"apipassword" description:"The password to use with the API authentication"`
 	APICookie             string   `long:"apicookie" description:"A cookie to use for authentication in addition or in place of the un/pw. If set the cookie must be put in the request header."`
-	APIAllowedIP          []string `long:"allowedip" description:"Only allow API connections from these IP addresses"`
-	APICors               string   `long:"cors" description:"An optional CORS value to set in the API."`
+	APIAllowedIPs         []string `long:"allowedip" description:"Only allow API connections from these IP addresses"`
+	APICors               bool     `long:"cors" description:"Use CORS on API responses" default:"true"`
+	APIPublicGateway      bool     `long:"publicgateway" description:"When this option is used only public GET methods will be allowed in the API"`
 	Profile               string   `long:"profile" description:"Enable HTTP profiling on given port -- NOTE port must be between 1024 and 65536"`
 	CPUProfile            string   `long:"cpuprofile" description:"Write CPU profile to the specified file"`
 }

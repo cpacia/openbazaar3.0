@@ -34,6 +34,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"runtime/pprof"
 )
 
@@ -52,7 +53,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	}
 
 	// Load the IPFS Repo
-	ipfsRepo, err := fsrepo.Open(cfg.DataDir)
+	ipfsRepo, err := fsrepo.Open(path.Join(cfg.DataDir, "ipfs"))
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +208,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 func NewIPFSOnlyNode(ctx context.Context, dataDir string, testnet bool) (*core.IpfsNode, error) {
 	// Load the IPFS Repo
-	ipfsRepo, err := fsrepo.Open(dataDir)
+	ipfsRepo, err := fsrepo.Open(path.Join(dataDir, "ipfs"))
 	if err != nil {
 		return nil, err
 	}
@@ -292,16 +293,22 @@ func (n *OpenBazaarNode) newHTTPGateway(cfg *repo.Config) (*api.Gateway, error) 
 		opts = append(opts, corehttp.RedirectOption("", ipfsConf.Gateway.RootRedirect))
 	}
 
+	allowedIPs := make(map[string]bool)
+	for _, ip := range cfg.APIAllowedIPs {
+		allowedIPs[ip] = true
+	}
+
 	config := &api.GatewayConfig{
 		Listener:   manet.NetListener(gwLis),
-		Cors:       cfg.APICors,
+		UseCors:    cfg.APICors,
 		UseSSL:     cfg.UseSSL,
 		SSLCert:    cfg.SSLCertFile,
 		SSLKey:     cfg.SSLKeyFile,
 		Username:   cfg.APIUsername,
 		Password:   cfg.APIPassword,
 		Cookie:     cfg.APICookie,
-		AllowedIPs: cfg.APIAllowedIP,
+		PublicOnly: cfg.APIPublicGateway,
+		AllowedIPs: allowedIPs,
 	}
 
 	return api.NewGateway(n, config, opts...)

@@ -8,20 +8,19 @@ import (
 	"net/http"
 )
 
-const AuthCookieName = "OpenBazaar_Auth_Cookie"
-
 var log = logging.MustGetLogger("api")
 
 type GatewayConfig struct {
 	Listener   net.Listener
-	Cors       string
-	AllowedIPs []string
+	UseCors    bool
+	AllowedIPs map[string]bool
 	Cookie     string
 	Username   string
 	Password   string
 	UseSSL     bool
 	SSLCert    string
 	SSLKey     string
+	PublicOnly bool
 }
 
 // Gateway represents an HTTP API gateway
@@ -46,8 +45,13 @@ func NewGateway(node CoreIface, config *GatewayConfig, options ...corehttp.Serve
 
 	r := g.newV1Router()
 
-	topMux.Handle("v1/ob/", r)
-	topMux.Handle("v1/wallet/", r)
+	if config.UseCors {
+		r.Use(mux.CORSMethodMiddleware(r))
+	}
+	r.Use(g.AuthenticationMiddleware)
+
+	topMux.Handle("/v1/ob/", r)
+	topMux.Handle("/v1/wallet/", r)
 
 	var (
 		err error
@@ -81,6 +85,19 @@ func (g *Gateway) Serve() error {
 
 func (g *Gateway) newV1Router() *mux.Router {
 	r := mux.NewRouter()
-	// TODO: register handlers here
+
+	if !g.config.PublicOnly {
+		r.HandleFunc("/v1/ob/profile", g.handlePOSTProfile).Methods("POST")
+		r.HandleFunc("/v1/ob/profile", g.handlePUTProfile).Methods("PUT")
+		r.HandleFunc("/v1/ob/follow/{peerID}", g.handlePOSTFollow).Methods("POST")
+		r.HandleFunc("/v1/ob/unfollow/{peerID}", g.handlePOSTUnFollow).Methods("POST")
+	}
+	r.HandleFunc("/v1/ob/profile/{peerID}", g.handleGETProfile).Methods("GET")
+	r.HandleFunc("/v1/ob/profile", g.handleGETProfile).Methods("GET")
+	r.HandleFunc("/v1/ob/fetchprofiles", g.handlePOSTFetchProfiles).Methods("POST")
+	r.HandleFunc("/v1/ob/followers/{peerID}", g.handleGETFollowers).Methods("GET")
+	r.HandleFunc("/v1/ob/followers", g.handleGETFollowers).Methods("GET")
+	r.HandleFunc("/v1/ob/following/{peerID}", g.handleGETFollowing).Methods("GET")
+	r.HandleFunc("/v1/ob/following", g.handleGETFollowing).Methods("GET")
 	return r
 }
