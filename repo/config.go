@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/version"
+	ipfslogging "github.com/ipfs/go-log/writer"
 	"github.com/jessevdk/go-flags"
 	"github.com/natefinch/lumberjack"
 	"github.com/op/go-logging"
@@ -29,6 +30,14 @@ var (
 
 	fileLogFormat   = logging.MustStringFormatter(`%{time:2006-01-02T15:04:05} [%{level}] [%{module}] %{message}`)
 	stdoutLogFormat = logging.MustStringFormatter(`%{color:reset}%{color}%{time:15:04:05.000} [%{level}] [%{module}] %{message}`)
+	logLevelMap     = map[string]logging.Level{
+		"debug":    logging.DEBUG,
+		"info":     logging.INFO,
+		"notice":   logging.NOTICE,
+		"warning":  logging.WARNING,
+		"error":    logging.ERROR,
+		"critical": logging.CRITICAL,
+	}
 )
 
 // Config defines the configuration options for OpenBazaar.
@@ -47,6 +56,14 @@ type Config struct {
 	DisableNATPortMap     bool     `long:"noupnp" description:"Disable use of upnp."`
 	IPNSQuorum            uint     `long:"ipnsquorum" description:"The size of the IPNS quorum to use. Smaller is faster but less up-to-date." default:"2"`
 	ExchangeRateProviders []string `long:"exchangerateprovider" description:"API URL to use for exchange rates. Must conform to the BitcoinAverage format." default:"https://ticker.openbazaar.org/api"`
+	UseSSL                bool     `long:"ssl" description:"Use SSL on the API"`
+	SSLCertFile           string   `long:"sslcertfile" description:"Path to the SSL certificate file"`
+	SSLKeyFile            string   `long:"sslkeyfile" description:"Path to the SSL key file"`
+	APIUsername           string   `short:"u" long:"apiusername" description:"The username to use with the API authentication"`
+	APIPassword           string   `short:"P" long:"apipassword" description:"The password to use with the API authentication"`
+	APICookie             string   `long:"apicookie" description:"A cookie to use for authentication in addition or in place of the un/pw. If set the cookie must be put in the request header."`
+	APIAllowedIP          []string `long:"allowedip" description:"Only allow API connections from these IP addresses"`
+	APICors               string   `long:"cors" description:"An optional CORS value to set in the API."`
 	Profile               string   `long:"profile" description:"Enable HTTP profiling on given port -- NOTE port must be between 1024 and 65536"`
 	CPUProfile            string   `long:"cpuprofile" description:"Write CPU profile to the specified file"`
 }
@@ -209,26 +226,17 @@ func setupLogging(logDir, logLevel string) {
 		backendFile := logging.NewLogBackend(rotator, "", 0)
 		backendFileFormatter := logging.NewBackendFormatter(backendFile, fileLogFormat)
 		logging.SetBackend(backendStdoutFormatter, backendFileFormatter)
+
+		ipfslogging.LdJSONFormatter()
+		w2 := &lumberjack.Logger{
+			Filename:   path.Join(logDir, "ipfs.log"),
+			MaxSize:    10, // Megabytes
+			MaxBackups: 3,
+			MaxAge:     30, // Days
+		}
+		ipfslogging.Output(w2)()
 	} else {
 		logging.SetBackend(backendStdoutFormatter)
 	}
-
-	var level logging.Level
-	switch strings.ToLower(logLevel) {
-	case "debug":
-		level = logging.DEBUG
-	case "info":
-		level = logging.INFO
-	case "notice":
-		level = logging.NOTICE
-	case "warning":
-		level = logging.WARNING
-	case "error":
-		level = logging.ERROR
-	case "critical":
-		level = logging.CRITICAL
-	default:
-		level = logging.INFO
-	}
-	logging.SetLevel(level, "")
+	logging.SetLevel(logLevelMap[strings.ToLower(logLevel)], "")
 }

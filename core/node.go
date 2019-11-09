@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/cpacia/openbazaar3.0/api"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/orders"
@@ -66,9 +67,14 @@ type OpenBazaarNode struct {
 	// exchangeRates is a provider of exchange rate data for various currencies.
 	exchangeRates *wallet.ExchangeRateProvider
 
+	// gateway is the openbazaar API.
+	gateway *api.Gateway
+
 	// testnet is whether the this node is configured to use the test network.
 	testnet bool
 
+	// publishActive is an atomic integer that represents the number of inflight
+	// publishes.
 	publishActive int32
 
 	// publishChan is used to signal to the republish loop that a publish
@@ -87,6 +93,7 @@ func (n *OpenBazaarNode) Start() {
 	go n.orderProcessor.Start()
 	go n.syncMessages()
 	go n.publishHandler()
+	go n.gateway.Serve()
 }
 
 // Stop cleanly shutsdown the OpenBazaarNode and signals to any
@@ -102,6 +109,7 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 	n.networkService.Close()
 	n.messenger.Stop()
 	n.orderProcessor.Stop()
+	n.gateway.Close()
 	return nil
 }
 

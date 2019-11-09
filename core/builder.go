@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/cpacia/openbazaar3.0/api"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -17,8 +19,8 @@ import (
 	"github.com/ipfs/go-datastore"
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/ipfs/go-ipfs/core/corehttp"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
-	ipfslogging "github.com/ipfs/go-log/writer"
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
@@ -26,29 +28,20 @@ import (
 	"github.com/libp2p/go-libp2p-protocol"
 	"github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p-routing"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/op/go-logging"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"net"
 	"net/http"
 	"os"
-	"path"
 	"runtime/pprof"
-	"strings"
 )
 
 var (
 	log             = logging.MustGetLogger("CORE")
 	stdoutLogFormat = logging.MustStringFormatter(`%{color:reset}%{color}%{time:15:04:05.000} [%{level}] [%{module}/%{shortfunc}] %{message}`)
 	fileLogFormat   = logging.MustStringFormatter(`%{time:15:04:05.000} [%{level}] [%{module}/%{shortfunc}] %{message}`)
-	logLevelMap     = map[string]logging.Level{
-		"debug":    logging.DEBUG,
-		"info":     logging.INFO,
-		"notice":   logging.NOTICE,
-		"warning":  logging.WARNING,
-		"error":    logging.ERROR,
-		"critical": logging.CRITICAL,
-	}
-	ProtocolDHT protocol.ID
+	ProtocolDHT     protocol.ID
 )
 
 // NewNode constructs and returns an IpfsNode using the given cfg.
@@ -68,33 +61,6 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// Setup logging
-	backendStdout := logging.NewLogBackend(os.Stdout, "", 0)
-	backendStdoutFormatter := logging.NewBackendFormatter(backendStdout, stdoutLogFormat)
-
-	filerLogger := &lumberjack.Logger{
-		Filename:   path.Join(cfg.LogDir, "ob.log"),
-		MaxSize:    10, // Megabytes
-		MaxBackups: 3,
-		MaxAge:     30, // Days
-	}
-
-	backendFile := logging.NewLogBackend(filerLogger, "", 0)
-	backendFileFormatter := logging.NewBackendFormatter(backendFile, fileLogFormat)
-
-	logging.SetBackend(backendFileFormatter, backendStdoutFormatter)
-
-	ipfslogging.LdJSONFormatter()
-	w2 := &lumberjack.Logger{
-		Filename:   path.Join(cfg.LogDir, "ipfs.log"),
-		MaxSize:    10, // Megabytes
-		MaxBackups: 3,
-		MaxAge:     30, // Days
-	}
-	ipfslogging.Output(w2)()
-
-	logging.SetLevel(logLevelMap[strings.ToLower(cfg.LogLevel)], "")
 
 	// Disable MDNS
 	ipfsConfig.Swarm.DisableNatPortMap = cfg.DisableNATPortMap
@@ -228,6 +194,11 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		shutdown:        make(chan struct{}),
 	}
 
+	obNode.gateway, err = obNode.newHTTPGateway(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	obNode.registerHandlers()
 	obNode.listenNetworkEvents()
 
@@ -259,6 +230,81 @@ func NewIPFSOnlyNode(ctx context.Context, dataDir string, testnet bool) (*core.I
 
 	// Construct IPFS node.
 	return core.NewNode(ctx, ncfg)
+}
+
+type dummyListener struct {
+	addr net.Addr
+}
+
+func (d *dummyListener) Addr() net.Addr {
+	return d.addr
+}
+func (d *dummyListener) Accept() (net.Conn, error) {
+	conn, _ := net.FileConn(nil)
+	return conn, nil
+}
+func (d *dummyListener) Close() error {
+	return nil
+}
+
+func (n *OpenBazaarNode) newHTTPGateway(cfg *repo.Config) (*api.Gateway, error) {
+	// Get API configuration
+	ipfsConf, err := n.ipfsNode.Repo.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a network listener
+	gatewayMaddr, err := ma.NewMultiaddr(ipfsConf.Addresses.Gateway[0])
+	if err != nil {
+		return nil, fmt.Errorf("newHTTPGateway: invalid gateway address: %q (err: %s)", ipfsConf.Addresses.Gateway, err)
+	}
+	var gwLis manet.Listener
+	if cfg.UseSSL {
+		netAddr, err := manet.ToNetAddr(gatewayMaddr)
+		if err != nil {
+			return nil, err
+		}
+		gwLis, err = manet.WrapNetListener(&dummyListener{netAddr})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		gwLis, err = manet.Listen(gatewayMaddr)
+		if err != nil {
+			return nil, fmt.Errorf("newHTTPGateway: manet.Listen(%s) failed: %s", gatewayMaddr, err)
+		}
+	}
+
+	// We might have listened to /tcp/0 - let's see what we are listing on
+	gatewayMaddr = gwLis.Multiaddr()
+	log.Infof("Gateway/API server listening on %s\n", gatewayMaddr)
+
+	// Setup an options slice
+	var opts = []corehttp.ServeOption{
+		corehttp.MetricsCollectionOption("gateway"),
+		corehttp.VersionOption(),
+		corehttp.IPNSHostnameOption(),
+		corehttp.GatewayOption(ipfsConf.Gateway.Writable, "/ipfs", "/ipns"),
+	}
+
+	if len(ipfsConf.Gateway.RootRedirect) > 0 {
+		opts = append(opts, corehttp.RedirectOption("", ipfsConf.Gateway.RootRedirect))
+	}
+
+	config := &api.GatewayConfig{
+		Listener:   manet.NetListener(gwLis),
+		Cors:       cfg.APICors,
+		UseSSL:     cfg.UseSSL,
+		SSLCert:    cfg.SSLCertFile,
+		SSLKey:     cfg.SSLKeyFile,
+		Username:   cfg.APIUsername,
+		Password:   cfg.APIPassword,
+		Cookie:     cfg.APICookie,
+		AllowedIPs: cfg.APIAllowedIP,
+	}
+
+	return api.NewGateway(n, config, opts...)
 }
 
 // constructRouting behaves exactly like the default constructRouting function in the IPFS package

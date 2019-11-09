@@ -28,7 +28,7 @@ func TestOpenBazaarNode_SetAndRemoveSelfAsModerator(t *testing.T) {
 	}
 
 	done := make(chan struct{})
-	if err := node.SetSelfAsModerator(context.Background(), modInfo, done); err != nil {
+	if err := node.SetSelfAsModerator(modInfo, done); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -69,7 +69,7 @@ func TestOpenBazaarNode_GetModerators(t *testing.T) {
 	}
 
 	done := make(chan struct{})
-	if err := mocknet.Nodes()[0].SetSelfAsModerator(context.Background(), modInfo, done); err != nil {
+	if err := mocknet.Nodes()[0].SetSelfAsModerator(modInfo, done); err != nil {
 		t.Fatal(err)
 	}
 	select {
