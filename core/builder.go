@@ -8,7 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
-	"github.com/cpacia/openbazaar3.0/net"
+	obnet "github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
@@ -28,8 +28,11 @@ import (
 	"github.com/libp2p/go-libp2p-routing"
 	"github.com/op/go-logging"
 	"gopkg.in/natefinch/lumberjack.v2"
+	"net"
+	"net/http"
 	"os"
 	"path"
+	"runtime/pprof"
 	"strings"
 )
 
@@ -94,9 +97,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	logging.SetLevel(logLevelMap[strings.ToLower(cfg.LogLevel)], "")
 
 	// Disable MDNS
-	ipfsConfig.Discovery.MDNS = config.MDNS{
-		Enabled: false,
-	}
+	ipfsConfig.Swarm.DisableNatPortMap = cfg.DisableNATPortMap
 
 	// If bootstrap addresses were provided in the config, override the IPFS defaults.
 	if len(cfg.BoostrapAddrs) > 0 {
@@ -111,6 +112,30 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	// If a gateway address was provided in the config, override the IPFS default.
 	if cfg.GatewayAddr != "" {
 		ipfsConfig.Addresses.Gateway = config.Strings{cfg.GatewayAddr}
+	}
+
+	// Profiling
+	if cfg.Profile != "" {
+		go func() {
+			listenAddr := net.JoinHostPort("", cfg.Profile)
+			log.Infof("Profile server listening on %s", listenAddr)
+			profileRedirect := http.RedirectHandler("/debug/pprof",
+				http.StatusSeeOther)
+			http.Handle("/", profileRedirect)
+			log.Errorf("%v", http.ListenAndServe(listenAddr, nil))
+		}()
+	}
+
+	// Write cpu profile if requested.
+	if cfg.CPUProfile != "" {
+		f, err := os.Create(cfg.CPUProfile)
+		if err != nil {
+			log.Errorf("Unable to create cpu profile: %v", err)
+			return nil, err
+		}
+		pprof.StartCPUProfile(f)
+		defer f.Close()
+		defer pprof.StopCPUProfile()
 	}
 
 	// Load our identity key from the db and set it in the config.
@@ -128,9 +153,9 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	// network from mainline IPFS.
 	updateIPFSGlobalProtocolVars(cfg.Testnet)
 	if !cfg.Testnet {
-		ProtocolDHT = net.ProtocolKademliaMainnetTwo
+		ProtocolDHT = obnet.ProtocolKademliaMainnetTwo
 	} else {
-		ProtocolDHT = net.ProtocolKademliaTestnetTwo
+		ProtocolDHT = obnet.ProtocolKademliaTestnetTwo
 	}
 
 	// New IPFS build config
@@ -166,9 +191,9 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	ratingKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbRatingKey.Value)
 
 	bus := events.NewBus()
-	bm := net.NewBanManager(nil) // TODO: load ids from db
-	service := net.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
-	messenger := net.NewMessenger(service, obRepo.DB())
+	bm := obnet.NewBanManager(nil) // TODO: load ids from db
+	service := obnet.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
+	messenger := obnet.NewMessenger(service, obRepo.DB())
 	tracker := NewFollowerTracker(obRepo, bus, ipfsNode.PeerHost.Network())
 
 	mw := wallet.Multiwallet{} // TODO: wire this up.
@@ -227,9 +252,9 @@ func NewIPFSOnlyNode(ctx context.Context, dataDir string, testnet bool) (*core.I
 
 	updateIPFSGlobalProtocolVars(testnet)
 	if !testnet {
-		ProtocolDHT = net.ProtocolKademliaMainnetTwo
+		ProtocolDHT = obnet.ProtocolKademliaMainnetTwo
 	} else {
-		ProtocolDHT = net.ProtocolKademliaTestnetTwo
+		ProtocolDHT = obnet.ProtocolKademliaTestnetTwo
 	}
 
 	// Construct IPFS node.
@@ -252,13 +277,13 @@ func constructRouting(ctx context.Context, host host.Host, dstore datastore.Batc
 
 func updateIPFSGlobalProtocolVars(testnetEnable bool) {
 	if testnetEnable {
-		bitswap.ProtocolBitswap = net.ProtocolBitswapMainnetTwo
-		bitswap.ProtocolBitswapOne = net.ProtocolBitswapMainnetTwoDotOne
-		bitswap.ProtocolBitswapNoVers = net.ProtocolBitswapMainnetNoVers
+		bitswap.ProtocolBitswap = obnet.ProtocolBitswapMainnetTwo
+		bitswap.ProtocolBitswapOne = obnet.ProtocolBitswapMainnetTwoDotOne
+		bitswap.ProtocolBitswapNoVers = obnet.ProtocolBitswapMainnetNoVers
 	} else {
-		bitswap.ProtocolBitswap = net.ProtocolBitswapTestnetTwo
-		bitswap.ProtocolBitswapOne = net.ProtocolBitswapTestnetTwoDotOne
-		bitswap.ProtocolBitswapNoVers = net.ProtocolBitswapTestnetNoVers
+		bitswap.ProtocolBitswap = obnet.ProtocolBitswapTestnetTwo
+		bitswap.ProtocolBitswapOne = obnet.ProtocolBitswapTestnetTwoDotOne
+		bitswap.ProtocolBitswapNoVers = obnet.ProtocolBitswapTestnetNoVers
 	}
 }
 

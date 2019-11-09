@@ -3,8 +3,6 @@ package repo
 import (
 	"bufio"
 	"bytes"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/version"
 	"github.com/jessevdk/go-flags"
@@ -14,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -45,8 +44,11 @@ type Config struct {
 	SwarmAddrs            []string `long:"swarmaddr" description:"Override the default swarm addresses with the provided values"`
 	GatewayAddr           string   `long:"gatewayaddr" description:"Override the default gateway address with the provided value"`
 	Testnet               bool     `short:"t" long:"testnet" description:"Use the test network"`
+	DisableNATPortMap     bool     `long:"noupnp" description:"Disable use of upnp."`
 	IPNSQuorum            uint     `long:"ipnsquorum" description:"The size of the IPNS quorum to use. Smaller is faster but less up-to-date." default:"2"`
-	ExchangeRateProviders []string `long:"exchangerateprovider" description:"API URL to use for exchanges. Must conform to the BitcoinAverage format." default:"https://ticker.openbazaar.org/api"`
+	ExchangeRateProviders []string `long:"exchangerateprovider" description:"API URL to use for exchange rates. Must conform to the BitcoinAverage format." default:"https://ticker.openbazaar.org/api"`
+	Profile               string   `long:"profile" description:"Enable HTTP profiling on given port -- NOTE port must be between 1024 and 65536"`
+	CPUProfile            string   `long:"cpuprofile" description:"Write CPU profile to the specified file"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -115,6 +117,15 @@ func LoadConfig() (*Config, []string, error) {
 
 	cfg.DataDir = cleanAndExpandPath(cfg.DataDir)
 
+	// Validate profile port number
+	if cfg.Profile != "" {
+		profilePort, err := strconv.Atoi(cfg.Profile)
+		if err != nil || profilePort < 1024 || profilePort > 65535 {
+			str := "%s: The profile port must be between 1024 and 65535"
+			return nil, nil, fmt.Errorf(str)
+		}
+	}
+
 	setupLogging(cfg.LogDir, cfg.LogLevel)
 
 	// Warn about missing config file only after all other configuration is
@@ -135,20 +146,6 @@ func createDefaultConfigFile(destinationPath string) error {
 	if err != nil {
 		return err
 	}
-
-	// We generate a random user and password
-	randomBytes := make([]byte, 20)
-	_, err = rand.Read(randomBytes)
-	if err != nil {
-		return err
-	}
-	generatedRPCUser := base64.StdEncoding.EncodeToString(randomBytes)
-
-	_, err = rand.Read(randomBytes)
-	if err != nil {
-		return err
-	}
-	generatedRPCPass := base64.StdEncoding.EncodeToString(randomBytes)
 
 	sampleBytes, err := Asset("sample-openbazaar.conf")
 	if err != nil {
@@ -173,11 +170,7 @@ func createDefaultConfigFile(destinationPath string) error {
 			return err
 		}
 
-		if strings.Contains(line, "rpcuser=") {
-			line = "rpcuser=" + generatedRPCUser + "\n"
-		} else if strings.Contains(line, "rpcpass=") {
-			line = "rpcpass=" + generatedRPCPass + "\n"
-		}
+		// TODO: override and set bootstrap addresses here
 
 		if _, err := dest.WriteString(line); err != nil {
 			return err
