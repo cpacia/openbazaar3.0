@@ -49,6 +49,13 @@ func sanitizedProtobufResponse(w http.ResponseWriter, response string, m proto.M
 	}
 	fmt.Fprint(w, string(out))
 }
+func marshalAndSanitizeJSON(i interface{}) ([]byte, error) {
+	out, err := json.MarshalIndent(i, "", "    ")
+	if err != nil {
+		return nil, err
+	}
+	return sanitizeJSON(out)
+}
 
 func sanitizeJSON(s []byte) ([]byte, error) {
 	d := json.NewDecoder(bytes.NewReader(s))

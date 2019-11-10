@@ -1,0 +1,264 @@
+package api
+
+import (
+	"context"
+	"errors"
+	"github.com/cpacia/openbazaar3.0/models"
+	peer "github.com/libp2p/go-libp2p-peer"
+	"net/http"
+	"os"
+	"testing"
+)
+
+func TestProfileHandlers(t *testing.T) {
+	runAPITests(t, apiTests{
+		{
+			name:   "Get my profile",
+			path:   "/v1/ob/profile",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return &models.Profile{Name: "Ron Paul"}, nil
+				}
+			},
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return marshalAndSanitizeJSON(&models.Profile{Name: "Ron Paul"})
+			},
+		},
+		{
+			name:   "Get profile no cache",
+			path:   "/v1/ob/profile/12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					if peerID.Pretty() != "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi" {
+						return nil, errors.New("not found")
+					}
+					if useCache {
+						return &models.Profile{Name: "Ron Swanson"}, nil
+					} else {
+						return &models.Profile{Name: "Ron Paul"}, nil
+					}
+				}
+			},
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return marshalAndSanitizeJSON(&models.Profile{Name: "Ron Paul"})
+			},
+		},
+		{
+			name:   "Get my profile from cache",
+			path:   "/v1/ob/profile/12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi?usecache=true",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					if peerID.Pretty() != "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi" {
+						return nil, errors.New("not found")
+					}
+					if useCache {
+						return &models.Profile{Name: "Ron Swanson"}, nil
+					} else {
+						return &models.Profile{Name: "Ron Paul"}, nil
+					}
+				}
+			},
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return marshalAndSanitizeJSON(&models.Profile{Name: "Ron Swanson"})
+			},
+		},
+		{
+			name:   "Profile not found",
+			path:   "/v1/ob/profile/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					if peerID.Pretty() != "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi" {
+						return nil, errors.New("not found")
+					}
+					return &models.Profile{Name: "Ron Paul"}, nil
+				}
+			},
+			statusCode: http.StatusNotFound,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("not found\n"), nil
+			},
+		},
+		{
+			name:   "Post profile success",
+			path:   "/v1/ob/profile",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return nil, os.ErrNotExist
+				}
+				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"name": "Ron Swanson"}`),
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return nil, nil
+			},
+		},
+		{
+			name:   "Post profile exists",
+			path:   "/v1/ob/profile",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return nil, nil
+				}
+				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"name": "Ron Swanson"}`),
+			statusCode: http.StatusConflict,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("profile exists. use PUT to update.\n"), nil
+			},
+		},
+		{
+			name:   "Post profile invalid JSON",
+			path:   "/v1/ob/profile",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return nil, os.ErrNotExist
+				}
+				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"name": "Ron Swanson"`),
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("unexpected EOF\n"), nil
+			},
+		},
+		{
+			name:   "Put profile success",
+			path:   "/v1/ob/profile",
+			method: http.MethodPut,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return nil, nil
+				}
+				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"name": "Ron Swanson"}`),
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return nil, nil
+			},
+		},
+		{
+			name:   "Put profile exists",
+			path:   "/v1/ob/profile",
+			method: http.MethodPut,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return nil, os.ErrNotExist
+				}
+				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"name": "Ron Swanson"}`),
+			statusCode: http.StatusConflict,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("profile does not exists. use POST to create.\n"), nil
+			},
+		},
+		{
+			name:   "Put profile invalid JSON",
+			path:   "/v1/ob/profile",
+			method: http.MethodPut,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return nil, nil
+				}
+				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"name": "Ron Swanson"`),
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("unexpected EOF\n"), nil
+			},
+		},
+		{
+			name:   "Fetch profiles success",
+			path:   "/v1/ob/fetchprofiles",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					if peerID.Pretty() == "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN" {
+						return &models.Profile{Name: "Ron Paul"}, nil
+					}
+					if peerID.Pretty() == "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi" {
+						return &models.Profile{Name: "Ron Swanson"}, nil
+					}
+					return nil, os.ErrNotExist
+				}
+			},
+			body:       []byte(`["12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi"]`),
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				profiles := []models.Profile{
+					{Name: "Ron Swanson"},
+					{Name: "Ron Paul"},
+				}
+				return marshalAndSanitizeJSON(profiles)
+			},
+		},
+		{
+			name:   "Fetch profiles invalid JSON",
+			path:   "/v1/ob/fetchprofiles",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					if peerID.Pretty() == "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN" {
+						return &models.Profile{Name: "Ron Paul"}, nil
+					}
+					if peerID.Pretty() == "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi" {
+						return &models.Profile{Name: "Ron Swanson"}, nil
+					}
+					return nil, os.ErrNotExist
+				}
+			},
+			body:       []byte(`["12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi"`),
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("unexpected EOF\n"), nil
+			},
+		},
+		{
+			name:   "Fetch profiles one not found",
+			path:   "/v1/ob/fetchprofiles",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					if peerID.Pretty() == "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi" {
+						return &models.Profile{Name: "Ron Swanson"}, nil
+					}
+					return nil, os.ErrNotExist
+				}
+			},
+			body:       []byte(`["12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi"]`),
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				profiles := []models.Profile{
+					{Name: "Ron Swanson"},
+				}
+				return marshalAndSanitizeJSON(profiles)
+			},
+		},
+	})
+}
