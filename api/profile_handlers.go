@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 )
 
 func (g *Gateway) handleGETProfile(w http.ResponseWriter, r *http.Request) {
@@ -85,18 +86,33 @@ func (g *Gateway) handlePOSTFetchProfiles(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	profiles := make([]models.Profile, 0, len(peerIDs))
-	for _, peerIDStr := range peerIDs {
-		pid, err := peer.IDB58Decode(peerIDStr)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+	var (
+		profiles = make([]models.Profile, 0, len(peerIDs))
+		responseChan = make(chan models.Profile, 8)
+		wg sync.WaitGroup
+	)
+	wg.Add(len(peerIDs))
+	go func() {
+		for _, peerIDStr := range peerIDs {
+			pid, err := peer.IDB58Decode(peerIDStr)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			go func(p peer.ID) {
+				defer wg.Done()
+				profile, err := g.node.GetProfile(p, useCache)
+				if err != nil {
+					return
+				}
+				responseChan <- *profile
+			}(pid)
 		}
-		profile, err := g.node.GetProfile(pid, useCache)
-		if err != nil {
-			continue
-		}
-		profiles = append(profiles, *profile)
+		wg.Wait()
+		close(responseChan)
+	}()
+	for profile := range responseChan {
+		profiles = append(profiles, profile)
 	}
 
 	// TODO: handle async response

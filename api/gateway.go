@@ -12,7 +12,7 @@ var log = logging.MustGetLogger("api")
 
 type GatewayConfig struct {
 	Listener   net.Listener
-	UseCors    bool
+	NoCors     bool
 	AllowedIPs map[string]bool
 	Cookie     string
 	Username   string
@@ -45,7 +45,7 @@ func NewGateway(node CoreIface, config *GatewayConfig, options ...corehttp.Serve
 
 	r := g.newV1Router()
 
-	if config.UseCors {
+	if !config.NoCors {
 		r.Use(mux.CORSMethodMiddleware(r))
 	}
 	r.Use(g.AuthenticationMiddleware)

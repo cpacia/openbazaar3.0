@@ -300,7 +300,7 @@ func (n *OpenBazaarNode) newHTTPGateway(cfg *repo.Config) (*api.Gateway, error) 
 
 	config := &api.GatewayConfig{
 		Listener:   manet.NetListener(gwLis),
-		UseCors:    cfg.APICors,
+		NoCors:     cfg.APINoCors,
 		UseSSL:     cfg.UseSSL,
 		SSLCert:    cfg.SSLCertFile,
 		SSLKey:     cfg.SSLKeyFile,
