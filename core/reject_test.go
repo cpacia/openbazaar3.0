@@ -77,7 +77,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	purchase.Items[0].ListingHash = index[0].Hash
 
 	// Address request direct order
-	orderID, _, _, err := network.Nodes()[1].PurchaseListing(purchase)
+	orderID, _, _, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -32,7 +32,7 @@ func (g *Gateway) handleGETProfile(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		profile, err = g.node.GetProfile(pid, useCache)
+		profile, err = g.node.GetProfile(r.Context(), pid, useCache)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -87,9 +87,9 @@ func (g *Gateway) handlePOSTFetchProfiles(w http.ResponseWriter, r *http.Request
 	}
 
 	var (
-		profiles = make([]models.Profile, 0, len(peerIDs))
+		profiles     = make([]models.Profile, 0, len(peerIDs))
 		responseChan = make(chan models.Profile, 8)
-		wg sync.WaitGroup
+		wg           sync.WaitGroup
 	)
 	wg.Add(len(peerIDs))
 	go func() {
@@ -101,7 +101,7 @@ func (g *Gateway) handlePOSTFetchProfiles(w http.ResponseWriter, r *http.Request
 			}
 			go func(p peer.ID) {
 				defer wg.Done()
-				profile, err := g.node.GetProfile(p, useCache)
+				profile, err := g.node.GetProfile(r.Context(), p, useCache)
 				if err != nil {
 					return
 				}

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -32,11 +33,11 @@ import (
 // 2. If DIRECT attempt to send the address request directly to the vendor and wait for a response.
 // 3. If no response update the payment method to CANCELABLE and send using the messenger.
 // 4. IF MODERATED skip steps 2 and 3 and send the message with the messenger.
-func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID models.OrderID,
+func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.Purchase) (orderID models.OrderID,
 	paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error) {
 
 	// Create Order object
-	orderOpen, err := n.createOrder(purchase)
+	orderOpen, err := n.createOrder(ctx, purchase)
 	if err != nil {
 		return
 	}
@@ -68,7 +69,7 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 	//
 	// Moderated orders we don't have to do anything else.
 	if orderOpen.Payment.Method == pb.OrderOpen_Payment_DIRECT {
-		address, err := n.RequestAddress(vendorPeerID, iwallet.CoinType(normalizeCurrencyCode(orderOpen.Payment.Coin)))
+		address, err := n.RequestAddress(ctx, vendorPeerID, iwallet.CoinType(normalizeCurrencyCode(orderOpen.Payment.Coin)))
 		// Vendor failed to respond to address request so we will change the
 		// payment method to CANCELABLE.
 		if err != nil {
@@ -191,8 +192,8 @@ func (n *OpenBazaarNode) PurchaseListing(purchase *models.Purchase) (orderID mod
 // EstimateOrderSubtotal estimates the total for the order given the provided
 // purchase details. This is only an estimate because it may be based on the
 // current exchange rates which may change by the time the order is placed.
-func (n *OpenBazaarNode) EstimateOrderSubtotal(purchase *models.Purchase) (*models.CurrencyValue, error) {
-	orderOpen, err := n.createOrder(purchase)
+func (n *OpenBazaarNode) EstimateOrderSubtotal(ctx context.Context, purchase *models.Purchase) (*models.CurrencyValue, error) {
+	orderOpen, err := n.createOrder(ctx, purchase)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +210,7 @@ func (n *OpenBazaarNode) EstimateOrderSubtotal(purchase *models.Purchase) (*mode
 // is expected that whichever function uses this returned order will update the
 // payment method to CANCELABLE along with the payment address and additionalAddressData
 // if the vendor is not online to respond to the DIRECT payment request.
-func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, error) {
+func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purchase) (*pb.OrderOpen, error) {
 	var (
 		listings           []*pb.SignedListing
 		items              []*pb.OrderOpen_Item
@@ -259,7 +260,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 		if err != nil {
 			return nil, err
 		}
-		listing, err := n.GetListingByCID(c)
+		listing, err := n.GetListingByCID(ctx, c)
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +380,7 @@ func (n *OpenBazaarNode) createOrder(purchase *models.Purchase) (*pb.OrderOpen, 
 			return nil, err
 		}
 
-		moderatorProfile, err := n.GetProfile(moderatorPeerID, true)
+		moderatorProfile, err := n.GetProfile(ctx, moderatorPeerID, true)
 		if err != nil {
 			return nil, err
 		}

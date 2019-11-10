@@ -261,7 +261,7 @@ func (n *OpenBazaarNode) handleStoreMessage(from peer.ID, message *pb.Message) e
 			return fmt.Errorf("store handler cid cast error: %s", err)
 		}
 		cids = append(cids, cid)
-		if err := n.pin(path.Join(path.New("/ipfs"), cid.String())); err != nil {
+		if err := n.pin(context.Background(), path.Join(path.New("/ipfs"), cid.String())); err != nil {
 			return fmt.Errorf("store handler error pinning file: %s", err)
 		}
 	}
@@ -350,6 +350,7 @@ func (n *OpenBazaarNode) publishHandler() {
 	go func() {
 		tick := time.After(republishInterval - time.Since(lastPublish))
 		publishCtx, publishCancel := context.WithCancel(context.Background())
+		defer publishCancel()
 		for {
 			select {
 			case <-tick:
@@ -365,6 +366,7 @@ func (n *OpenBazaarNode) publishHandler() {
 			case p := <-n.publishChan:
 				publishCancel()
 				publishCtx, publishCancel = context.WithCancel(context.Background())
+				defer publishCancel()
 				lastPublish = time.Now()
 				tick = time.After(republishInterval - time.Since(lastPublish))
 				go n.publish(publishCtx, p.done)

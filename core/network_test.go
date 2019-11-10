@@ -306,7 +306,9 @@ func TestOpenBazaarNode_republish(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	go mocknet.Nodes()[0].publishHandler()
+	mocknet.Nodes()[0].publishChan <- pubCloser{
+		nil,
+	}
 
 	select {
 	case <-sub.Out():

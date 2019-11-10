@@ -74,6 +74,7 @@ func (g *Gateway) Close() error {
 
 // Serve begins listening on the configured address.
 func (g *Gateway) Serve() error {
+	log.Infof("Gateway/API server listening on %s\n", g.listener.Addr())
 	var err error
 	if g.config.UseSSL {
 		err = http.ListenAndServeTLS(g.listener.Addr().String(), g.config.SSLCert, g.config.SSLKey, g.handler)

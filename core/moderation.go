@@ -26,7 +26,7 @@ const (
 // SetSelfAsModerator sets this node as a node that is offering moderation services.
 // It will update the profile with the moderation info, set itsef as a moderator
 // in the DHT so it can be discovered by other peers, and publish.
-func (n *OpenBazaarNode) SetSelfAsModerator(modInfo *models.ModeratorInfo, done chan struct{}) error {
+func (n *OpenBazaarNode) SetSelfAsModerator(ctx context.Context, modInfo *models.ModeratorInfo, done chan struct{}) error {
 	if (int(modInfo.Fee.FeeType) == 0 || int(modInfo.Fee.FeeType) == 2) && modInfo.Fee.FixedFee == nil {
 		maybeCloseDone(done)
 		return errors.New("fixed fee must be set when using a fixed fee type")
@@ -60,7 +60,7 @@ func (n *OpenBazaarNode) SetSelfAsModerator(modInfo *models.ModeratorInfo, done 
 		// This sets us as a "provider" in the DHT for the moderator key.
 		// Other peers can find us by doing a DHT GetProviders query for
 		// the same key.
-		_, err = api.Block().Put(context.Background(), strings.NewReader(moderatorTopic))
+		_, err = api.Block().Put(ctx, strings.NewReader(moderatorTopic))
 		if err != nil {
 			return err
 		}

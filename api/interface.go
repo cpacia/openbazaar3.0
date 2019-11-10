@@ -13,7 +13,7 @@ import (
 
 // CoreIface is used to get around a circular import of the Core package.
 type CoreIface interface {
-	RequestAddress(to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error)
+	RequestAddress(ctx context.Context, to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error)
 	SendChatMessage(to peer.ID, message, subject string, done chan<- struct{}) error
 	SendTypingMessage(to peer.ID, subject string) error
 	MarkChatMessagesAsRead(peer peer.ID, subject string) error
@@ -25,17 +25,17 @@ type CoreIface interface {
 	UnfollowNode(peerID peer.ID, done chan<- struct{}) error
 	GetMyFollowers() (models.Followers, error)
 	GetMyFollowing() (models.Following, error)
-	GetFollowers(peerID peer.ID, useCache bool) (models.Followers, error)
-	GetFollowing(peerID peer.ID, useCache bool) (models.Following, error)
+	GetFollowers(ctx context.Context, peerID peer.ID, useCache bool) (models.Followers, error)
+	GetFollowing(ctx context.Context, peerID peer.ID, useCache bool) (models.Following, error)
 	SaveListing(listing *pb.Listing, done chan<- struct{}) error
 	DeleteListing(slug string, done chan<- struct{}) error
 	GetMyListings() (models.ListingIndex, error)
-	GetListings(peerID peer.ID, useCache bool) (models.ListingIndex, error)
+	GetListings(ctx context.Context, peerID peer.ID, useCache bool) (models.ListingIndex, error)
 	GetMyListingBySlug(slug string) (*pb.SignedListing, error)
 	GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, error)
-	GetListingBySlug(peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error)
-	GetListingByCID(cid cid.Cid) (*pb.SignedListing, error)
-	SetSelfAsModerator(modInfo *models.ModeratorInfo, done chan struct{}) error
+	GetListingBySlug(ctx context.Context, peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error)
+	GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error)
+	SetSelfAsModerator(ctx context.Context, modInfo *models.ModeratorInfo, done chan struct{}) error
 	RemoveSelfAsModerator(ctx context.Context, done chan<- struct{}) error
 	GetModerators(ctx context.Context) []peer.ID
 	GetModeratorsAsync(ctx context.Context) <-chan peer.ID
@@ -46,8 +46,8 @@ type CoreIface interface {
 	SubscribeEvent(event interface{}) (events.Subscription, error)
 	SetProfile(profile *models.Profile, done chan<- struct{}) error
 	GetMyProfile() (*models.Profile, error)
-	GetProfile(peerID peer.ID, useCache bool) (*models.Profile, error)
-	PurchaseListing(purchase *models.Purchase) (orderID models.OrderID, paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error)
-	EstimateOrderSubtotal(purchase *models.Purchase) (*models.CurrencyValue, error)
+	GetProfile(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)
+	PurchaseListing(ctx context.Context, purchase *models.Purchase) (orderID models.OrderID, paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error)
+	EstimateOrderSubtotal(ctx context.Context, purchase *models.Purchase) (*models.CurrencyValue, error)
 	RejectOrder(orderID models.OrderID, reason string, done chan struct{}) error
 }

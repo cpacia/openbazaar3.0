@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -253,12 +254,12 @@ func (n *OpenBazaarNode) GetMyListings() (models.ListingIndex, error) {
 // GetListings returns the listing index for node with the given peer ID.
 // If useCache is set it will return the index from the local cache
 // (if it has one) if listing index file is not found on the network.
-func (n *OpenBazaarNode) GetListings(peerID peer.ID, useCache bool) (models.ListingIndex, error) {
-	pth, err := n.resolve(peerID, useCache)
+func (n *OpenBazaarNode) GetListings(ctx context.Context, peerID peer.ID, useCache bool) (models.ListingIndex, error) {
+	pth, err := n.resolve(ctx, peerID, useCache)
 	if err != nil {
 		return nil, err
 	}
-	indexBytes, err := n.cat(ipath.Join(pth, ffsqlite.ListingIndexFile))
+	indexBytes, err := n.cat(ctx, ipath.Join(pth, ffsqlite.ListingIndexFile))
 	if err != nil {
 		return nil, err
 	}
@@ -332,12 +333,12 @@ func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, erro
 // GetListingBySlug returns a listing for node with the given peer ID.
 // If useCache is set it will return the listing from the local cache
 // (if it has one) if listing file is not found on the network.
-func (n *OpenBazaarNode) GetListingBySlug(peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error) {
-	pth, err := n.resolve(peerID, useCache)
+func (n *OpenBazaarNode) GetListingBySlug(ctx context.Context, peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error) {
+	pth, err := n.resolve(ctx, peerID, useCache)
 	if err != nil {
 		return nil, err
 	}
-	listingBytes, err := n.cat(ipath.Join(pth, "listings", slug+".json"))
+	listingBytes, err := n.cat(ctx, ipath.Join(pth, "listings", slug+".json"))
 	if err != nil {
 		return nil, err
 	}
@@ -345,8 +346,8 @@ func (n *OpenBazaarNode) GetListingBySlug(peerID peer.ID, slug string, useCache 
 }
 
 // GetListingByCID fetches the listing from the network given its cid.
-func (n *OpenBazaarNode) GetListingByCID(cid cid.Cid) (*pb.SignedListing, error) {
-	listingBytes, err := n.cat(ipath.IpfsPath(cid))
+func (n *OpenBazaarNode) GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error) {
+	listingBytes, err := n.cat(ctx, ipath.IpfsPath(cid))
 	if err != nil {
 		return nil, err
 	}

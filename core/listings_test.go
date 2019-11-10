@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"github.com/cpacia/openbazaar3.0/models/factory"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/golang/protobuf/ptypes"
@@ -119,7 +120,7 @@ func TestOpenBazaarNode_ListingsGet(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	listing2, err := network.Nodes()[1].GetListingBySlug(network.Nodes()[0].Identity(), listing.Slug, false)
+	listing2, err := network.Nodes()[1].GetListingBySlug(context.Background(), network.Nodes()[0].Identity(), listing.Slug, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +129,7 @@ func TestOpenBazaarNode_ListingsGet(t *testing.T) {
 		t.Errorf("Incorrect slug returned. Expected %s, got %s", listing.Slug, listing2.Listing.Slug)
 	}
 
-	index, err := network.Nodes()[1].GetListings(network.Nodes()[0].Identity(), false)
+	index, err := network.Nodes()[1].GetListings(context.Background(), network.Nodes()[0].Identity(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +142,7 @@ func TestOpenBazaarNode_ListingsGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	listing2, err = network.Nodes()[1].GetListingByCID(c)
+	listing2, err = network.Nodes()[1].GetListingByCID(context.Background(), c)
 	if err != nil {
 		t.Fatal(err)
 	}

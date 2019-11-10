@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
@@ -160,12 +161,12 @@ func (n *OpenBazaarNode) GetMyFollowing() (models.Following, error) {
 // GetFollowers returns the followers of the node with the given peer ID.
 // If useCache is set it will return the followers from the local cache
 // (if it has one) if followers file is not found on the network.
-func (n *OpenBazaarNode) GetFollowers(peerID peer.ID, useCache bool) (models.Followers, error) {
-	pth, err := n.resolve(peerID, useCache)
+func (n *OpenBazaarNode) GetFollowers(ctx context.Context, peerID peer.ID, useCache bool) (models.Followers, error) {
+	pth, err := n.resolve(ctx, peerID, useCache)
 	if err != nil {
 		return nil, err
 	}
-	followersBytes, err := n.cat(path.Join(pth, ffsqlite.FollowersFile))
+	followersBytes, err := n.cat(ctx, path.Join(pth, ffsqlite.FollowersFile))
 	if err != nil {
 		return nil, err
 	}
@@ -184,12 +185,12 @@ func (n *OpenBazaarNode) GetFollowers(peerID peer.ID, useCache bool) (models.Fol
 // GetFollowing returns the following of the node with the given peer ID.
 // If useCache is set it will return the following from the local cache
 // (if it has one) if following file is not found on the network.
-func (n *OpenBazaarNode) GetFollowing(peerID peer.ID, useCache bool) (models.Following, error) {
-	pth, err := n.resolve(peerID, useCache)
+func (n *OpenBazaarNode) GetFollowing(ctx context.Context, peerID peer.ID, useCache bool) (models.Following, error) {
+	pth, err := n.resolve(ctx, peerID, useCache)
 	if err != nil {
 		return nil, err
 	}
-	followersBytes, err := n.cat(path.Join(pth, ffsqlite.FollowingFile))
+	followersBytes, err := n.cat(ctx, path.Join(pth, ffsqlite.FollowingFile))
 	if err != nil {
 		return nil, err
 	}

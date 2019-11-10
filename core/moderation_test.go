@@ -28,7 +28,7 @@ func TestOpenBazaarNode_SetAndRemoveSelfAsModerator(t *testing.T) {
 	}
 
 	done := make(chan struct{})
-	if err := node.SetSelfAsModerator(modInfo, done); err != nil {
+	if err := node.SetSelfAsModerator(context.Background(), modInfo, done); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -56,9 +56,15 @@ func TestOpenBazaarNode_GetModerators(t *testing.T) {
 
 	defer mocknet.TearDown()
 
+	done0 := make(chan struct{})
 	originalProfile := &models.Profile{Name: "Ron Paul"}
-	if err := mocknet.Nodes()[0].SetProfile(originalProfile, nil); err != nil {
+	if err := mocknet.Nodes()[0].SetProfile(originalProfile, done0); err != nil {
 		t.Fatal(err)
+	}
+	select {
+	case <-done0:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
 	}
 
 	modInfo := &models.ModeratorInfo{
@@ -69,7 +75,7 @@ func TestOpenBazaarNode_GetModerators(t *testing.T) {
 	}
 
 	done := make(chan struct{})
-	if err := mocknet.Nodes()[0].SetSelfAsModerator(modInfo, done); err != nil {
+	if err := mocknet.Nodes()[0].SetSelfAsModerator(context.Background(), modInfo, done); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -103,7 +109,7 @@ func TestOpenBazaarNode_GetModerators(t *testing.T) {
 		t.Errorf("Returned incorrect peer ID. Expected %s, got %s", mocknet.Nodes()[0].Identity().Pretty(), mods[0].Pretty())
 	}
 
-	profile, err := mocknet.Nodes()[1].GetProfile(mods[0], false)
+	profile, err := mocknet.Nodes()[1].GetProfile(context.Background(), mods[0], false)
 	if err != nil {
 		t.Fatal(err)
 	}

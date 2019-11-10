@@ -29,7 +29,7 @@ func (g *Gateway) handleGETFollowers(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		followers, err = g.node.GetFollowers(pid, useCache)
+		followers, err = g.node.GetFollowers(r.Context(), pid, useCache)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -59,7 +59,7 @@ func (g *Gateway) handleGETFollowing(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		following, err = g.node.GetFollowing(pid, useCache)
+		following, err = g.node.GetFollowing(r.Context(), pid, useCache)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return

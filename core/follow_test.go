@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -116,7 +117,7 @@ func TestOpenBazaarNode_GetFollowing(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	following, err := mocknet.Nodes()[1].GetFollowing(mocknet.Nodes()[0].Identity(), false)
+	following, err := mocknet.Nodes()[1].GetFollowing(context.Background(), mocknet.Nodes()[0].Identity(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +159,7 @@ func TestOpenBazaarNode_GetFollowers(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	followers, err := mocknet.Nodes()[1].GetFollowers(mocknet.Nodes()[0].Identity(), false)
+	followers, err := mocknet.Nodes()[1].GetFollowers(context.Background(), mocknet.Nodes()[0].Identity(), false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -67,12 +68,12 @@ func (n *OpenBazaarNode) GetMyProfile() (*models.Profile, error) {
 // GetProfile returns the profile of the node with the given peer ID.
 // If useCache is set it will return a profile from the local cache
 // (if it has one) if profile is not found on the network.
-func (n *OpenBazaarNode) GetProfile(peerID peer.ID, useCache bool) (*models.Profile, error) {
-	pth, err := n.resolve(peerID, useCache)
+func (n *OpenBazaarNode) GetProfile(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+	pth, err := n.resolve(ctx, peerID, useCache)
 	if err != nil {
 		return nil, err
 	}
-	profileBytes, err := n.cat(path.Join(pth, ffsqlite.ProfileFile))
+	profileBytes, err := n.cat(ctx, path.Join(pth, ffsqlite.ProfileFile))
 	if err != nil {
 		return nil, err
 	}

@@ -279,7 +279,6 @@ func (n *OpenBazaarNode) newHTTPGateway(cfg *repo.Config) (*api.Gateway, error) 
 
 	// We might have listened to /tcp/0 - let's see what we are listing on
 	gatewayMaddr = gwLis.Multiaddr()
-	log.Infof("Gateway/API server listening on %s\n", gatewayMaddr)
 
 	// Setup an options slice
 	var opts = []corehttp.ServeOption{

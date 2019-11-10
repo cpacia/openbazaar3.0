@@ -103,7 +103,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	purchase.Items[0].ListingHash = index[0].Hash
 
 	// Have node 1 purchase the listing from node 0.
-	_, paymentAddress, paymentAmount, err := network.Nodes()[1].PurchaseListing(purchase)
+	_, paymentAddress, paymentAmount, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +266,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	// Next we're going to do the same but for a moderated order. Node 1 purchase a moderated
 	// listing from node 0.
 	purchase.Moderator = network.Nodes()[2].Identity().Pretty()
-	_, _, paymentAmount, err = network.Nodes()[1].PurchaseListing(purchase)
+	_, _, paymentAmount, err = network.Nodes()[1].PurchaseListing(context.Background(), purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -336,7 +336,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	// Send the direct purchase from node 1 to node 0.
 	purchase.Moderator = ""
-	orderID, _, paymentAmount, err := network.Nodes()[1].PurchaseListing(purchase)
+	orderID, _, paymentAmount, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -430,7 +430,7 @@ func TestOpenBazaarNode_EstimateOrderSubtotal(t *testing.T) {
 		PaymentCoin:          "TMCK",
 	}
 
-	val, err := network.Nodes()[1].EstimateOrderSubtotal(purchase)
+	val, err := network.Nodes()[1].EstimateOrderSubtotal(context.Background(), purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -471,7 +471,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sl, err := network.Nodes()[1].GetListingByCID(lid)
+	sl, err := network.Nodes()[1].GetListingByCID(context.Background(), lid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -757,7 +757,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		order, err := network.Nodes()[0].createOrder(test.purchase)
+		order, err := network.Nodes()[0].createOrder(context.Background(), test.purchase)
 		if err != nil {
 			t.Errorf("Test %d: Failed to create order: %s", i, err)
 			continue
@@ -817,7 +817,7 @@ func Test_createOrderUnkownVersion(t *testing.T) {
 		PaymentCoin: "TMCK",
 	}
 
-	_, err = network.Nodes()[0].createOrder(purchase)
+	_, err = network.Nodes()[0].createOrder(context.Background(), purchase)
 	if err != ErrUnknownListingVersion {
 		t.Errorf("Expected test to failed due to unknown listing version")
 	}

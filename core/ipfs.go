@@ -33,9 +33,9 @@ const (
 )
 
 // cat fetches a file from IPFS given a path.
-func (n *OpenBazaarNode) cat(pth path.Path) ([]byte, error) {
+func (n *OpenBazaarNode) cat(ctx context.Context, pth path.Path) ([]byte, error) {
 	catDone := make(chan struct{})
-	ctx, cancel := context.WithTimeout(context.Background(), catTimeout)
+	ctx, cancel := context.WithTimeout(ctx, catTimeout)
 	defer func() {
 		cancel()
 		catDone <- struct{}{}
@@ -69,7 +69,7 @@ func (n *OpenBazaarNode) cat(pth path.Path) ([]byte, error) {
 }
 
 // add imports the given file into ipfs and returns the cid.
-func (n *OpenBazaarNode) add(filePath string) (cid.Cid, error) {
+func (n *OpenBazaarNode) add(ctx context.Context, filePath string) (cid.Cid, error) {
 	defer n.ipfsNode.Blockstore.PinLock().Unlock()
 
 	stat, err := os.Lstat(filePath)
@@ -83,7 +83,7 @@ func (n *OpenBazaarNode) add(filePath string) (cid.Cid, error) {
 	}
 	defer f.Close()
 
-	fileAdder, err := coreunix.NewAdder(n.ipfsNode.Context(), n.ipfsNode.Pinning, n.ipfsNode.Blockstore, n.ipfsNode.DAG)
+	fileAdder, err := coreunix.NewAdder(ctx, n.ipfsNode.Pinning, n.ipfsNode.Blockstore, n.ipfsNode.DAG)
 	if err != nil {
 		return cid.Cid{}, err
 	}
@@ -112,7 +112,7 @@ func (n *OpenBazaarNode) cid(file []byte) (cid.Cid, error) {
 		return cid.Cid{}, err
 	}
 
-	cid, err := n.add(pth)
+	cid, err := n.add(context.Background(), pth)
 	if err != nil {
 		return cid, err
 	}
@@ -126,9 +126,9 @@ func (n *OpenBazaarNode) cid(file []byte) (cid.Cid, error) {
 }
 
 // pin fetches a file from IPFS given a path and pins it.
-func (n *OpenBazaarNode) pin(pth path.Path) error {
+func (n *OpenBazaarNode) pin(ctx context.Context, pth path.Path) error {
 	pinDone := make(chan struct{})
-	ctx, cancel := context.WithTimeout(context.Background(), catTimeout)
+	ctx, cancel := context.WithTimeout(ctx, catTimeout)
 	defer func() {
 		cancel()
 		pinDone <- struct{}{}
@@ -161,7 +161,7 @@ func (n *OpenBazaarNode) pin(pth path.Path) error {
 // If the DHT query returns nothing it will finally attempt to return from cache.
 // All subsequent resolves will return from cache as the pubsub will update the cache in real time
 // as new records are published.
-func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
+func (n *OpenBazaarNode) resolve(ctx context.Context, p peer.ID, usecache bool) (path.Path, error) {
 	if usecache {
 		var pth path.Path
 		err := n.repo.DB().View(func(tx database.Tx) error {
@@ -172,7 +172,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 		if err == nil {
 			// Update the cache in background
 			go func() {
-				pth, err := n.resolveOnce(p, resolveTimeout, n.ipnsQuorum)
+				pth, err := n.resolveOnce(context.Background(), p, resolveTimeout, n.ipnsQuorum)
 				if err != nil {
 					return
 				}
@@ -189,7 +189,7 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 			return pth, nil
 		}
 	}
-	pth, err := n.resolveOnce(p, resolveTimeout, n.ipnsQuorum)
+	pth, err := n.resolveOnce(ctx, p, resolveTimeout, n.ipnsQuorum)
 	if err != nil {
 		// Resolving fail. See if we have it in the db.
 		var pth path.Path
@@ -215,12 +215,12 @@ func (n *OpenBazaarNode) resolve(p peer.ID, usecache bool) (path.Path, error) {
 	return pth, nil
 }
 
-func (n *OpenBazaarNode) resolveOnce(p peer.ID, timeout time.Duration, quorum uint) (path.Path, error) {
+func (n *OpenBazaarNode) resolveOnce(ctx context.Context, p peer.ID, timeout time.Duration, quorum uint) (path.Path, error) {
 	resolveDone := make(chan struct{})
 	defer func() {
 		resolveDone <- struct{}{}
 	}()
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 
 	go func() {
 		select {

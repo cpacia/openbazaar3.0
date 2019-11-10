@@ -59,7 +59,7 @@ func Test_ipfsCat(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ret, err := network.Nodes()[1].cat(pth)
+	ret, err := network.Nodes()[1].cat(context.Background(), pth)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func Test_ipfsPin(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = network.Nodes()[1].pin(pth)
+	err = network.Nodes()[1].pin(context.Background(), pth)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func Test_ipfsResolve(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ret, err := network.Nodes()[1].resolve(network.Nodes()[0].Identity(), false)
+	ret, err := network.Nodes()[1].resolve(context.Background(), network.Nodes()[0].Identity(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func Test_ipfsResolve(t *testing.T) {
 	// Disconnect node 0 and try again with cache.
 	network.Nodes()[0].ipfsNode.PeerHost.Close()
 
-	ret, err = network.Nodes()[1].resolve(network.Nodes()[0].Identity(), true)
+	ret, err = network.Nodes()[1].resolve(context.Background(), network.Nodes()[0].Identity(), true)
 	if err != nil {
 		t.Fatal(err)
 	}

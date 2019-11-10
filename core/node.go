@@ -110,7 +110,9 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 	n.networkService.Close()
 	n.messenger.Stop()
 	n.orderProcessor.Stop()
-	n.gateway.Close()
+	if n.gateway != nil {
+		n.gateway.Close()
+	}
 	return nil
 }
 

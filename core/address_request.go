@@ -22,7 +22,7 @@ var ErrNoResponse = errors.New("no response to address request from peer")
 
 // RequestAddress requests a fresh payment address from the remote peer for in the given coin.
 // This is sent as an online message online and will not retry if no response is returned.
-func (n *OpenBazaarNode) RequestAddress(to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error) {
+func (n *OpenBazaarNode) RequestAddress(ctx context.Context, to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error) {
 	addrReq := pb.AddressRequestMessage{
 		Coin: coinType.CurrencyCode(),
 	}
@@ -42,7 +42,7 @@ func (n *OpenBazaarNode) RequestAddress(to peer.ID, coinType iwallet.CoinType) (
 	}
 	defer sub.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), addressRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, addressRequestTimeout)
 	defer cancel()
 
 	go n.networkService.SendMessage(ctx, to, message)
