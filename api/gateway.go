@@ -99,7 +99,7 @@ func (g *Gateway) newV1Router() *mux.Router {
 		r.HandleFunc("/v1/ob/markchatasread", g.handlePOSTMarkChatMessageAsRead).Methods("POST")
 		r.HandleFunc("/v1/ob/chatconversations", g.handleGETChatConversations).Methods("GET")
 		r.HandleFunc("/v1/ob/chatmessages/{peerID}", g.handleGETChatMessages).Methods("GET")
-		r.HandleFunc("/v1/ob/chatconversation/{orderID}", g.handleGETChatConversation).Methods("GET")
+		r.HandleFunc("/v1/ob/groupchatmessage/{orderID}", g.handleGETGroupChatMessages).Methods("GET")
 	}
 	r.HandleFunc("/v1/ob/profile/{peerID}", g.handleGETProfile).Methods("GET")
 	r.HandleFunc("/v1/ob/profile", g.handleGETProfile).Methods("GET")

@@ -101,6 +101,9 @@ func LoadConfig() (*Config, []string, error) {
 			return nil, nil, err
 		}
 	}
+	if cfg.DataDir != "" {
+		preCfg.ConfigFile = filepath.Join(cfg.DataDir, defaultConfigFilename)
+	}
 
 	// Show the version and exit if the version flag was specified.
 	appName := filepath.Base(os.Args[0])

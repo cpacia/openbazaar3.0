@@ -167,7 +167,7 @@ func (g *Gateway) handleGETChatMessages(w http.ResponseWriter, r *http.Request) 
 	sanitizedJSONResponse(w, messages)
 }
 
-func (g *Gateway) handleGETChatConversation(w http.ResponseWriter, r *http.Request) {
+func (g *Gateway) handleGETGroupChatMessages(w http.ResponseWriter, r *http.Request) {
 	var (
 		orderID  = mux.Vars(r)["orderID"]
 		limitStr = r.URL.Query().Get("limit")
