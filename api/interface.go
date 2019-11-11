@@ -14,12 +14,12 @@ import (
 // CoreIface is used to get around a circular import of the Core package.
 type CoreIface interface {
 	RequestAddress(ctx context.Context, to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error)
-	SendChatMessage(to peer.ID, message, subject string, done chan<- struct{}) error
-	SendTypingMessage(to peer.ID, subject string) error
-	MarkChatMessagesAsRead(peer peer.ID, subject string) error
+	SendChatMessage(to peer.ID, message, orderID string, done chan<- struct{}) error
+	SendTypingMessage(to peer.ID, orderID string) error
+	MarkChatMessagesAsRead(peer peer.ID, orderID string) error
 	GetChatConversations() ([]models.ChatConversation, error)
-	GetChatMessagesByPeer(peer peer.ID) ([]models.ChatMessage, error)
-	GetChatMessagesBySubject(subject string) ([]models.ChatMessage, error)
+	GetChatMessagesByPeer(peer peer.ID, limit int, offsetID string) ([]models.ChatMessage, error)
+	GetChatMessagesByOrderID(orderID string, limit int, offsetID string) ([]models.ChatMessage, error)
 	ConfirmOrder(orderID models.OrderID, done chan struct{}) error
 	FollowNode(peerID peer.ID, done chan<- struct{}) error
 	UnfollowNode(peerID peer.ID, done chan<- struct{}) error

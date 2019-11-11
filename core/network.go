@@ -25,8 +25,14 @@ import (
 	"time"
 )
 
-// republishInterval is the amount of time to go between republishes.
-const republishInterval = time.Hour * 36
+const (
+	// republishInterval is the amount of time to go between republishes.
+	republishInterval = time.Hour * 36
+
+	// nameValidTime is the amount of time an IPNS record is considered valid
+	// after publish.
+	nameValidTime = time.Hour * 36
+)
 
 // Publish will publish the current public data directory to IPNS.
 // It will interrupt the publish if a shutdown happens during.
@@ -112,7 +118,7 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 	}
 
 	// Publish
-	if err := n.ipfsNode.Namesys.Publish(cctx, n.ipfsNode.PrivateKey, fpath.FromString(pth.Root().String())); err != nil {
+	if err := n.ipfsNode.Namesys.PublishWithEOL(cctx, n.ipfsNode.PrivateKey, fpath.FromString(pth.Root().String()), time.Now().Add(nameValidTime)); err != nil {
 		log.Errorf("Error namesys publish: %s", err.Error())
 		return
 	}

@@ -110,5 +110,4 @@ func TestGateway_AuthenticationMiddleware(t *testing.T) {
 			continue
 		}
 	}
-
 }

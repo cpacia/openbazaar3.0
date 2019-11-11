@@ -13,12 +13,12 @@ import (
 
 type mockNode struct {
 	requestAddressFunc           func(ctx context.Context, to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error)
-	sendChatMesageFunc           func(to peer.ID, message, subject string, done chan<- struct{}) error
-	sendTypingMessageFunc        func(to peer.ID, subject string) error
-	markChatMessagesAsReadFunc   func(peer peer.ID, subject string) error
+	sendChatMessageFunc          func(to peer.ID, message, orderID string, done chan<- struct{}) error
+	sendTypingMessageFunc        func(to peer.ID, orderID string) error
+	markChatMessagesAsReadFunc   func(peer peer.ID, orderID string) error
 	getChatConversationsFunc     func() ([]models.ChatConversation, error)
-	getChatMessagesByPeerFunc    func(peer peer.ID) ([]models.ChatMessage, error)
-	getChatMessagesBySubjectFunc func(subject string) ([]models.ChatMessage, error)
+	getChatMessagesByPeerFunc    func(peer peer.ID, limit int, offsetID string) ([]models.ChatMessage, error)
+	getChatMessagesByOrderIDFunc func(orderID string, limit int, offsetID string) ([]models.ChatMessage, error)
 	confirmOrderFunc             func(orderID models.OrderID, done chan struct{}) error
 	followNodeFunc               func(peerID peer.ID, done chan<- struct{}) error
 	unfollowNodeFunc             func(peerID peer.ID, done chan<- struct{}) error
@@ -54,23 +54,23 @@ type mockNode struct {
 func (m *mockNode) RequestAddress(ctx context.Context, to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error) {
 	return m.requestAddressFunc(ctx, to, coinType)
 }
-func (m *mockNode) SendChatMessage(to peer.ID, message, subject string, done chan<- struct{}) error {
-	return m.sendChatMesageFunc(to, message, subject, done)
+func (m *mockNode) SendChatMessage(to peer.ID, message, orderID string, done chan<- struct{}) error {
+	return m.sendChatMessageFunc(to, message, orderID, done)
 }
-func (m *mockNode) SendTypingMessage(to peer.ID, subject string) error {
-	return m.sendTypingMessageFunc(to, subject)
+func (m *mockNode) SendTypingMessage(to peer.ID, orderID string) error {
+	return m.sendTypingMessageFunc(to, orderID)
 }
-func (m *mockNode) MarkChatMessagesAsRead(peer peer.ID, subject string) error {
-	return m.markChatMessagesAsReadFunc(peer, subject)
+func (m *mockNode) MarkChatMessagesAsRead(peer peer.ID, orderID string) error {
+	return m.markChatMessagesAsReadFunc(peer, orderID)
 }
 func (m *mockNode) GetChatConversations() ([]models.ChatConversation, error) {
 	return m.getChatConversationsFunc()
 }
-func (m *mockNode) GetChatMessagesByPeer(peer peer.ID) ([]models.ChatMessage, error) {
-	return m.GetChatMessagesByPeer(peer)
+func (m *mockNode) GetChatMessagesByPeer(peer peer.ID, limit int, offsetID string) ([]models.ChatMessage, error) {
+	return m.GetChatMessagesByPeer(peer, limit, offsetID)
 }
-func (m *mockNode) GetChatMessagesBySubject(subject string) ([]models.ChatMessage, error) {
-	return m.getChatMessagesBySubjectFunc(subject)
+func (m *mockNode) GetChatMessagesByOrderID(orderID string, limit int, offsetID string) ([]models.ChatMessage, error) {
+	return m.getChatMessagesByOrderIDFunc(orderID, limit, offsetID)
 }
 func (m *mockNode) ConfirmOrder(orderID models.OrderID, done chan struct{}) error {
 	return m.confirmOrderFunc(orderID, done)

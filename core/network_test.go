@@ -102,7 +102,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 	// Build three chat messages and save them to the outgoing message table.
 	chatMsg := pb.ChatMessage{
 		Message:   "Hello",
-		Subject:   "",
+		OrderID:   "",
 		Timestamp: ptypes.TimestampNow(),
 		Flag:      pb.ChatMessage_MESSAGE,
 	}
@@ -193,7 +193,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 		<-sub.Out()
 	}
 
-	messages, err := mocknet.Nodes()[1].GetChatMessagesByPeer(mocknet.Nodes()[0].Identity())
+	messages, err := mocknet.Nodes()[1].GetChatMessagesByPeer(mocknet.Nodes()[0].Identity(), 0, "")
 	if err != nil {
 		t.Fatal(err)
 	}

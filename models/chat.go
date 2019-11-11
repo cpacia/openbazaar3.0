@@ -12,7 +12,7 @@ import (
 type ChatMessage struct {
 	MessageID string    `gorm:"primary_key" json:"messageID"`
 	PeerID    string    `gorm:"index" json:"peerID"`
-	Subject   string    `gorm:"index" json:"subject"`
+	OrderID   string    `gorm:"index" json:"subject"`
 	Timestamp time.Time `gorm:"index" json:"timestamp"`
 	Read      bool      `gorm:"index" json:"read"`
 	Outgoing  bool      `json:"outgoing"`
@@ -34,7 +34,7 @@ func NewChatMessageFromProto(peerID peer.ID, msg *pb.Message) (*ChatMessage, err
 		MessageID: msg.MessageID,
 		PeerID:    peerID.Pretty(),
 		Message:   chtMsg.Message,
-		Subject:   chtMsg.Subject,
+		OrderID:   chtMsg.OrderID,
 		Timestamp: time.Unix(chtMsg.Timestamp.Seconds, int64(chtMsg.Timestamp.Nanos)),
 		Sequence:  int(msg.Sequence),
 	}, nil
@@ -49,7 +49,7 @@ func (cm *ChatMessage) ToChatNotification() *events.ChatMessageNotification {
 		MessageID: cm.MessageID,
 		Timestamp: cm.Timestamp,
 		PeerID:    cm.PeerID,
-		Subject:   cm.Subject,
+		OrderID:   cm.OrderID,
 		Outgoing:  cm.Outgoing,
 		Read:      cm.Read,
 		Message:   cm.Message,

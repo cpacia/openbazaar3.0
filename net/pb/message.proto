@@ -25,7 +25,7 @@ message Message {
 }
 
 message ChatMessage {
-    string subject                      = 1;
+    string orderID                      = 1;
     string message                      = 2;
     google.protobuf.Timestamp timestamp = 3;
     Flag flag                           = 4;

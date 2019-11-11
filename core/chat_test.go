@@ -23,11 +23,11 @@ func TestOpenBazaarNode_SendChatMessage(t *testing.T) {
 
 	var (
 		message = "hola"
-		subject = "newsubject"
+		orderID = "1234"
 	)
 
 	done := make(chan struct{})
-	if err := node.SendChatMessage(p, message, subject, done); err != nil {
+	if err := node.SendChatMessage(p, message, orderID, done); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -53,8 +53,8 @@ func TestOpenBazaarNode_SendChatMessage(t *testing.T) {
 		t.Errorf("Returned incorrect message from db. Expected %s, got %s", message, messages[0].Message)
 	}
 
-	if messages[0].Subject != subject {
-		t.Errorf("Returned incorrect subject from db. Expected %s, got %s", subject, messages[0].Subject)
+	if messages[0].OrderID != orderID {
+		t.Errorf("Returned incorrect orderID from db. Expected %s, got %s", orderID, messages[0].OrderID)
 	}
 
 	if messages[0].MessageID == "" {
@@ -87,8 +87,8 @@ func TestOpenBazaarNode_SendTypingMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	subject := "typing test"
-	if err := network.Nodes()[0].SendTypingMessage(network.Nodes()[1].Identity(), subject); err != nil {
+	orderID := "1234"
+	if err := network.Nodes()[0].SendTypingMessage(network.Nodes()[1].Identity(), orderID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,8 +104,8 @@ func TestOpenBazaarNode_SendTypingMessage(t *testing.T) {
 		t.Fatal("Failed to type assert ChatTypingNotification")
 	}
 
-	if notif.Subject != subject {
-		t.Errorf("Received incorrect subject. Expected %s, got %s", subject, notif.Subject)
+	if notif.OrderID != orderID {
+		t.Errorf("Received incorrect orderID. Expected %s, got %s", orderID, notif.OrderID)
 	}
 
 	if notif.PeerID != network.Nodes()[0].Identity().Pretty() {
@@ -127,11 +127,11 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	}
 
 	var (
-		subject = "advice"
+		orderID = "1234"
 		message = "abolish the state"
 	)
 	// Send message from 0 to 1
-	if err := network.Nodes()[0].SendChatMessage(network.Nodes()[1].Identity(), message, subject, nil); err != nil {
+	if err := network.Nodes()[0].SendChatMessage(network.Nodes()[1].Identity(), message, orderID, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -151,8 +151,8 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 		t.Errorf("Received incorrect message. Expected %s, got %s", message, notif.Message)
 	}
 
-	if notif.Subject != subject {
-		t.Errorf("Received incorrect subject. Expected %s, got %s", subject, notif.Subject)
+	if notif.OrderID != orderID {
+		t.Errorf("Received incorrect orderID. Expected %s, got %s", orderID, notif.OrderID)
 	}
 
 	if notif.PeerID != network.Nodes()[0].Identity().Pretty() {
@@ -165,7 +165,7 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	}
 
 	// Node 1 mark as read.
-	if err := network.Nodes()[1].MarkChatMessagesAsRead(network.Nodes()[0].Identity(), notif.Subject); err != nil {
+	if err := network.Nodes()[1].MarkChatMessagesAsRead(network.Nodes()[0].Identity(), notif.OrderID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -185,8 +185,8 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 		t.Errorf("Read message ID doesn't match original message ID. Got %s, expected %s", notif2.MessageID, notif.MessageID)
 	}
 
-	if notif2.Subject != notif.Subject {
-		t.Errorf("Received incorrect subject. Expected %s, got %s", subject, notif2.Subject)
+	if notif2.OrderID != notif.OrderID {
+		t.Errorf("Received incorrect orderID. Expected %s, got %s", orderID, notif2.OrderID)
 	}
 
 	if notif2.PeerID != network.Nodes()[1].Identity().Pretty() {
@@ -262,7 +262,7 @@ func TestOpenBazaarNode_GetChat(t *testing.T) {
 	}
 
 	for _, node := range network.Nodes()[1:] {
-		messages, err := network.Nodes()[0].GetChatMessagesByPeer(node.Identity())
+		messages, err := network.Nodes()[0].GetChatMessagesByPeer(node.Identity(), -1, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -278,10 +278,10 @@ func TestOpenBazaarNode_GetChat(t *testing.T) {
 			t.Errorf("Message1 is to peer %s marked read when it should not be", node.Identity())
 		}
 
-		if messages[0].Message != firstMessage {
-			t.Errorf("Incorrect first message. Expected %s, got %s", firstMessage, messages[0].Message)
+		if messages[0].Message != lastMessage {
+			t.Errorf("Incorrect last message. Expected %s, got %s", lastMessage, messages[0].Message)
 		}
-		if messages[1].Message != lastMessage {
+		if messages[1].Message != firstMessage {
 			t.Errorf("Incorrect first message. Expected %s, got %s", firstMessage, messages[0].Message)
 		}
 		if messages[0].Outgoing != true {
@@ -296,9 +296,31 @@ func TestOpenBazaarNode_GetChat(t *testing.T) {
 		if messages[1].PeerID != node.Identity().Pretty() {
 			t.Errorf("Message1 peer ID does not match peer. Expected %s, got %s", node.Identity().Pretty(), messages[1].PeerID)
 		}
+
+		messages, err = network.Nodes()[0].GetChatMessagesByPeer(node.Identity(), 1, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(messages) != 1 {
+			t.Errorf("Expected 1 chat messages got %d", len(messages))
+		}
+		if messages[0].Message != lastMessage {
+			t.Errorf("Incorrect last message. Expected %s, got %s", lastMessage, messages[0].Message)
+		}
+
+		messages, err = network.Nodes()[0].GetChatMessagesByPeer(node.Identity(), -1, messages[0].MessageID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(messages) != 1 {
+			t.Errorf("Expected 1 chat messages got %d", len(messages))
+		}
+		if messages[0].Message != firstMessage {
+			t.Errorf("Incorrect first message. Expected %s, got %s", firstMessage, messages[0].Message)
+		}
 	}
 
-	messages, err := network.Nodes()[0].GetChatMessagesBySubject("")
+	messages, err := network.Nodes()[0].GetChatMessagesByOrderID("", -1, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,6 +336,24 @@ func TestOpenBazaarNode_GetChat(t *testing.T) {
 		if !message.Outgoing {
 			t.Error("Message is not set to outgoing when it should be")
 		}
+	}
+
+	messages, err = network.Nodes()[0].GetChatMessagesByOrderID("", 1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(messages) != 1 {
+		t.Errorf("Expected 1 messages, got %d", len(messages))
+	}
+
+	messages, err = network.Nodes()[0].GetChatMessagesByOrderID("", -1, messages[0].MessageID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(messages) != 5 {
+		t.Errorf("Expected 5 messages, got %d", len(messages))
 	}
 }
 
@@ -331,17 +371,17 @@ func TestOpenBazaarNode_ChatSequence(t *testing.T) {
 
 	var (
 		message = "hola"
-		subject = "newsubject"
+		orderID = "1234"
 	)
 
 	done := make(chan struct{})
-	if err := node.SendChatMessage(p, message, subject, nil); err != nil {
+	if err := node.SendChatMessage(p, message, orderID, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := node.SendChatMessage(p, message, subject, nil); err != nil {
+	if err := node.SendChatMessage(p, message, orderID, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := node.SendChatMessage(p, message, subject, done); err != nil {
+	if err := node.SendChatMessage(p, message, orderID, done); err != nil {
 		t.Fatal(err)
 	}
 	select {

@@ -224,7 +224,7 @@ func (n *StatusNotification) Type() string { return "StatusNotification" }
 type ChatMessageNotification struct {
 	MessageID string    `json:"messageID"`
 	PeerID    string    `json:"peerID"`
-	Subject   string    `json:"subject"`
+	OrderID   string    `json:"orderID"`
 	Timestamp time.Time `json:"timestamp"`
 	Read      bool      `json:"read"`
 	Outgoing  bool      `json:"outgoing"`
@@ -236,7 +236,7 @@ func (n *ChatMessageNotification) Type() string { return "ChatMessageNotificatio
 type ChatReadNotification struct {
 	MessageID string `json:"messageID"`
 	PeerID    string `json:"peerID"`
-	Subject   string `json:"subject"`
+	OrderID   string `json:"orderID"`
 }
 
 func (n *ChatReadNotification) Type() string { return "ChatReadNotification" }
@@ -244,7 +244,7 @@ func (n *ChatReadNotification) Type() string { return "ChatReadNotification" }
 type ChatTypingNotification struct {
 	MessageID string `json:"messageID"`
 	PeerID    string `json:"peerID"`
-	Subject   string `json:"subject"`
+	OrderID   string `json:"orderID"`
 }
 
 func (n *ChatTypingNotification) Type() string { return "ChatTypingNotification" }
