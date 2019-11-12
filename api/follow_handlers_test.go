@@ -34,6 +34,34 @@ func TestFollowHandlers(t *testing.T) {
 			},
 		},
 		{
+			name:   "Get my followers nil",
+			path:   "/v1/ob/followers",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyFollowersFunc = func() (models.Followers, error) {
+					return nil, nil
+				}
+			},
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(`[]`), nil
+			},
+		},
+		{
+			name:   "Get my followers fail",
+			path:   "/v1/ob/followers",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyFollowersFunc = func() (models.Followers, error) {
+					return nil, errors.New("error")
+				}
+			},
+			statusCode: http.StatusNotFound,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("error\n"), nil
+			},
+		},
+		{
 			name:   "Get my following",
 			path:   "/v1/ob/following",
 			method: http.MethodGet,
@@ -52,6 +80,34 @@ func TestFollowHandlers(t *testing.T) {
 					"12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi",
 				}
 				return marshalAndSanitizeJSON(&following)
+			},
+		},
+		{
+			name:   "Get my following nil",
+			path:   "/v1/ob/following",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyFollowingFunc = func() (models.Following, error) {
+					return nil, nil
+				}
+			},
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(`[]`), nil
+			},
+		},
+		{
+			name:   "Get my following fail",
+			path:   "/v1/ob/following",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyFollowingFunc = func() (models.Following, error) {
+					return nil, errors.New("error")
+				}
+			},
+			statusCode: http.StatusNotFound,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("error\n"), nil
 			},
 		},
 		{
@@ -76,6 +132,20 @@ func TestFollowHandlers(t *testing.T) {
 					"12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi",
 				}
 				return marshalAndSanitizeJSON(&followers)
+			},
+		},
+		{
+			name:   "Get followers invalid peerID",
+			path:   "/v1/ob/followers/xxx",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getFollowersFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (models.Followers, error) {
+					return nil, nil
+				}
+			},
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
 			},
 		},
 		{
@@ -117,6 +187,20 @@ func TestFollowHandlers(t *testing.T) {
 			},
 		},
 		{
+			name:   "Get following invalid peerID",
+			path:   "/v1/ob/following/xxx",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getFollowingFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (models.Following, error) {
+					return nil, nil
+				}
+			},
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+			},
+		},
+		{
 			name:   "Get following not found",
 			path:   "/v1/ob/following/12D3KooWKLmVDz6sdzMyX1yQpEdCHB7dtxyEr91wPFNoCXEs2hkv",
 			method: http.MethodGet,
@@ -148,6 +232,34 @@ func TestFollowHandlers(t *testing.T) {
 			},
 		},
 		{
+			name:   "Post follow fail",
+			path:   "/v1/ob/follow/12D3KooWKLmVDz6sdzMyX1yQpEdCHB7dtxyEr91wPFNoCXEs2hkv",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.followNodeFunc = func(peerID peer.ID, done chan<- struct{}) error {
+					return errors.New("error")
+				}
+			},
+			statusCode: http.StatusInternalServerError,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("error\n"), nil
+			},
+		},
+		{
+			name:   "Post follow invalid peerID",
+			path:   "/v1/ob/follow/xxx",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.followNodeFunc = func(peerID peer.ID, done chan<- struct{}) error {
+					return nil
+				}
+			},
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+			},
+		},
+		{
 			name:   "Post unfollow",
 			path:   "/v1/ob/unfollow/12D3KooWKLmVDz6sdzMyX1yQpEdCHB7dtxyEr91wPFNoCXEs2hkv",
 			method: http.MethodPost,
@@ -162,6 +274,34 @@ func TestFollowHandlers(t *testing.T) {
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
 				return nil, nil
+			},
+		},
+		{
+			name:   "Post unfollow fail",
+			path:   "/v1/ob/unfollow/12D3KooWKLmVDz6sdzMyX1yQpEdCHB7dtxyEr91wPFNoCXEs2hkv",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.unfollowNodeFunc = func(peerID peer.ID, done chan<- struct{}) error {
+					return errors.New("error")
+				}
+			},
+			statusCode: http.StatusInternalServerError,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("error\n"), nil
+			},
+		},
+		{
+			name:   "Post unfollow invalid peerID",
+			path:   "/v1/ob/unfollow/xxx",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.unfollowNodeFunc = func(peerID peer.ID, done chan<- struct{}) error {
+					return nil
+				}
+			},
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
 			},
 		},
 	})

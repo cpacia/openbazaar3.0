@@ -208,7 +208,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 // profile counts, and publishes.
 func (n *OpenBazaarNode) DeleteListing(slug string, done chan<- struct{}) error {
 	err := n.repo.DB().Update(func(tx database.Tx) error {
-		if err := tx.Delete("slug", slug, &models.Coupon{}); err != nil {
+		if err := tx.Delete("slug", slug, nil, &models.Coupon{}); err != nil {
 			return err
 		}
 

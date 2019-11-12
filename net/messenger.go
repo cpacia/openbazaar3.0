@@ -88,7 +88,7 @@ func (m *Messenger) ProcessACK(tx database.Tx, ack *pb.AckMessage) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	return tx.Delete("id", ack.AckedMessageID, &models.OutgoingMessage{})
+	return tx.Delete("id", ack.AckedMessageID, nil, &models.OutgoingMessage{})
 }
 
 // SendACK sends an ACK for the message with the given ID to the provided

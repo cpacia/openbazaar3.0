@@ -214,11 +214,15 @@ func (t *tx) Update(key string, value interface{}, where map[string]interface{},
 
 // Delete will delete all models of the given type from the database where
 // field == key.
-func (t *tx) Delete(key string, value interface{}, model interface{}) error {
+func (t *tx) Delete(key string, value interface{}, where map[string]interface{}, model interface{}) error {
 	if !t.isForWrites {
 		return ErrReadOnly
 	}
-	return t.dbtx.Where(fmt.Sprintf("%s = ?", key), value).Delete(model).Error
+	db := t.dbtx.Model(model)
+	for k, v := range where {
+		db = db.Where(k, v)
+	}
+	return db.Where(fmt.Sprintf("%s = ?", key), value).Delete(model).Error
 }
 
 // Migrate will auto-migrate the database to from any previous schema for this

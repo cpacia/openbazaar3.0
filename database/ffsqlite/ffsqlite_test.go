@@ -156,7 +156,7 @@ func TestFFSqliteDB_CRUD(t *testing.T) {
 		return tx.Save(&models.ChatMessage{
 			MessageID: "abc",
 			PeerID:    "qm123",
-			Subject:   "test",
+			OrderID:   "test",
 			Timestamp: time.Time{},
 			Read:      false,
 			Outgoing:  false,
@@ -181,7 +181,7 @@ func TestFFSqliteDB_CRUD(t *testing.T) {
 	}
 
 	err = db.Update(func(tx database.Tx) error {
-		return tx.Update("read", true, map[string]interface{}{"peer_id = ?": "qm123", "subject = ?": "test"}, &models.ChatMessage{})
+		return tx.Update("read", true, map[string]interface{}{"peer_id = ?": "qm123", "order_id = ?": "test"}, &models.ChatMessage{})
 	})
 	if err != nil {
 		t.Error(err)
@@ -204,7 +204,7 @@ func TestFFSqliteDB_CRUD(t *testing.T) {
 	}
 
 	err = db.Update(func(tx database.Tx) error {
-		return tx.Delete("peer_id", "qm123", &models.ChatMessage{})
+		return tx.Delete("peer_id", "qm123", nil, &models.ChatMessage{})
 	})
 	if err != nil {
 		t.Error(err)

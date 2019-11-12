@@ -27,7 +27,7 @@ func TestOpenBazaarNode_SendChatMessage(t *testing.T) {
 	)
 
 	done := make(chan struct{})
-	if err := node.SendChatMessage(p, message, orderID, done); err != nil {
+	if err := node.SendChatMessage(p, message, models.OrderID(orderID), done); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -88,7 +88,7 @@ func TestOpenBazaarNode_SendTypingMessage(t *testing.T) {
 	}
 
 	orderID := "1234"
-	if err := network.Nodes()[0].SendTypingMessage(network.Nodes()[1].Identity(), orderID); err != nil {
+	if err := network.Nodes()[0].SendTypingMessage(network.Nodes()[1].Identity(), models.OrderID(orderID)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -131,7 +131,7 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 		message = "abolish the state"
 	)
 	// Send message from 0 to 1
-	if err := network.Nodes()[0].SendChatMessage(network.Nodes()[1].Identity(), message, orderID, nil); err != nil {
+	if err := network.Nodes()[0].SendChatMessage(network.Nodes()[1].Identity(), message, models.OrderID(orderID), nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -165,7 +165,7 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	}
 
 	// Node 1 mark as read.
-	if err := network.Nodes()[1].MarkChatMessagesAsRead(network.Nodes()[0].Identity(), notif.OrderID); err != nil {
+	if err := network.Nodes()[1].MarkChatMessagesAsRead(network.Nodes()[0].Identity(), models.OrderID(notif.OrderID)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -357,6 +357,88 @@ func TestOpenBazaarNode_GetChat(t *testing.T) {
 	}
 }
 
+func TestOpenBazaarNode_DeleteChatMessages(t *testing.T) {
+	network, err := NewMocknet(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer network.TearDown()
+
+	var (
+		firstMessage = "hola"
+		lastMessage  = "hi again"
+		orderID      = models.OrderID("1234")
+	)
+
+	if err := network.Nodes()[0].SendChatMessage(network.Nodes()[1].Identity(), firstMessage, "", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := network.Nodes()[0].SendChatMessage(network.Nodes()[1].Identity(), lastMessage, "", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := network.Nodes()[0].SendChatMessage(network.Nodes()[1].Identity(), "asdf", orderID, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	messages, err := network.Nodes()[0].GetChatMessagesByPeer(network.Nodes()[1].Identity(), -1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(messages) != 2 {
+		t.Errorf("Expected 2 messages, got %d", len(messages))
+	}
+
+	orderMessages, err := network.Nodes()[0].GetChatMessagesByOrderID(orderID, -1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(orderMessages) != 1 {
+		t.Errorf("Expected 1 messages, got %d", len(messages))
+	}
+
+	if err := network.Nodes()[0].DeleteChatMessage(messages[0].MessageID); err != nil {
+		t.Fatal(err)
+	}
+
+	messages, err = network.Nodes()[0].GetChatMessagesByPeer(network.Nodes()[1].Identity(), -1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(messages) != 1 {
+		t.Errorf("Expected 1 messages, got %d", len(messages))
+	}
+
+	if err := network.Nodes()[0].DeleteChatConversation(network.Nodes()[1].Identity()); err != nil {
+		t.Fatal(err)
+	}
+
+	messages, err = network.Nodes()[0].GetChatMessagesByPeer(network.Nodes()[1].Identity(), -1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(messages) != 0 {
+		t.Errorf("Expected 0 messages, got %d", len(messages))
+	}
+
+	if err := network.Nodes()[0].DeleteGroupChatMessages(orderID); err != nil {
+		t.Fatal(err)
+	}
+
+	orderMessages, err = network.Nodes()[0].GetChatMessagesByOrderID(orderID, -1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(orderMessages) != 0 {
+		t.Errorf("Expected 0 messages, got %d", len(messages))
+	}
+}
+
 func TestOpenBazaarNode_ChatSequence(t *testing.T) {
 	node, err := MockNode()
 	if err != nil {
@@ -375,13 +457,13 @@ func TestOpenBazaarNode_ChatSequence(t *testing.T) {
 	)
 
 	done := make(chan struct{})
-	if err := node.SendChatMessage(p, message, orderID, nil); err != nil {
+	if err := node.SendChatMessage(p, message, models.OrderID(orderID), nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := node.SendChatMessage(p, message, orderID, nil); err != nil {
+	if err := node.SendChatMessage(p, message, models.OrderID(orderID), nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := node.SendChatMessage(p, message, orderID, done); err != nil {
+	if err := node.SendChatMessage(p, message, models.OrderID(orderID), done); err != nil {
 		t.Fatal(err)
 	}
 	select {

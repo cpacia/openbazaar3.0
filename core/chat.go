@@ -22,8 +22,8 @@ const (
 // reliably using the messenger in a separate goroutine so this method will
 // not block during the send. The done chan will be closed when the sending is
 // complete if you need this information.
-func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, orderID string, done chan<- struct{}) error {
-	if len(orderID) > maxOrderIDLength {
+func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message string, orderID models.OrderID, done chan<- struct{}) error {
+	if len(orderID.String()) > maxOrderIDLength {
 		return errors.New("orderID is too long")
 	}
 	if len(message) > maxMessageLength {
@@ -32,7 +32,7 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, orderID string, do
 
 	chatMsg := pb.ChatMessage{
 		Message:   message,
-		OrderID:   orderID,
+		OrderID:   orderID.String(),
 		Timestamp: ptypes.TimestampNow(),
 		Flag:      pb.ChatMessage_MESSAGE,
 	}
@@ -79,10 +79,10 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message, orderID string, do
 // the UI can then using to display that the peer is typing. This message
 // is only sent using direct messaging and on a best effort basis. This
 // means it's not guaranteed to make it to the remote peer.
-func (n *OpenBazaarNode) SendTypingMessage(to peer.ID, orderID string) error {
+func (n *OpenBazaarNode) SendTypingMessage(to peer.ID, orderID models.OrderID) error {
 	chatMsg := pb.ChatMessage{
 		Flag:    pb.ChatMessage_TYPING,
-		OrderID: orderID,
+		OrderID: orderID.String(),
 	}
 
 	payload, err := ptypes.MarshalAny(&chatMsg)
@@ -106,11 +106,11 @@ func (n *OpenBazaarNode) SendTypingMessage(to peer.ID, orderID string) error {
 // and send the READ message to the remote peer. The READ message contains the last ID
 // that was marked as read the remote peer will set that message and everything before
 // it as read.
-func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, orderID string) error {
+func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, orderID models.OrderID) error {
 	return n.repo.DB().Update(func(tx database.Tx) error {
 		// Check unread count. If zero we can just exit.
 		var unreadCount int
-		if err := tx.Read().Where("peer_id = ? AND read = ? AND order_id = ?", peer.Pretty(), false, orderID).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Where("peer_id = ? AND read = ? AND order_id = ?", peer.Pretty(), false, orderID.String()).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 
@@ -120,12 +120,12 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, orderID string) er
 
 		// Load the last message
 		lastMessage := models.ChatMessage{}
-		if err := tx.Read().Order("timestamp desc").Where("peer_id = ? AND read = ? AND order_id = ?", peer.Pretty(), false, orderID).First(&lastMessage).Error; err != nil {
+		if err := tx.Read().Order("timestamp desc").Where("peer_id = ? AND read = ? AND order_id = ?", peer.Pretty(), false, orderID.String()).First(&lastMessage).Error; err != nil {
 			return err
 		}
 
 		// Update the local DB
-		if err := tx.Update("read", true, map[string]interface{}{"peer_id = ?": peer.Pretty(), "order_id = ?": orderID}, &models.ChatMessage{}); err != nil {
+		if err := tx.Update("read", true, map[string]interface{}{"peer_id = ?": peer.Pretty(), "order_id = ?": orderID.String()}, &models.ChatMessage{}); err != nil {
 			return err
 		}
 
@@ -135,7 +135,7 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, orderID string) er
 		// read in the UI.
 		readMsg := &pb.ChatMessage{
 			Flag:    pb.ChatMessage_READ,
-			OrderID: orderID,
+			OrderID: orderID.String(),
 			ReadID:  lastMessage.MessageID,
 		}
 
@@ -207,14 +207,13 @@ func (n *OpenBazaarNode) GetChatMessagesByPeer(peer peer.ID, limit int, offsetID
 	err := n.repo.DB().View(func(tx database.Tx) error {
 		if offsetID != "" {
 			var message models.ChatMessage
-			err := tx.Read().Where("peer_id = ?", peer.Pretty()).Where("message_id = ?", offsetID).Order("timestamp desc").First(&message).Error
+			err := tx.Read().Where("peer_id = ?", peer.Pretty()).Where("message_id = ?", offsetID).Where("order_id = ?", "").Order("timestamp desc").First(&message).Error
 			if err != nil {
 				return err
 			}
-			return tx.Read().Where("peer_id = ?", peer.Pretty()).Where("timestamp < ?", message.Timestamp).Limit(limit).Order("timestamp desc").Find(&messages).Error
+			return tx.Read().Where("peer_id = ?", peer.Pretty()).Where("timestamp < ?", message.Timestamp).Where("order_id = ?", "").Limit(limit).Order("timestamp desc").Find(&messages).Error
 		}
-
-		return tx.Read().Where("peer_id = ?", peer.Pretty()).Limit(limit).Order("timestamp desc").Find(&messages).Error
+		return tx.Read().Where("peer_id = ?", peer.Pretty()).Where("order_id = ?", "").Limit(limit).Order("timestamp desc").Find(&messages).Error
 	})
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		return nil, err
@@ -223,23 +222,44 @@ func (n *OpenBazaarNode) GetChatMessagesByPeer(peer peer.ID, limit int, offsetID
 }
 
 // GetChatMessagesByOrderID returns a list of chat messages for a given orderID.
-func (n *OpenBazaarNode) GetChatMessagesByOrderID(orderID string, limit int, offsetID string) ([]models.ChatMessage, error) {
+func (n *OpenBazaarNode) GetChatMessagesByOrderID(orderID models.OrderID, limit int, offsetID string) ([]models.ChatMessage, error) {
 	var messages []models.ChatMessage
 	err := n.repo.DB().View(func(tx database.Tx) error {
 		if offsetID != "" {
 			var message models.ChatMessage
-			err := tx.Read().Where("order_id = ?", orderID).Where("message_id = ?", offsetID).Order("timestamp desc").First(&message).Error
+			err := tx.Read().Where("order_id = ?", orderID.String()).Where("message_id = ?", offsetID).Order("timestamp desc").First(&message).Error
 			if err != nil {
 				return err
 			}
-			return tx.Read().Where("order_id = ?", orderID).Where("timestamp < ?", message.Timestamp).Order("timestamp desc").Limit(limit).Find(&messages).Error
+			return tx.Read().Where("order_id = ?", orderID.String()).Where("timestamp < ?", message.Timestamp).Order("timestamp desc").Limit(limit).Find(&messages).Error
 		}
-		return tx.Read().Where("order_id = ?", orderID).Order("timestamp desc").Limit(limit).Find(&messages).Error
+		return tx.Read().Where("order_id = ?", orderID.String()).Order("timestamp desc").Limit(limit).Find(&messages).Error
 	})
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		return nil, err
 	}
 	return messages, nil
+}
+
+// DeleteChatMessage deletes the message with the provided ID.
+func (n *OpenBazaarNode) DeleteChatMessage(messageID string) error {
+	return n.repo.DB().Update(func(tx database.Tx) error {
+		return tx.Delete("message_id", messageID, nil, &models.ChatMessage{})
+	})
+}
+
+// DeleteChatConversation deletes all messages from the given peerID.
+func (n *OpenBazaarNode) DeleteChatConversation(peerID peer.ID) error {
+	return n.repo.DB().Update(func(tx database.Tx) error {
+		return tx.Delete("peer_id", peerID.Pretty(), map[string]interface{}{"order_id = ?": ""}, &models.ChatMessage{})
+	})
+}
+
+// DeleteGroupChatMessages deletes all messages from for the given orderID.
+func (n *OpenBazaarNode) DeleteGroupChatMessages(orderID models.OrderID) error {
+	return n.repo.DB().Update(func(tx database.Tx) error {
+		return tx.Delete("order_id", orderID.String(), nil, &models.ChatMessage{})
+	})
 }
 
 // handleChatMessage handles incoming chat messages from the network.

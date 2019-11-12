@@ -83,8 +83,10 @@ type Tx interface {
 	Update(key string, value interface{}, where map[string]interface{}, model interface{}) error
 
 	// Delete will delete all models of the given type from the database where
-	// key == value. The key must be of the value
-	Delete(key string, value interface{}, model interface{}) error
+	// key == value. The map can be used to impose extra conditions on which
+	// specific model gets updated. The map key must be of the format "key = ?".
+	// This allows for using alternative conditions such as "timestamp <= ?".
+	Delete(key string, value interface{}, where map[string]interface{}, model interface{}) error
 
 	// Migrate will auto-migrate the database to from any previous schema for this
 	// model to the current schema.

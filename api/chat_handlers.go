@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/gorilla/mux"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"net/http"
@@ -26,7 +27,7 @@ func (g *Gateway) handlePOSTSendChatMessage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := g.node.SendChatMessage(pid, m.Message, m.OrderID, nil); err != nil {
+	if err := g.node.SendChatMessage(pid, m.Message, models.OrderID(m.OrderID), nil); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -34,7 +35,7 @@ func (g *Gateway) handlePOSTSendChatMessage(w http.ResponseWriter, r *http.Reque
 
 func (g *Gateway) handlePOSTSendGroupChatMessage(w http.ResponseWriter, r *http.Request) {
 	type message struct {
-		PeerIDs []string `json:"peerID"`
+		PeerIDs []string `json:"peerIDs"`
 		Message string   `json:"message"`
 		OrderID string   `json:"orderID"`
 	}
@@ -51,7 +52,7 @@ func (g *Gateway) handlePOSTSendGroupChatMessage(w http.ResponseWriter, r *http.
 			return
 		}
 
-		if err := g.node.SendChatMessage(pid, m.Message, m.OrderID, nil); err != nil {
+		if err := g.node.SendChatMessage(pid, m.Message, models.OrderID(m.OrderID), nil); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -75,7 +76,7 @@ func (g *Gateway) handlePOSTSendTypingMessage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := g.node.SendTypingMessage(pid, m.OrderID); err != nil {
+	if err := g.node.SendTypingMessage(pid, models.OrderID(m.OrderID)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -83,7 +84,7 @@ func (g *Gateway) handlePOSTSendTypingMessage(w http.ResponseWriter, r *http.Req
 
 func (g *Gateway) handlePOSTSendGroupTypingMessage(w http.ResponseWriter, r *http.Request) {
 	type message struct {
-		PeerIDs []string `json:"peerID"`
+		PeerIDs []string `json:"peerIDs"`
 		OrderID string   `json:"orderID"`
 	}
 	var m message
@@ -99,7 +100,7 @@ func (g *Gateway) handlePOSTSendGroupTypingMessage(w http.ResponseWriter, r *htt
 			return
 		}
 
-		if err := g.node.SendTypingMessage(pid, m.OrderID); err != nil {
+		if err := g.node.SendTypingMessage(pid, models.OrderID(m.OrderID)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -123,7 +124,7 @@ func (g *Gateway) handlePOSTMarkChatMessageAsRead(w http.ResponseWriter, r *http
 		return
 	}
 
-	if err := g.node.MarkChatMessagesAsRead(pid, m.OrderID); err != nil {
+	if err := g.node.MarkChatMessagesAsRead(pid, models.OrderID(m.OrderID)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -134,6 +135,9 @@ func (g *Gateway) handleGETChatConversations(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if convos == nil {
+		convos = []models.ChatConversation{}
 	}
 	sanitizedJSONResponse(w, convos)
 }
@@ -158,11 +162,13 @@ func (g *Gateway) handleGETChatMessages(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	messages, err := g.node.GetChatMessagesByPeer(pid, limit, offsetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if messages == nil {
+		messages = []models.ChatMessage{}
 	}
 	sanitizedJSONResponse(w, messages)
 }
@@ -183,10 +189,46 @@ func (g *Gateway) handleGETGroupChatMessages(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	messages, err := g.node.GetChatMessagesByOrderID(orderID, limit, offsetID)
+	messages, err := g.node.GetChatMessagesByOrderID(models.OrderID(orderID), limit, offsetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if messages == nil {
+		messages = []models.ChatMessage{}
+	}
 	sanitizedJSONResponse(w, messages)
+}
+
+func (g *Gateway) handleDELETEChatMessages(w http.ResponseWriter, r *http.Request) {
+	messageID := mux.Vars(r)["messageID"]
+	err := g.node.DeleteChatMessage(messageID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (g *Gateway) handleDELETEGroupChatMessages(w http.ResponseWriter, r *http.Request) {
+	orderID := mux.Vars(r)["orderID"]
+	err := g.node.DeleteGroupChatMessages(models.OrderID(orderID))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+func (g *Gateway) handleDELETEChatConversation(w http.ResponseWriter, r *http.Request) {
+	peerIDStr := mux.Vars(r)["peerID"]
+
+	pid, err := peer.IDB58Decode(peerIDStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = g.node.DeleteChatConversation(pid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }

@@ -27,6 +27,20 @@ func TestProfileHandlers(t *testing.T) {
 			},
 		},
 		{
+			name:   "Get my profile fail",
+			path:   "/v1/ob/profile",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return nil, errors.New("error")
+				}
+			},
+			statusCode: http.StatusNotFound,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("error\n"), nil
+			},
+		},
+		{
 			name:   "Get profile no cache",
 			path:   "/v1/ob/profile/12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi",
 			method: http.MethodGet,
@@ -37,14 +51,41 @@ func TestProfileHandlers(t *testing.T) {
 					}
 					if useCache {
 						return &models.Profile{Name: "Ron Swanson"}, nil
-					} else {
-						return &models.Profile{Name: "Ron Paul"}, nil
 					}
+					return &models.Profile{Name: "Ron Paul"}, nil
 				}
 			},
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
 				return marshalAndSanitizeJSON(&models.Profile{Name: "Ron Paul"})
+			},
+		},
+		{
+			name:   "Get profile fail",
+			path:   "/v1/ob/profile/12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					return nil, errors.New("error")
+				}
+			},
+			statusCode: http.StatusNotFound,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("error\n"), nil
+			},
+		},
+		{
+			name:   "Get profile invalid peerID",
+			path:   "/v1/ob/profile/xxx",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					return nil, errors.New("error")
+				}
+			},
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
 			},
 		},
 		{
@@ -58,9 +99,8 @@ func TestProfileHandlers(t *testing.T) {
 					}
 					if useCache {
 						return &models.Profile{Name: "Ron Swanson"}, nil
-					} else {
-						return &models.Profile{Name: "Ron Paul"}, nil
 					}
+					return &models.Profile{Name: "Ron Paul"}, nil
 				}
 			},
 			statusCode: http.StatusOK,
@@ -101,6 +141,24 @@ func TestProfileHandlers(t *testing.T) {
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
 				return nil, nil
+			},
+		},
+		{
+			name:   "Post profile fail",
+			path:   "/v1/ob/profile",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return nil, os.ErrNotExist
+				}
+				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
+					return errors.New("error")
+				}
+			},
+			body:       []byte(`{"name": "Ron Swanson"}`),
+			statusCode: http.StatusInternalServerError,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("error\n"), nil
 			},
 		},
 		{
@@ -155,6 +213,24 @@ func TestProfileHandlers(t *testing.T) {
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
 				return nil, nil
+			},
+		},
+		{
+			name:   "Put profile fail",
+			path:   "/v1/ob/profile",
+			method: http.MethodPut,
+			setNodeMethods: func(n *mockNode) {
+				n.getMyProfileFunc = func() (*models.Profile, error) {
+					return nil, nil
+				}
+				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
+					return errors.New("error")
+				}
+			},
+			body:       []byte(`{"name": "Ron Swanson"}`),
+			statusCode: http.StatusInternalServerError,
+			expectedResponse: func() ([]byte, error) {
+				return []byte("error\n"), nil
 			},
 		},
 		{
@@ -219,6 +295,30 @@ func TestProfileHandlers(t *testing.T) {
 			},
 		},
 		{
+			name:   "Fetch profiles invalid peerID",
+			path:   "/v1/ob/fetchprofiles",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					if peerID.Pretty() == "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN" {
+						return &models.Profile{Name: "Ron Paul"}, nil
+					}
+					if peerID.Pretty() == "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi" {
+						return &models.Profile{Name: "Ron Swanson"}, nil
+					}
+					return nil, os.ErrNotExist
+				}
+			},
+			body:       []byte(`["xxx", "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi"]`),
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				profiles := []models.Profile{
+					{Name: "Ron Swanson"},
+				}
+				return marshalAndSanitizeJSON(profiles)
+			},
+		},
+		{
 			name:   "Fetch profiles invalid JSON",
 			path:   "/v1/ob/fetchprofiles",
 			method: http.MethodPost,
@@ -258,6 +358,21 @@ func TestProfileHandlers(t *testing.T) {
 					{Name: "Ron Swanson"},
 				}
 				return marshalAndSanitizeJSON(profiles)
+			},
+		},
+		{
+			name:   "Fetch profiles none found",
+			path:   "/v1/ob/fetchprofiles",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
+					return nil, os.ErrNotExist
+				}
+			},
+			body:       []byte(`["12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi"]`),
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(`[]`), nil
 			},
 		},
 	})

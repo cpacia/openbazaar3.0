@@ -96,8 +96,8 @@ func (g *Gateway) handlePOSTFetchProfiles(w http.ResponseWriter, r *http.Request
 		for _, peerIDStr := range peerIDs {
 			pid, err := peer.IDB58Decode(peerIDStr)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
+				wg.Done()
+				continue
 			}
 			go func(p peer.ID) {
 				defer wg.Done()

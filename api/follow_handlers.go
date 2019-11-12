@@ -35,6 +35,9 @@ func (g *Gateway) handleGETFollowers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if followers == nil {
+		followers = models.Followers{}
+	}
 	sanitizedJSONResponse(w, followers)
 }
 
@@ -64,6 +67,9 @@ func (g *Gateway) handleGETFollowing(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
+	}
+	if following == nil {
+		following = models.Following{}
 	}
 	sanitizedJSONResponse(w, following)
 }
