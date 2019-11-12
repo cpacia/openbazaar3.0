@@ -193,7 +193,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 		<-sub.Out()
 	}
 
-	messages, err := mocknet.Nodes()[1].GetChatMessagesByPeer(mocknet.Nodes()[0].Identity(), 0, "")
+	messages, err := mocknet.Nodes()[1].GetChatMessagesByPeer(mocknet.Nodes()[0].Identity(), -1, "")
 	if err != nil {
 		t.Fatal(err)
 	}
