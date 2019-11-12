@@ -38,6 +38,15 @@ var (
 		"error":    logging.ERROR,
 		"critical": logging.CRITICAL,
 	}
+
+	defaultMainnetBootstrapAddrs = []string{
+		"/ip4/138.197.64.140/tcp/4001/p2p/12D3KooWGe3dbYcSrwq759sipd5ymhKffD54pEuk95u98swp9jdX",
+	}
+
+	defaultTestnetBootstrapAddrs = []string{
+		"",
+	}
+
 )
 
 // Config defines the configuration options for OpenBazaar.
@@ -119,7 +128,7 @@ func LoadConfig() (*Config, []string, error) {
 	var configFileError error
 	parser := flags.NewParser(&cfg, flags.Default)
 	if _, err := os.Stat(preCfg.ConfigFile); os.IsNotExist(err) {
-		err := createDefaultConfigFile(preCfg.ConfigFile)
+		err := createDefaultConfigFile(preCfg.ConfigFile, cfg.Testnet)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating a "+
 				"default config file: %v\n", err)
@@ -162,7 +171,7 @@ func LoadConfig() (*Config, []string, error) {
 
 // createDefaultConfig copies the sample-bchd.conf content to the given destination path,
 // and populates it with some randomly generated RPC username and password.
-func createDefaultConfigFile(destinationPath string) error {
+func createDefaultConfigFile(destinationPath string, testnet bool) error {
 	// Create the destination directory if it does not exists
 	err := os.MkdirAll(filepath.Dir(destinationPath), 0700)
 	if err != nil {
@@ -192,7 +201,25 @@ func createDefaultConfigFile(destinationPath string) error {
 			return err
 		}
 
-		// TODO: override and set bootstrap addresses here
+		if strings.Contains(line, "bootstrapaddr=") {
+			if _, err := dest.WriteString(""); err != nil {
+				return err
+			}
+			if testnet {
+				for _, addr := range defaultTestnetBootstrapAddrs {
+					if _, err := dest.WriteString("bootstrapaddr=" +  addr + "\n"); err != nil {
+						return err
+					}
+				}
+			} else {
+				for _, addr := range defaultMainnetBootstrapAddrs {
+					if _, err := dest.WriteString("bootstrapaddr=" + addr + "\n"); err != nil {
+						return err
+					}
+				}
+			}
+			continue
+		}
 
 		if _, err := dest.WriteString(line); err != nil {
 			return err
