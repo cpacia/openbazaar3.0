@@ -142,6 +142,15 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
+	if cfg.IPFSOnly {
+		return &OpenBazaarNode{
+			repo:         obRepo,
+			ipfsNode:     ipfsNode,
+			ipfsOnlyMode: true,
+			shutdown:     make(chan struct{}),
+		}, nil
+	}
+
 	// Load the keys from the db
 	var (
 		dbEscrowKey models.Key
@@ -204,33 +213,6 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	obNode.listenNetworkEvents()
 
 	return obNode, nil
-}
-
-func NewIPFSOnlyNode(ctx context.Context, dataDir string, testnet bool) (*core.IpfsNode, error) {
-	// Load the IPFS Repo
-	ipfsRepo, err := fsrepo.Open(path.Join(dataDir, "ipfs"))
-	if err != nil {
-		return nil, err
-	}
-	ncfg := &core.BuildCfg{
-		Repo:   ipfsRepo,
-		Online: true,
-		ExtraOpts: map[string]bool{
-			"mplex":  true,
-			"ipnsps": true,
-		},
-		Routing: constructRouting,
-	}
-
-	updateIPFSGlobalProtocolVars(testnet)
-	if !testnet {
-		ProtocolDHT = obnet.ProtocolKademliaMainnetTwo
-	} else {
-		ProtocolDHT = obnet.ProtocolKademliaTestnetTwo
-	}
-
-	// Construct IPFS node.
-	return core.NewNode(ctx, ncfg)
 }
 
 type dummyListener struct {

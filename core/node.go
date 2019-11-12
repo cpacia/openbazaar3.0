@@ -81,6 +81,9 @@ type OpenBazaarNode struct {
 	// has just completed and it should update it's last published time.
 	publishChan chan pubCloser
 
+	// ipfsOnlyMode signals that the node is running in IPFS only mode.
+	ipfsOnlyMode bool
+
 	// shutdown is closed when the node is stopped. Any listening
 	// goroutines can use this to terminate.
 	shutdown chan struct{}
@@ -88,12 +91,14 @@ type OpenBazaarNode struct {
 
 // Start gets the node up and running and listens for a signal interrupt.
 func (n *OpenBazaarNode) Start() {
-	go n.messenger.Start()
-	go n.followerTracker.Start()
-	go n.orderProcessor.Start()
-	go n.syncMessages()
-	go n.publishHandler()
-	go n.gateway.Serve()
+	if !n.ipfsOnlyMode {
+		go n.messenger.Start()
+		go n.followerTracker.Start()
+		go n.orderProcessor.Start()
+		go n.syncMessages()
+		go n.publishHandler()
+		go n.gateway.Serve()
+	}
 }
 
 // Stop cleanly shutsdown the OpenBazaarNode and signals to any
@@ -107,11 +112,14 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 	n.ipfsNode.Context().Done()
 	n.ipfsNode.Close()
 	n.repo.Close()
-	n.networkService.Close()
-	n.messenger.Stop()
-	n.orderProcessor.Stop()
-	if n.gateway != nil {
-		n.gateway.Close()
+
+	if !n.ipfsOnlyMode {
+		n.networkService.Close()
+		n.messenger.Stop()
+		n.orderProcessor.Stop()
+		if n.gateway != nil {
+			n.gateway.Close()
+		}
 	}
 	return nil
 }

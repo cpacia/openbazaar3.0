@@ -67,6 +67,7 @@ type Config struct {
 	APIPublicGateway      bool     `long:"publicgateway" description:"When this option is used only public GET methods will be allowed in the API"`
 	Profile               string   `long:"profile" description:"Enable HTTP profiling on given port -- NOTE port must be between 1024 and 65536"`
 	CPUProfile            string   `long:"cpuprofile" description:"Write CPU profile to the specified file"`
+	IPFSOnly              bool     `long:"ipfsonly" description:"Disable all OpenBazaar functionality except the IPFS networking."`
 }
 
 // LoadConfig initializes and parses the config using a config file and command
