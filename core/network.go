@@ -31,7 +31,7 @@ const (
 
 	// nameValidTime is the amount of time an IPNS record is considered valid
 	// after publish.
-	nameValidTime = time.Hour * 36
+	nameValidTime = time.Hour * 24 * 7
 )
 
 // Publish will publish the current public data directory to IPNS.

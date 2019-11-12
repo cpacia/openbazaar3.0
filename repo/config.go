@@ -46,7 +46,6 @@ var (
 	defaultTestnetBootstrapAddrs = []string{
 		"",
 	}
-
 )
 
 // Config defines the configuration options for OpenBazaar.
@@ -207,7 +206,7 @@ func createDefaultConfigFile(destinationPath string, testnet bool) error {
 			}
 			if testnet {
 				for _, addr := range defaultTestnetBootstrapAddrs {
-					if _, err := dest.WriteString("bootstrapaddr=" +  addr + "\n"); err != nil {
+					if _, err := dest.WriteString("bootstrapaddr=" + addr + "\n"); err != nil {
 						return err
 					}
 				}

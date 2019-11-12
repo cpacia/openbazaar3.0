@@ -264,9 +264,8 @@ func (n *OpenBazaarNode) DeleteGroupChatMessages(orderID models.OrderID) error {
 
 // handleChatMessage handles incoming chat messages from the network.
 func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) error {
-	defer n.sendAckMessage(message.MessageID, from)
-
 	if n.isDuplicate(message) {
+		n.sendAckMessage(message.MessageID, from)
 		return nil
 	}
 
@@ -277,6 +276,7 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 
 	switch chatMsg.Flag {
 	case pb.ChatMessage_MESSAGE:
+		defer n.sendAckMessage(message.MessageID, from)
 		log.Infof("Received CHAT message from %s. MessageID: %s", from, message.MessageID)
 		incomingMsg, err := models.NewChatMessageFromProto(from, message)
 		if err != nil {
@@ -292,6 +292,7 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		n.eventBus.Emit(incomingMsg.ToChatNotification())
 		return nil
 	case pb.ChatMessage_READ:
+		defer n.sendAckMessage(message.MessageID, from)
 		log.Infof("Received READ message from %s. MessageID: %s. ReadID: %s", from, message.MessageID, chatMsg.ReadID)
 		err := n.repo.DB().Update(func(tx database.Tx) error {
 			// Load the message with the provided ID

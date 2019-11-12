@@ -45,7 +45,7 @@ var (
 	ProtocolDHT     protocol.ID
 )
 
-// NewNode constructs and returns an IpfsNode using the given cfg.
+// NewNode constructs and returns an OpenBazaarNode using the given cfg.
 func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	obRepo, err := repo.NewRepo(cfg.DataDir)
 	if err != nil {

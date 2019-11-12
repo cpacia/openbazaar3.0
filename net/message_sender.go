@@ -149,7 +149,7 @@ func (ms *messageSender) sendMessage(ctx context.Context, pmes *pb.Message) erro
 				log.Debug("error writing message, bailing: ", err)
 				return err
 			}
-			log.Info("error writing message, trying again: ", err)
+			log.Debug("error writing message, trying again: ", err)
 			retry = true
 			continue
 		}

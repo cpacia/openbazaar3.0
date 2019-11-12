@@ -92,6 +92,7 @@ func (t *FollowerTracker) Start() {
 	for _, peer := range t.net.Peers() {
 		if _, ok := t.followers[peer]; ok {
 			t.connected[peer] = time.Now()
+			log.Debugf("Connected to follower %s", peer.Pretty())
 		}
 	}
 	go t.listenEvents()
@@ -170,6 +171,7 @@ func (t *FollowerTracker) listenEvents() {
 			t.mtx.Lock()
 			if _, ok := t.followers[notif.Peer]; ok {
 				t.connected[notif.Peer] = time.Now()
+				log.Debugf("Connected to follower %s", notif.Peer.Pretty())
 			}
 			t.mtx.Unlock()
 			t.bus.Emit(&events.TrackerPeerConnected{Peer: notif.Peer})
@@ -203,6 +205,7 @@ func (t *FollowerTracker) listenEvents() {
 				}
 
 				delete(t.connected, notif.Peer)
+				log.Debugf("Disconnected from follower %s", notif.Peer.Pretty())
 			}
 			t.mtx.Unlock()
 			t.bus.Emit(&events.TrackerPeerDisconnected{Peer: notif.Peer})
@@ -260,6 +263,7 @@ func (t *FollowerTracker) tryConnectFollowers() {
 		if _, ok := t.followers[peer]; ok {
 			if _, aok := t.connected[peer]; !aok {
 				t.connected[peer] = time.Now()
+				log.Debugf("Connected to follower %s", peer.Pretty())
 			}
 		}
 	}
