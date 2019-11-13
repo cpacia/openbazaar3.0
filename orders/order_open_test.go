@@ -1288,7 +1288,7 @@ func Test_validateOrderOpen(t *testing.T) {
 			continue
 		}
 		processor.db.Update(func(tx database.Tx) error {
-			err := processor.validateOrderOpen(tx, order, models.OrderID(orderHash.B58String()))
+			err := processor.validateOrderOpen(tx, order, models.OrderID(orderHash.B58String()), models.RoleBuyer)
 			if test.valid && err != nil {
 				t.Errorf("Test %d failed when it should not have: %s", i, err)
 			} else if !test.valid && err == nil {
