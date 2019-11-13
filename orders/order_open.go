@@ -46,12 +46,18 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 		return nil, nil
 	}
 
+	if op.identity.Pretty() == orderOpen.BuyerID.PeerID {
+		order.SetRole(models.RoleBuyer)
+	} else {
+		order.SetRole(models.RoleVendor)
+	}
+
 	var validationError bool
 	// If the validation fails and we are the vendor, we send a REJECT message back
 	// to the buyer. The reject message also gets saved with this order.
-	if err := op.validateOrderOpen(dbtx, orderOpen, order.ID); err != nil {
+	if err := op.validateOrderOpen(dbtx, orderOpen, order.ID, order.Role()); err != nil {
 		log.Errorf("ORDER_OPEN message for order %s from %s failed to validate: %s", order.ID, orderOpen.BuyerID.PeerID, err)
-		if op.identity != peer {
+		if order.Role() == models.RoleVendor {
 			reject := pb.OrderReject{
 				Type:   pb.OrderReject_VALIDATION_ERROR,
 				Reason: err.Error(),
@@ -117,12 +123,6 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 		}
 	}
 
-	if op.identity.Pretty() == orderOpen.BuyerID.PeerID {
-		order.SetRole(models.RoleBuyer)
-	} else {
-		order.SetRole(models.RoleVendor)
-	}
-
 	if err := order.PutMessage(orderOpen); err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 
 // validateOrderOpen checks all the fields in the order to make sure they are
 // properly formatted.
-func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpen, orderID models.OrderID) error {
+func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpen, orderID models.OrderID, role models.OrderRole) error {
 	if order.Listings == nil {
 		return errors.New("listings field is nil")
 	}
@@ -160,7 +160,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		return err
 	}
 
-	if op.identity.Pretty() != order.BuyerID.PeerID { // If we are vendor.
+	if role == models.RoleVendor { // If we are vendor.
 		// Check to make sure we actually have the item for sale.
 		for _, listing := range order.Listings {
 			var theirListing pb.SignedListing
