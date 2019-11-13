@@ -110,7 +110,7 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, orderID models.Ord
 	return n.repo.DB().Update(func(tx database.Tx) error {
 		// Check unread count. If zero we can just exit.
 		var unreadCount int
-		if err := tx.Read().Where("peer_id = ? AND read = ? AND order_id = ?", peer.Pretty(), false, orderID.String()).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Where("peer_id = ? AND read = ? AND order_id = ? AND outgoing = ?", peer.Pretty(), false, orderID.String(), false).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
 
@@ -120,12 +120,12 @@ func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, orderID models.Ord
 
 		// Load the last message
 		lastMessage := models.ChatMessage{}
-		if err := tx.Read().Order("timestamp desc").Where("peer_id = ? AND read = ? AND order_id = ?", peer.Pretty(), false, orderID.String()).First(&lastMessage).Error; err != nil {
+		if err := tx.Read().Order("timestamp desc").Where("peer_id = ? AND read = ? AND order_id = ? AND outgoing = ?", peer.Pretty(), false, orderID.String(), false).First(&lastMessage).Error; err != nil {
 			return err
 		}
 
 		// Update the local DB
-		if err := tx.Update("read", true, map[string]interface{}{"peer_id = ?": peer.Pretty(), "order_id = ?": orderID.String()}, &models.ChatMessage{}); err != nil {
+		if err := tx.Update("read", true, map[string]interface{}{"peer_id = ?": peer.Pretty(), "order_id = ?": orderID.String(), "outgoing = ?": false}, &models.ChatMessage{}); err != nil {
 			return err
 		}
 
