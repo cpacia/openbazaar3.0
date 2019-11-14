@@ -12,6 +12,7 @@ import (
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/jarcoal/httpmock"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 )
@@ -245,6 +246,7 @@ func (w *MockWallet) Start() {
 					relevant bool
 					watched  bool
 				)
+				total := iwallet.NewAmount(0)
 				for i, out := range tx.To {
 					if _, ok := w.addrs[out.Address]; ok {
 						idx := make([]byte, 4)
@@ -258,6 +260,7 @@ func (w *MockWallet) Start() {
 								value:    out.Amount,
 							}
 						}
+						total = total.Add(out.Amount)
 						w.addrs[out.Address] = true
 						relevant = true
 					}
@@ -270,6 +273,7 @@ func (w *MockWallet) Start() {
 						if _, ok := w.utxos[hex.EncodeToString(in.ID)]; ok {
 							delete(w.utxos, hex.EncodeToString(in.ID))
 						}
+						total = total.Sub(in.Amount)
 						relevant = true
 					}
 					if _, ok := w.watchedAddrs[in.Address]; ok {
@@ -277,6 +281,8 @@ func (w *MockWallet) Start() {
 					}
 				}
 				if relevant || watched {
+					tx.Value = total
+					tx.Timestamp = time.Now()
 					w.transactions[tx.ID] = tx
 					if w.bus != nil {
 						w.bus.Emit(&events.TransactionReceived{Transaction: tx})
@@ -459,8 +465,29 @@ func (w *MockWallet) IsDust(amount iwallet.Amount) bool {
 	return amount.Cmp(iwallet.NewAmount(500)) < 0
 }
 
-// Transactions returns a slice of this wallet's transactions.
-func (w *MockWallet) Transactions() ([]iwallet.Transaction, error) {
+type txSorter struct {
+	transactions []iwallet.Transaction
+}
+
+// Len is part of sort.Interface.
+func (s *txSorter) Len() int {
+	return len(s.transactions)
+}
+
+// Swap is part of sort.Interface.
+func (s *txSorter) Swap(i, j int) {
+	s.transactions[i], s.transactions[j] = s.transactions[j], s.transactions[i]
+}
+
+// Less is part of sort.Interface. It is implemented by calling the "by" closure in the sorter.
+func (s *txSorter) Less(i, j int) bool {
+	return s.transactions[i].Timestamp.Before(s.transactions[j].Timestamp)
+}
+
+// Transactions returns a slice of this wallet's transactions. The transactions should
+// be sorted last to first and the limit and offset respected. The offsetID means
+// 'return transactions starting with the transaction after offsetID in the sorted list'
+func (w *MockWallet) Transactions(limit int, offsetID iwallet.TransactionID) ([]iwallet.Transaction, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
@@ -468,7 +495,24 @@ func (w *MockWallet) Transactions() ([]iwallet.Transaction, error) {
 	for _, tx := range w.transactions {
 		txs = append(txs, tx)
 	}
-	return txs, nil
+	sorted := &txSorter{transactions: txs}
+
+	sort.Sort(sorted)
+
+	if limit < 0 {
+		limit = len(sorted.transactions)
+	}
+	offset := 0
+	if offsetID != "" {
+		for i, tx := range sorted.transactions {
+			if tx.ID == offsetID {
+				offset = i + 1
+				break
+			}
+		}
+	}
+
+	return sorted.transactions[offset:limit], nil
 }
 
 // GetTransaction returns a transaction given it's ID.

@@ -35,7 +35,7 @@ func Test_processPaymentSentMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txs, err := wn.Wallets()[0].Transactions()
+	txs, err := wn.Wallets()[0].Transactions(-1, iwallet.TransactionID(""))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -79,7 +79,7 @@ func TestMockWallet_Spend(t *testing.T) {
 		t.Errorf("Incorrect txn txid. Expected %s, got %s", txid.String(), txn.ID.String())
 	}
 
-	txns, err := w.Transactions()
+	txns, err := w.Transactions(-1, iwallet.TransactionID(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestMockWallet_SweepWallet(t *testing.T) {
 		t.Errorf("Incorrect txn txid. Expected %s, got %s", txid.String(), txn.ID.String())
 	}
 
-	txns, err := w.Transactions()
+	txns, err := w.Transactions(-1, iwallet.TransactionID(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +307,7 @@ func TestMockWallet_SignMultisigTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txs, err := w1.Transactions()
+	txs, err := w1.Transactions(-1, iwallet.TransactionID(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,7 +374,7 @@ func TestMockWallet_SignMultisigAfterTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txs, err := w1.Transactions()
+	txs, err := w1.Transactions(-1, iwallet.TransactionID(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +440,7 @@ func TestMockWallet_1of2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txs, err := w1.Transactions()
+	txs, err := w1.Transactions(-1, iwallet.TransactionID(""))
 	if err != nil {
 		t.Fatal(err)
 	}

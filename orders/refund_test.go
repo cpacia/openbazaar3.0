@@ -53,7 +53,7 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txs, err := wn.Wallets()[0].Transactions()
+	txs, err := wn.Wallets()[0].Transactions(-1, iwallet.TransactionID(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,8 +70,9 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 	}
 
 	// FIXME: test both direct and moderated
+
 	refundMsg := &pb.Refund{
-		RefundInfo: &pb.Refund_TransactionID{TransactionID: txs[1].ID.String()},
+		RefundInfo: &pb.Refund_TransactionID{TransactionID: txs[0].ID.String()},
 	}
 
 	refundAny, err := ptypes.MarshalAny(refundMsg)
@@ -147,7 +148,7 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 				if len(orderTxs) == 0 {
 					return errors.New("failed to record any tx")
 				}
-				if orderTxs[0].ID != txs[1].ID {
+				if orderTxs[0].ID != txs[0].ID {
 					return errors.New("failed to record tx")
 				}
 				return nil
