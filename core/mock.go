@@ -119,6 +119,11 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 
 	var nodes []*OpenBazaarNode
 	for i := 0; i < numNodes; i++ {
+		r, err := repo.MockRepo()
+		if err != nil {
+			return nil, err
+		}
+
 		ipfsNode, err := core.NewNode(ctx, &core.BuildCfg{
 			Online: true,
 			Host:   coremock.MockHostOption(mn),
@@ -128,11 +133,6 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		}
 
 		ipfsNode.Namesys = namesys.NewNameSystem(ipfsNode.Routing, ipfsNode.Repo.Datastore(), 0)
-
-		r, err := repo.MockRepo()
-		if err != nil {
-			return nil, err
-		}
 
 		banManager := net.NewBanManager(nil)
 		service := net.NewNetworkService(ipfsNode.PeerHost, banManager, true)
