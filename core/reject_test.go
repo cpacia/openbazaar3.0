@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
+	iwallet "github.com/cpacia/wallet-interface"
 	"testing"
 	"time"
 )
@@ -171,7 +172,153 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Error("Node 1 failed to save order reject")
 	}
 
-	// FIXME: test sending refund when direct
+	// Address request direct order that is funded.
+	orderID, paymentAddress, paymentAmount, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-orderSub0.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	wallet0, err := network.Nodes()[0].multiwallet.WalletForCurrencyCode(iwallet.CtTestnetMock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr0, err := wallet0.CurrentAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wallet1, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode(iwallet.CtTestnetMock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr1, err := wallet1.CurrentAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.TransactionReceived{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txSub1, err := network.Nodes()[1].eventBus.Subscribe(&events.TransactionReceived{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := network.WalletNetwork().GenerateToAddress(addr0, iwallet.NewAmount(100000000000)); err != nil {
+		t.Fatal(err)
+	}
+	if err := network.WalletNetwork().GenerateToAddress(addr1, iwallet.NewAmount(100000000000)); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-txSub0.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-txSub1.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	fundingSub, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wTx, err := wallet1.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wallet1.Spend(wTx, paymentAddress, paymentAmount.Amount, iwallet.FlNormal); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := wTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-fundingSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	rejectSub, err = network.Nodes()[1].eventBus.Subscribe(&events.OrderDeclinedNotification{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rejectAck, err = network.Nodes()[0].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	refundSub, err := network.Nodes()[1].eventBus.Subscribe(&events.RefundNotification{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done4 = make(chan struct{})
+	if err := network.Nodes()[0].RejectOrder(orderID, "sucks to be you", done4); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done4:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-rejectSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+	select {
+	case <-rejectAck.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-refundSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	var order3 models.Order
+	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("id = ?", orderID.String()).Last(&order3).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	refunds, err := order3.Refunds()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refunds) != 1 {
+		t.Errorf("Expected 1 refund, got %d", len(refunds))
+	}
+
+	_, err = wallet1.GetTransaction(iwallet.TransactionID(refunds[0].GetTransactionID()))
+	if err != nil {
+		t.Errorf("Error loading refund transaction: %s", err)
+	}
+
 	// FIXME: test sending refund when moderated
 	// FIXME: test sending additional refund
 }

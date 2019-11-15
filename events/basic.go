@@ -33,6 +33,7 @@ func (b *basicBus) dropSubscriber(typ reflect.Type, s *sub) {
 	for i, sub := range subs {
 		if sub == s {
 			subs = append(subs[:i], subs[i+1:]...)
+			b.subs[typ] = subs
 			break
 		}
 	}

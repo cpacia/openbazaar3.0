@@ -145,7 +145,7 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 
 	case models.RoleVendor:
 		if funded {
-			notif := &events.OrderFundedNotification{
+			op.bus.Emit(&events.OrderFundedNotification{
 				BuyerHandle: orderOpen.BuyerID.Handle,
 				BuyerID:     orderOpen.BuyerID.PeerID,
 				ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),
@@ -161,8 +161,7 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 					Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
 				},
 				Title: orderOpen.Listings[0].Listing.Item.Title,
-			}
-			op.bus.Emit(&notif)
+			})
 			log.Infof("Payment detected: Order %s fully funded", order.ID)
 		} else {
 			log.Infof("Payment detected: Order %s partially funded", order.ID)
