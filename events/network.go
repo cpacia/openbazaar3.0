@@ -44,3 +44,7 @@ type PublishStarted struct {
 type PublishFinished struct {
 	ID int
 }
+
+// IPFSShutdown is an event that gets pushed when the IPFS node
+// shuts down.
+type IPFSShutdown struct{}

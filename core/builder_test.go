@@ -2,11 +2,13 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/repo"
 	bitswap "github.com/ipfs/go-bitswap/network"
+	"math/rand"
 	"os"
 	"path"
 	"testing"
@@ -15,11 +17,13 @@ import (
 func TestNewNode(t *testing.T) {
 	dataDir := path.Join(os.TempDir(), "openbazaar-test", "TestNewNode")
 
+
 	cfg := repo.Config{
 		DataDir:       dataDir,
 		Testnet:       true,
 		IPNSQuorum:    3,
 		BoostrapAddrs: []string{},
+		SwarmAddrs:    []string{fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", rand.Intn(65535))},
 	}
 
 	node, err := NewNode(context.Background(), &cfg)

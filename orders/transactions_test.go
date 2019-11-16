@@ -11,15 +11,15 @@ import (
 
 func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 	tests := []struct {
-		setup    func() (*OrderProcessor, error)
+		setup    func() (*OrderProcessor, func(), error)
 		tx       iwallet.Transaction
 		validate func(op *OrderProcessor) error
 	}{
 		{
-			setup: func() (*OrderProcessor, error) {
-				op, err := newMockOrderProcessor()
+			setup: func() (*OrderProcessor, func(), error) {
+				op, teardown, err := newMockOrderProcessor()
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
 				err = op.db.Update(func(tx database.Tx) error {
@@ -40,10 +40,10 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 
 				})
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
-				return op, nil
+				return op, teardown, nil
 			},
 			tx: iwallet.Transaction{
 				ID: "5678",
@@ -89,10 +89,10 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 			},
 		},
 		{
-			setup: func() (*OrderProcessor, error) {
-				op, err := newMockOrderProcessor()
+			setup: func() (*OrderProcessor, func(), error) {
+				op, teardown, err := newMockOrderProcessor()
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
 				err = op.db.Update(func(tx database.Tx) error {
@@ -113,10 +113,10 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 
 				})
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
-				return op, nil
+				return op, teardown, nil
 			},
 			tx: iwallet.Transaction{
 				ID: "5678",
@@ -155,10 +155,10 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 			},
 		},
 		{
-			setup: func() (*OrderProcessor, error) {
-				op, err := newMockOrderProcessor()
+			setup: func() (*OrderProcessor, func(), error) {
+				op, teardown, err := newMockOrderProcessor()
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
 				err = op.db.Update(func(tx database.Tx) error {
@@ -178,10 +178,10 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 
 				})
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
-				return op, nil
+				return op, teardown, nil
 			},
 			tx: iwallet.Transaction{
 				ID: "5678",
@@ -215,7 +215,7 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		op, err := test.setup()
+		op, teardown, err := test.setup()
 		if err != nil {
 			t.Errorf("Test %d setup failed: %s", i, err)
 			continue
@@ -224,5 +224,6 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 		if err := test.validate(op); err != nil {
 			t.Errorf("Test %d validation failed: %s", i, err)
 		}
+		teardown()
 	}
 }

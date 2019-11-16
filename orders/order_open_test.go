@@ -28,10 +28,12 @@ import (
 )
 
 func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
-	op, err := newMockOrderProcessor()
+	op, teardown, err := newMockOrderProcessor()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer teardown()
+
 	err = op.db.Update(func(tx database.Tx) error {
 		sl := factory.NewSignedListing()
 		return tx.SetListing(sl)
@@ -389,10 +391,12 @@ func TestCalculateOrderTotal(t *testing.T) {
 }
 
 func Test_validateOrderOpen(t *testing.T) {
-	processor, err := newMockOrderProcessor()
+	processor, teardown, err := newMockOrderProcessor()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer teardown()
+
 	err = processor.db.Update(func(tx database.Tx) error {
 		sl := factory.NewSignedListing()
 		sl2 := factory.NewSignedListing()

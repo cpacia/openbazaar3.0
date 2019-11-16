@@ -250,7 +250,7 @@ func (mn *Mocknet) WalletNetwork() *wallet.MockWalletNetwork {
 func (mn *Mocknet) TearDown() error {
 	for _, n := range mn.nodes {
 		if n == nil {
-			return nil
+			continue
 		}
 		n.Stop(true)
 		if err := n.repo.DestroyRepo(); err != nil {

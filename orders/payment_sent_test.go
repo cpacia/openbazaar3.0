@@ -19,10 +19,11 @@ import (
 )
 
 func Test_processPaymentSentMessage(t *testing.T) {
-	op, err := newMockOrderProcessor()
+	op, teardown, err := newMockOrderProcessor()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer teardown()
 
 	wn := wallet.NewMockWalletNetwork(1)
 	go wn.Start()

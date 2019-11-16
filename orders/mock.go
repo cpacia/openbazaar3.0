@@ -12,7 +12,7 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 )
 
-func newMockOrderProcessor() (*OrderProcessor, error) {
+func newMockOrderProcessor() (*OrderProcessor, func(), error) {
 	ctx := context.Background()
 
 	mn := mocknet.New(ctx)
@@ -21,12 +21,12 @@ func newMockOrderProcessor() (*OrderProcessor, error) {
 		Host:   coremock.MockHostOption(mn),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	r, err := repo.MockRepo()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	banManager := net.NewBanManager(nil)
@@ -40,7 +40,7 @@ func newMockOrderProcessor() (*OrderProcessor, error) {
 
 	erp, err := wallet.NewMockExchangeRates()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return NewOrderProcessor(&Config{
@@ -50,5 +50,8 @@ func newMockOrderProcessor() (*OrderProcessor, error) {
 		Multiwallet:          mw,
 		ExchangeRateProvider: erp,
 		EventBus:             events.NewBus(),
-	}), nil
+	}), func() {
+		ipfsNode.Close()
+		r.DestroyRepo()
+	}, nil
 }

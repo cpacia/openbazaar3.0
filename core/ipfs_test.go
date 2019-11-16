@@ -159,17 +159,19 @@ func Test_ipfsResolve(t *testing.T) {
 }
 
 func Test_ipfsCache(t *testing.T) {
-	db, err := repo.MockDB()
+	r, err := repo.MockRepo()
 	if err != nil {
 		t.Fatal()
 	}
+
+	defer r.DestroyRepo()
 
 	p, err := peer.IDB58Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
 	if err != nil {
 		t.Fatal(err)
 	}
 	pth := path.New("/ipfs/Qmd9hFFuueFrSR7YwUuAfirXXJ7ANZAMc5sx4HFxn7mPkc")
-	err = db.Update(func(tx database.Tx) error {
+	err = r.DB().Update(func(tx database.Tx) error {
 		return putToDatastoreCache(tx, p, pth)
 	})
 	if err != nil {
@@ -177,7 +179,7 @@ func Test_ipfsCache(t *testing.T) {
 	}
 
 	var ret path.Path
-	err = db.View(func(tx database.Tx) error {
+	err = r.DB().View(func(tx database.Tx) error {
 		ret, err = getFromDatastore(tx, p)
 		return err
 	})
@@ -223,6 +225,7 @@ func Test_ipfsCid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer node.DestroyNode()
 	cid, err := node.cid([]byte("hola"))
 	if err != nil {
 		t.Fatal(err)

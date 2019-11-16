@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"sync/atomic"
+	"time"
 )
 
 // OpenBazaarNode holds all the components that make up a network node
@@ -109,10 +110,6 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 	}
 
 	close(n.shutdown)
-	n.ipfsNode.Context().Done()
-	n.ipfsNode.Close()
-	n.repo.Close()
-
 	if !n.ipfsOnlyMode {
 		n.networkService.Close()
 		n.messenger.Stop()
@@ -121,6 +118,21 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 		if n.gateway != nil {
 			n.gateway.Close()
 		}
+	}
+	n.repo.Close()
+
+	stop := make(chan struct{})
+	go func() {
+		n.ipfsNode.Context().Done()
+		n.ipfsNode.Close()
+		n.eventBus.Emit(&events.IPFSShutdown{})
+		close(stop)
+	}()
+	select {
+	case <-time.After(time.Second*2):
+		return ErrIPFSDelayedShutdown
+	case <- stop:
+
 	}
 	return nil
 }

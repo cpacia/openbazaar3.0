@@ -16,10 +16,11 @@ import (
 )
 
 func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
-	op, err := newMockOrderProcessor()
+	op, teardown, err := newMockOrderProcessor()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer teardown()
 
 	priv, pub, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

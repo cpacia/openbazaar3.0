@@ -13,7 +13,11 @@ var (
 	// greater than our largest known version.
 	ErrUnknownListingVersion = errors.New("upgraded needed to purchase listing version")
 
+	// ErrPublishingActive is returned if the node is still publishing during a shutdown.
 	ErrPublishingActive = errors.New("publishing active - use force to shutdown")
+
+	// ErrIPFSDelayedShutdown is returned if the IPFS is lagging during shutdown.
+	ErrIPFSDelayedShutdown = errors.New("ipfs node delayed shutdown")
 )
 
 type ErrTooManyItems []string

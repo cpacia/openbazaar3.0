@@ -298,6 +298,12 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
+	select {
+	case <-txSub1.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
 	var order3 models.Order
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderID.String()).Last(&order3).Error
