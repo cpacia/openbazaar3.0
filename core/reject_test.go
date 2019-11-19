@@ -325,6 +325,72 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Errorf("Error loading refund transaction: %s", err)
 	}
 
-	// FIXME: test sending refund when moderated
-	// FIXME: test sending additional refund
+	// Moderated order that is funded.
+	purchase.Moderator = network.Nodes()[2].Identity().Pretty()
+	orderID, paymentAddress, paymentAmount, err = network.Nodes()[1].PurchaseListing(context.Background(), purchase)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-orderSub0.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	fundingSub, err = network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wTx, err = wallet1.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wallet1.Spend(wTx, paymentAddress, paymentAmount.Amount, iwallet.FlNormal); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := wTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-fundingSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	done4 = make(chan struct{})
+	if err := network.Nodes()[0].RejectOrder(orderID, "sucks to be you", done4); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done4:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-rejectSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+	select {
+	case <-rejectAck.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-refundSub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-txSub1.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
 }

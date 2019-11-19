@@ -73,6 +73,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		Db:                   r.DB(),
 		Messenger:            messenger,
 		Multiwallet:          mw,
+		EscrowPrivateKey:     escrowKey,
 		ExchangeRateProvider: erp,
 		EventBus:             bus,
 	})
@@ -173,6 +174,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			Db:                   r.DB(),
 			Messenger:            messenger,
 			Multiwallet:          mw,
+			EscrowPrivateKey:     escrowKey,
 			ExchangeRateProvider: erp,
 			EventBus:             bus,
 		})

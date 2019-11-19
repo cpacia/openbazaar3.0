@@ -130,6 +130,28 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 		order.PaymentAddress = orderOpen.Payment.Address
 	}
 
+	wallet, err := op.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+	if err != nil {
+		return nil, err
+	}
+	wtx, err := wallet.Begin()
+	if err != nil {
+		return nil, err
+	}
+	err = wallet.WatchAddress(wtx, iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CoinType(orderOpen.Payment.Coin)))
+	if err != nil {
+		return nil, err
+	}
+	if err := wtx.Commit(); err != nil {
+		return nil, err
+	}
+
+	if order.Role() == models.RoleVendor {
+		log.Infof("Received ORDER_OPEN message from %s. OrderID: %s", peer.Pretty(), order.ID)
+	} else if order.Role() == models.RoleBuyer {
+		log.Infof("Processed own order for orderID: %s", order.ID)
+	}
+
 	return event, nil
 }
 

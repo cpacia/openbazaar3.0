@@ -129,9 +129,9 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 		close(stop)
 	}()
 	select {
-	case <-time.After(time.Second*2):
+	case <-time.After(time.Second * 2):
 		return ErrIPFSDelayedShutdown
-	case <- stop:
+	case <-stop:
 
 	}
 	return nil

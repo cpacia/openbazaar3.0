@@ -181,6 +181,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		Db:                   obRepo.DB(),
 		Messenger:            messenger,
 		Multiwallet:          mw,
+		EscrowPrivateKey:     escrowKey,
 		ExchangeRateProvider: erp,
 		EventBus:             bus,
 	})

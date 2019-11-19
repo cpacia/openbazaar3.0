@@ -162,25 +162,7 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 			return err
 		}
 
-		walletTx, err := wallet.Begin()
-		if err != nil {
-			return err
-		}
-
-		if err := wallet.WatchAddress(walletTx, paymentAddress); err != nil {
-			if err := walletTx.Rollback(); err != nil {
-				log.Errorf("Wallet rollback error: %s", err)
-			}
-			return err
-		}
-
-		if err := n.messenger.ReliablySendMessage(tx, vendorPeerID, message, nil); err != nil {
-			if err := walletTx.Rollback(); err != nil {
-				log.Errorf("Wallet rollback error: %s", err)
-			}
-			return err
-		}
-		return walletTx.Commit()
+		return n.messenger.ReliablySendMessage(tx, vendorPeerID, message, nil)
 	})
 	if err != nil {
 		return

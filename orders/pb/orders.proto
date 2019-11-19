@@ -96,8 +96,9 @@ message Refund {
 
     message EscrowRelease {
         repeated Signature escrowSignatures = 1;
-        string address                      = 2;
-        string amount                       = 3;
+        repeated bytes fromIDs              = 2;
+        string toAddress                    = 3;
+        string toAmount                     = 4;
     }
 
     message Signature {

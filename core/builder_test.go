@@ -17,7 +17,6 @@ import (
 func TestNewNode(t *testing.T) {
 	dataDir := path.Join(os.TempDir(), "openbazaar-test", "TestNewNode")
 
-
 	cfg := repo.Config{
 		DataDir:       dataDir,
 		Testnet:       true,

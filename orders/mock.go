@@ -44,14 +44,14 @@ func newMockOrderProcessor() (*OrderProcessor, func(), error) {
 	}
 
 	return NewOrderProcessor(&Config{
-		Identity:             ipfsNode.Identity,
-		Db:                   r.DB(),
-		Messenger:            messenger,
-		Multiwallet:          mw,
-		ExchangeRateProvider: erp,
-		EventBus:             events.NewBus(),
-	}), func() {
-		ipfsNode.Close()
-		r.DestroyRepo()
-	}, nil
+			Identity:             ipfsNode.Identity,
+			Db:                   r.DB(),
+			Messenger:            messenger,
+			Multiwallet:          mw,
+			ExchangeRateProvider: erp,
+			EventBus:             events.NewBus(),
+		}), func() {
+			ipfsNode.Close()
+			r.DestroyRepo()
+		}, nil
 }

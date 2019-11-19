@@ -74,6 +74,9 @@ func (r *Repo) Close() {
 // DestroyRepo deletes the entire directory. Do NOT use this unless you are
 // positive you want to wipe all data.
 func (r *Repo) DestroyRepo() error {
+	if err := r.db.Close(); err != nil {
+		return err
+	}
 	return os.RemoveAll(r.dataDir)
 }
 

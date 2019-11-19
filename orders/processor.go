@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/OpenBazaar/jsonpb"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -29,6 +30,7 @@ var (
 type Config struct {
 	Identity             peer.ID
 	Db                   database.Database
+	EscrowPrivateKey     *btcec.PrivateKey
 	Messenger            *net.Messenger
 	Multiwallet          wallet.Multiwallet
 	ExchangeRateProvider *wallet.ExchangeRateProvider
@@ -37,27 +39,29 @@ type Config struct {
 
 // OrderProcessor is used to deterministically process orders.
 type OrderProcessor struct {
-	identity    peer.ID
-	db          database.Database
-	messenger   *net.Messenger
-	multiwallet wallet.Multiwallet
-	erp         *wallet.ExchangeRateProvider
-	bus         events.Bus
-	mtx         sync.Mutex
-	shutdown    chan struct{}
+	identity         peer.ID
+	db               database.Database
+	messenger        *net.Messenger
+	multiwallet      wallet.Multiwallet
+	escrowPrivateKey *btcec.PrivateKey
+	erp              *wallet.ExchangeRateProvider
+	bus              events.Bus
+	mtx              sync.Mutex
+	shutdown         chan struct{}
 }
 
 // NewOrderProcessor initializes and returns a new OrderProcessor
 func NewOrderProcessor(cfg *Config) *OrderProcessor {
 	return &OrderProcessor{
-		identity:    cfg.Identity,
-		db:          cfg.Db,
-		messenger:   cfg.Messenger,
-		multiwallet: cfg.Multiwallet,
-		erp:         cfg.ExchangeRateProvider,
-		bus:         cfg.EventBus,
-		mtx:         sync.Mutex{},
-		shutdown:    make(chan struct{}),
+		identity:         cfg.Identity,
+		db:               cfg.Db,
+		messenger:        cfg.Messenger,
+		multiwallet:      cfg.Multiwallet,
+		escrowPrivateKey: cfg.EscrowPrivateKey,
+		erp:              cfg.ExchangeRateProvider,
+		bus:              cfg.EventBus,
+		mtx:              sync.Mutex{},
+		shutdown:         make(chan struct{}),
 	}
 }
 

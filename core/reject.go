@@ -180,8 +180,15 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 
 				refund := pb.Refund{
 					RefundInfo: &pb.Refund_ReleaseInfo{
-						ReleaseInfo: &pb.Refund_EscrowRelease{},
+						ReleaseInfo: &pb.Refund_EscrowRelease{
+							ToAddress: txn.To[0].Address.String(),
+							ToAmount:  txn.To[0].Amount.String(),
+						},
 					},
+				}
+
+				for _, from := range txn.From {
+					refund.GetReleaseInfo().FromIDs = append(refund.GetReleaseInfo().FromIDs, from.ID)
 				}
 
 				for _, sig := range sigs {
