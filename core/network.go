@@ -301,32 +301,39 @@ func (n *OpenBazaarNode) syncMessages() {
 	for {
 		select {
 		case event := <-connectedSub.Out():
-			notif, ok := event.(*events.PeerConnected)
-			if !ok {
-				log.Error("syncMessages type assertion failed on PeerConnected")
-				continue
-			}
-			var messages []models.OutgoingMessage
-			err = n.repo.DB().View(func(tx database.Tx) error {
-				return tx.Read().Where("recipient = ?", notif.Peer.Pretty()).Find(&messages).Error
+			// We will wait a few seconds after connection before loading unACKed messages.
+			// The reason for this is because this connection might have been made for the
+			// purpose of sending a message and that message might not yet have been ACKed.
+			// So we will wait to give it a chance to be ACKed so we avoid sending unnecessary
+			// duplicates.
+			time.AfterFunc(time.Second*3, func() {
+				notif, ok := event.(*events.PeerConnected)
+				if !ok {
+					log.Error("syncMessages type assertion failed on PeerConnected")
+					return
+				}
+				var messages []models.OutgoingMessage
+				err = n.repo.DB().View(func(tx database.Tx) error {
+					return tx.Read().Where("recipient = ?", notif.Peer.Pretty()).Find(&messages).Error
+				})
+				if err != nil && !gorm.IsRecordNotFoundError(err) {
+					log.Error("syncMessages outgoing messages lookup error: %s", err)
+					return
+				}
+				for _, om := range messages {
+					var message pb.Message
+					if err := proto.Unmarshal(om.SerializedMessage, &message); err != nil {
+						log.Error("syncMessages unmarshal error: %s", err)
+						continue
+					}
+					recipient, err := peer.IDB58Decode(om.Recipient)
+					if err != nil {
+						log.Error("syncMessages peer decode error: %s", err)
+						continue
+					}
+					go n.networkService.SendMessage(context.Background(), recipient, &message)
+				}
 			})
-			if err != nil && !gorm.IsRecordNotFoundError(err) {
-				log.Error("syncMessages outgoing messages lookup error: %s", err)
-				continue
-			}
-			for _, om := range messages {
-				var message pb.Message
-				if err := proto.Unmarshal(om.SerializedMessage, &message); err != nil {
-					log.Error("syncMessages unmarshal error: %s", err)
-					continue
-				}
-				recipient, err := peer.IDB58Decode(om.Recipient)
-				if err != nil {
-					log.Error("syncMessages peer decode error: %s", err)
-					continue
-				}
-				go n.networkService.SendMessage(context.Background(), recipient, &message)
-			}
 		case <-n.shutdown:
 			return
 		}
