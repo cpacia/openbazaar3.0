@@ -846,7 +846,7 @@ func (w *MockWallet) CreateMultisigWithTimeout(keys []btcec.PublicKey, threshold
 
 // ReleaseFundsAfterTimeout will release funds from the escrow. The signature will
 // be created using the timeoutKey.
-func (w *MockWallet) ReleaseFundsAfterTimeout(tx iwallet.Tx, txn iwallet.Transaction, timeoutKey btcec.PrivateKey, redeemScript []byte) error {
+func (w *MockWallet) ReleaseFundsAfterTimeout(tx iwallet.Tx, txn iwallet.Transaction, timeoutKey btcec.PrivateKey, redeemScript []byte) (iwallet.TransactionID, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
@@ -860,7 +860,7 @@ func (w *MockWallet) ReleaseFundsAfterTimeout(tx iwallet.Tx, txn iwallet.Transac
 	ts := time.Unix(int64(expiry), 0)
 
 	if ts.After(time.Now()) {
-		return errors.New("timeout has not yet passed")
+		return txn.ID, errors.New("timeout has not yet passed")
 	}
 
 	var utxosToAdd []mockUtxo
@@ -897,7 +897,7 @@ func (w *MockWallet) ReleaseFundsAfterTimeout(tx iwallet.Tx, txn iwallet.Transac
 		return nil
 	}
 
-	return nil
+	return txn.ID, nil
 }
 
 // SignMultisigTransaction should use the provided key to create a signature for
@@ -930,7 +930,7 @@ func (w *MockWallet) SignMultisigTransaction(txn iwallet.Transaction, key btcec.
 //
 // Note a database transaction is used here. Same rules of Commit() and
 // Rollback() apply.
-func (w *MockWallet) BuildAndSend(tx iwallet.Tx, txn iwallet.Transaction, signatures [][]iwallet.EscrowSignature, redeemScript []byte) error {
+func (w *MockWallet) BuildAndSend(tx iwallet.Tx, txn iwallet.Transaction, signatures [][]iwallet.EscrowSignature, redeemScript []byte) (iwallet.TransactionID, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
@@ -983,7 +983,7 @@ func (w *MockWallet) BuildAndSend(tx iwallet.Tx, txn iwallet.Transaction, signat
 		return nil
 	}
 
-	return nil
+	return txn.ID, nil
 }
 
 // NewMockExchangeRates returns a mock exchange rate provider that returns

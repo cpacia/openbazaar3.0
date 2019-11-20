@@ -298,7 +298,7 @@ func TestMockWallet_SignMultisigTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = w1.BuildAndSend(dbtx, txn, [][]iwallet.EscrowSignature{sig1, sig2}, rs)
+	_, err = w1.BuildAndSend(dbtx, txn, [][]iwallet.EscrowSignature{sig1, sig2}, rs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -431,7 +431,7 @@ func TestMockWallet_1of2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = w1.BuildAndSend(dbtx, txn, [][]iwallet.EscrowSignature{sig1}, rs)
+	_, err = w1.BuildAndSend(dbtx, txn, [][]iwallet.EscrowSignature{sig1}, rs)
 	if err != nil {
 		t.Fatal(err)
 	}

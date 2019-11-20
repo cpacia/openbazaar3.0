@@ -140,7 +140,7 @@ func (op *OrderProcessor) releaseEscrowFunds(wallet iwallet.Wallet, orderOpen *p
 	if err != nil {
 		return err
 	}
-	if err := escrowWallet.BuildAndSend(dbtx, txn, [][]iwallet.EscrowSignature{buyerSigs, vendorSigs}, script); err != nil {
+	if _, err := escrowWallet.BuildAndSend(dbtx, txn, [][]iwallet.EscrowSignature{buyerSigs, vendorSigs}, script); err != nil {
 		return err
 	}
 
