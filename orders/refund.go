@@ -59,13 +59,17 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 				}
 			}
 		}
-	} else if refund.GetReleaseInfo() != nil && orderOpen.Payment.Method == pb.OrderOpen_Payment_MODERATED {
+	} else if order.Role() == models.RoleBuyer && refund.GetReleaseInfo() != nil && orderOpen.Payment.Method == pb.OrderOpen_Payment_MODERATED {
 		if err := op.releaseEscrowFunds(wallet, orderOpen, refund.GetReleaseInfo()); err != nil {
 			log.Errorf("Error releasing funds from escrow during refund processing: %s", err.Error())
 		}
 	}
 
-	log.Infof("Received REFUND message for order %s", order.ID)
+	if order.Role() == models.RoleBuyer {
+		log.Infof("Received REFUND message for order %s", order.ID)
+	} else if order.Role() == models.RoleVendor {
+		log.Infof("Processed own REFUND for order %s", order.ID)
+	}
 
 	event := &events.RefundNotification{
 		OrderID: order.ID.String(),

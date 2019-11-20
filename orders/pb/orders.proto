@@ -93,6 +93,7 @@ message Refund {
         string transactionID      = 1;
         EscrowRelease releaseInfo = 2;
     }
+    string amount = 3;
 
     message EscrowRelease {
         repeated Signature escrowSignatures = 1;

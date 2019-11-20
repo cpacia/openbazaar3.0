@@ -149,7 +149,7 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 	if order.Role() == models.RoleVendor {
 		log.Infof("Received ORDER_OPEN message from %s. OrderID: %s", peer.Pretty(), order.ID)
 	} else if order.Role() == models.RoleBuyer {
-		log.Infof("Processed own order for orderID: %s", order.ID)
+		log.Infof("Processed own ORDER_OPEN for orderID: %s", order.ID)
 	}
 
 	return event, nil

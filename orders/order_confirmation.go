@@ -72,7 +72,11 @@ func (op *OrderProcessor) processOrderConfirmationMessage(dbtx database.Tx, orde
 		VendorID:     orderOpen.Listings[0].Listing.VendorID.PeerID,
 	}
 
-	log.Infof("Received ORDER_CONFIRMATION message for order %s", order.ID)
+	if order.Role() == models.RoleBuyer {
+		log.Infof("Received ORDER_CONFIRMATION message for order %s", order.ID)
+	} else if order.Role() == models.RoleVendor {
+		log.Infof("Processed own ORDER_CONFIRMATION for order %s", order.ID)
+	}
 
 	return event, order.PutMessage(orderConfirmation)
 }

@@ -558,6 +558,35 @@ func (o *Order) CanConfirm(ourPeerID peer.ID) bool {
 	return true
 }
 
+// CanRefund returns whether or not this order is in a state where the user can
+// refund the order.
+func (o *Order) CanRefund(ourPeerID peer.ID) bool {
+	// OrderOpen must exist.
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return false
+	}
+	if orderOpen.BuyerID == nil {
+		return false
+	}
+	// Only vendors can refund.
+	if orderOpen.BuyerID.PeerID == ourPeerID.Pretty() {
+		return false
+	}
+
+	// Can't refund cancelable.
+	if orderOpen.Payment == nil || orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
+		return false
+	}
+
+	// Cannot refund if the order has been completed or canceled.
+	if o.SerializedOrderComplete != nil || o.SerializedPaymentFinalized != nil || o.SerializedOrderCancel != nil {
+		return false
+	}
+
+	return true
+}
+
 // IsFunded returns whether this order is fully funded or not.
 func (o *Order) IsFunded() (bool, error) {
 	orderOpen, err := o.OrderOpenMessage()

@@ -177,5 +177,6 @@ func (op *OrderProcessor) processOutgoingPayment(dbtx database.Tx, order *models
 		log.Debugf("Received duplicate transaction %s", tx.ID.String())
 		return nil
 	}
+	op.bus.Emit(&events.SpendFromPaymentAddress{Transaction: tx})
 	return err
 }

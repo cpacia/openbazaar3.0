@@ -1,16 +1,12 @@
 package core
 
 import (
-	"encoding/hex"
 	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
-	"github.com/cpacia/openbazaar3.0/orders/utils"
-	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/any"
 )
 
 // RejectOrder sends a ORDER_REJECT message to the remote peer and updates the node's
@@ -67,6 +63,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 	if err != nil {
 		return err
 	}
+
 	orderOpen, err := order.OrderOpenMessage()
 	if err != nil {
 		return err
@@ -85,142 +82,21 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 				return err
 			}
 
-			wdbTx, err := wallet.Begin()
+			wTx, refundMsg, err := buildRefundMessage(&order, wallet, n.escrowMasterKey)
 			if err != nil {
 				return err
 			}
 
-			var (
-				refundAddress = iwallet.NewAddress(orderOpen.RefundAddress, iwallet.CoinType(orderOpen.Payment.Coin))
-				refundAmount  = iwallet.NewAmount(orderOpen.Payment.Amount)
-				refundMsg     = newMessageWithID()
-				refundPayload *any.Any
-				refundResp    npb.OrderMessage
-			)
-
-			switch orderOpen.Payment.Method {
-			case pb.OrderOpen_Payment_DIRECT:
-				txid, err := wallet.Spend(wdbTx, refundAddress, refundAmount, iwallet.FlNormal)
-				if err != nil {
-					return err
-				}
-
-				refund := pb.Refund{
-					RefundInfo: &pb.Refund_TransactionID{TransactionID: txid.String()},
-				}
-
-				refundAny, err := ptypes.MarshalAny(&refund)
-				if err != nil {
-					return err
-				}
-
-				refundResp = npb.OrderMessage{
-					OrderID:     order.ID.String(),
-					MessageType: npb.OrderMessage_REFUND,
-					Message:     refundAny,
-				}
-
-				refundPayload, err = ptypes.MarshalAny(&refundResp)
-				if err != nil {
-					return err
-				}
-			case pb.OrderOpen_Payment_MODERATED:
-				txs, err := order.GetTransactions()
-				if err != nil {
-					return err
-				}
-
-				escrowWallet, ok := wallet.(iwallet.Escrow)
-				if !ok {
-					return errors.New("wallet for moderated order does not support escrow")
-				}
-
-				var (
-					txn      iwallet.Transaction
-					totalOut = iwallet.NewAmount(0)
-				)
-				spent := make(map[string]bool)
-				for _, tx := range txs {
-					for _, from := range tx.From {
-						spent[hex.EncodeToString(from.ID)] = true
-					}
-				}
-				for _, tx := range txs {
-					for _, to := range tx.To {
-						if !spent[hex.EncodeToString(to.ID)] && to.Address.String() == orderOpen.Payment.Address {
-							txn.From = append(txn.From, to)
-							totalOut.Add(to.Amount)
-						}
-					}
-				}
-				txn.To = append(txn.To, iwallet.SpendInfo{
-					Address: iwallet.NewAddress(orderOpen.RefundAddress, iwallet.CoinType(orderOpen.Payment.Coin)),
-					Amount:  totalOut.Sub(iwallet.NewAmount(orderOpen.Payment.EscrowReleaseFee)),
-				})
-
-				script, err := hex.DecodeString(orderOpen.Payment.Script)
-				if err != nil {
-					return err
-				}
-
-				chainCode, err := hex.DecodeString(orderOpen.Payment.Chaincode)
-				if err != nil {
-					return err
-				}
-
-				vendorKey, err := utils.GenerateEscrowPrivateKey(n.escrowMasterKey, chainCode)
-				if err != nil {
-					return err
-				}
-
-				sigs, err := escrowWallet.SignMultisigTransaction(txn, *vendorKey, script)
-				if err != nil {
-					return err
-				}
-
-				refund := pb.Refund{
-					RefundInfo: &pb.Refund_ReleaseInfo{
-						ReleaseInfo: &pb.Refund_EscrowRelease{
-							ToAddress: txn.To[0].Address.String(),
-							ToAmount:  txn.To[0].Amount.String(),
-						},
-					},
-				}
-
-				for _, from := range txn.From {
-					refund.GetReleaseInfo().FromIDs = append(refund.GetReleaseInfo().FromIDs, from.ID)
-				}
-
-				for _, sig := range sigs {
-					refund.GetReleaseInfo().EscrowSignatures = append(refund.GetReleaseInfo().EscrowSignatures, &pb.Refund_Signature{
-						Signature: sig.Signature,
-						Index:     uint32(sig.Index),
-					})
-				}
-
-				refundAny, err := ptypes.MarshalAny(&refund)
-				if err != nil {
-					return err
-				}
-
-				refundResp = npb.OrderMessage{
-					OrderID:     order.ID.String(),
-					MessageType: npb.OrderMessage_REFUND,
-					Message:     refundAny,
-				}
-
-				refundPayload, err = ptypes.MarshalAny(&refundResp)
-				if err != nil {
-					return err
-				}
-			default:
-				return errors.New("unknown payment method")
+			refundPayload, err := ptypes.MarshalAny(refundMsg)
+			if err != nil {
+				return err
 			}
 
-			refundMsg.MessageType = npb.Message_ORDER
-			refundMsg.Payload = refundPayload
+			refundResp := newMessageWithID()
+			refundResp.MessageType = npb.Message_ORDER
+			refundResp.Payload = refundPayload
 
-			_, err = n.orderProcessor.ProcessMessage(tx, vendor, &refundResp)
+			_, err = n.orderProcessor.ProcessMessage(tx, vendor, refundMsg)
 			if err != nil {
 				return err
 			}
@@ -234,7 +110,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 				return err
 			}
 
-			if err := n.messenger.ReliablySendMessage(tx, buyer, refundMsg, done2); err != nil {
+			if err := n.messenger.ReliablySendMessage(tx, buyer, refundResp, done2); err != nil {
 				return err
 			}
 
@@ -244,7 +120,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 				close(done)
 			}()
 
-			return wdbTx.Commit()
+			return wTx.Commit()
 		}
 
 		return n.messenger.ReliablySendMessage(tx, buyer, message, done)

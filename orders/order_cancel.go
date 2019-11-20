@@ -54,7 +54,11 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 		VendorID:     orderOpen.Listings[0].Listing.VendorID.PeerID,
 	}
 
-	log.Infof("Received ORDER_CANCEL message for order %s", order.ID)
+	if order.Role() == models.RoleBuyer {
+		log.Infof("Processed own ORDER_CANCEL for orderID: %s", order.ID)
+	} else if order.Role() == models.RoleVendor {
+		log.Infof("Received ORDER_CANCEL message for order %s", order.ID)
+	}
 
 	return event, order.PutMessage(orderCancel)
 }
