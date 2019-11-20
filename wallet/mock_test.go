@@ -584,7 +584,11 @@ func TestMockWalletNetwork(t *testing.T) {
 		t.Error("Failed to record new utxo")
 	}
 
-	if len(network.Wallets()[0].transactions) != 2 {
+	txs, err := network.Wallets()[0].Transactions(-1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(txs) != 2 {
 		t.Error("Failed to record new txn")
 	}
 

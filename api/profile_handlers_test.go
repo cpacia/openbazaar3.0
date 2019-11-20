@@ -276,7 +276,7 @@ func TestProfileHandlers(t *testing.T) {
 			setNodeMethods: func(n *mockNode) {
 				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
 					if peerID.Pretty() == "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN" {
-						return &models.Profile{Name: "Ron Paul"}, nil
+						return &models.Profile{Name: "Ron Swanson"}, nil
 					}
 					if peerID.Pretty() == "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi" {
 						return &models.Profile{Name: "Ron Swanson"}, nil
@@ -289,7 +289,7 @@ func TestProfileHandlers(t *testing.T) {
 			expectedResponse: func() ([]byte, error) {
 				profiles := []models.Profile{
 					{Name: "Ron Swanson"},
-					{Name: "Ron Paul"},
+					{Name: "Ron Swanson"},
 				}
 				return marshalAndSanitizeJSON(profiles)
 			},
