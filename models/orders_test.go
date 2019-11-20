@@ -325,8 +325,8 @@ func TestOrder_Refunds(t *testing.T) {
 					Index:     0,
 				},
 			},
-			Address: "abc",
-			Amount:  "0",
+			ToAddress: "abc",
+			ToAmount:  "0",
 		}}
 		release1 = &pb.Refund_ReleaseInfo{ReleaseInfo: &pb.Refund_EscrowRelease{
 			EscrowSignatures: []*pb.Refund_Signature{
@@ -336,8 +336,8 @@ func TestOrder_Refunds(t *testing.T) {
 					Index:     0,
 				},
 			},
-			Address: "abc",
-			Amount:  "1",
+			ToAddress: "abc",
+			ToAmount:  "1",
 		}}
 	)
 
