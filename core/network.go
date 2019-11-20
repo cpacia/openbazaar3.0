@@ -191,7 +191,10 @@ func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) err
 				return err
 			}
 		}
-		return n.messenger.ProcessACK(tx, ack)
+		if err := n.messenger.ProcessACK(tx, ack); err != nil {
+			return err
+		}
+		return nil
 	})
 	if err != nil {
 		return err

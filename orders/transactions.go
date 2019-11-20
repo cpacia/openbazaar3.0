@@ -52,8 +52,8 @@ func (op *OrderProcessor) processWalletTransaction(transaction iwallet.Transacti
 			if err := tx.Save(&order); err != nil {
 				return err
 			}
-		}
 
+		}
 		return nil
 	})
 	if err != nil {

@@ -6,12 +6,19 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
 )
 
 // ConfirmOrder sends a ORDER_CONFIRMATION message to the remote peer and updates the node's
 // order state. Only a vendor can call this method and only if the order has been opened
 // and no other actions have been taken.
+//
+// If the payment method is CANCELABLE, this will attempt to move the funds into the vendor's
+// wallet. Note that there is a potential for a race between this function being called by
+// the vendor and CancelOrder being called by the buyer. In such a scenario this function
+// will return without error, however we determine which person "wins" based on which transaction
+// confirms in the blockchain.
 func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}) error {
 	var order models.Order
 	err := n.repo.DB().View(func(tx database.Tx) error {
@@ -30,6 +37,11 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 		return err
 	}
 	vendor, err := order.Vendor()
+	if err != nil {
+		return err
+	}
+
+	orderOpen, err := order.OrderOpenMessage()
 	if err != nil {
 		return err
 	}
@@ -64,6 +76,23 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 	message.Payload = payload
 
 	return n.repo.DB().Update(func(tx database.Tx) error {
+		if orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
+			wallet, err := n.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+			if err != nil {
+				return err
+			}
+
+			escrowWallet, ok := wallet.(iwallet.Escrow)
+			if !ok {
+				return errors.New("wallet does not support escrow")
+			}
+
+			// FIXME: continue building this out
+			if escrowWallet != nil {
+
+			}
+		}
+
 		_, err := n.orderProcessor.ProcessMessage(tx, vendor, &resp)
 		if err != nil {
 			return err
