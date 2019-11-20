@@ -15,7 +15,7 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 	if err := ptypes.UnmarshalAny(message.Message, orderCancel); err != nil {
 		return nil, err
 	}
-	dup, err := isDuplicate(orderCancel, order.SerializedOrderConfirmation)
+	dup, err := isDuplicate(orderCancel, order.SerializedOrderCancel)
 	if err != nil {
 		return nil, err
 	}
@@ -44,14 +44,14 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 		return nil, err
 	}
 
-	event := &events.OrderConfirmationNotification{
+	event := &events.OrderCancelNotification{
 		OrderID: order.ID.String(),
 		Thumbnail: events.Thumbnail{
 			Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
 			Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
 		},
-		VendorHandle: orderOpen.Listings[0].Listing.VendorID.Handle,
-		VendorID:     orderOpen.Listings[0].Listing.VendorID.PeerID,
+		BuyerHandle: orderOpen.BuyerID.Handle,
+		BuyerID:     orderOpen.BuyerID.PeerID,
 	}
 
 	if order.Role() == models.RoleBuyer {
