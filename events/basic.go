@@ -15,6 +15,9 @@ type basicBus struct {
 var _ Bus = (*basicBus)(nil)
 
 func (b *basicBus) Emit(event interface{}) {
+	b.lk.Lock()
+	defer b.lk.Unlock()
+
 	typ := reflect.TypeOf(event)
 	sinks, ok := b.subs[typ]
 	if !ok {
@@ -26,6 +29,9 @@ func (b *basicBus) Emit(event interface{}) {
 }
 
 func (b *basicBus) dropSubscriber(typ reflect.Type, s *sub) {
+	b.lk.Lock()
+	defer b.lk.Unlock()
+
 	subs, ok := b.subs[typ]
 	if !ok {
 		return

@@ -223,12 +223,14 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	select {
 	case <-txSub0.Out():
+		txSub0.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 
 	select {
 	case <-txSub1.Out():
+		txSub1.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -252,6 +254,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	select {
 	case <-fundingSub.Out():
+		fundingSub.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -338,7 +341,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	fundingSub, err = network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
+	fundingSub2, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,9 +359,14 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	}
 
 	select {
-	case <-fundingSub.Out():
+	case <-fundingSub2.Out():
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
+	}
+
+	txSub3, err := network.Nodes()[1].eventBus.Subscribe(&events.TransactionReceived{})
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	done4 = make(chan struct{})
@@ -389,7 +397,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	}
 
 	select {
-	case <-txSub1.Out():
+	case <-txSub3.Out():
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}

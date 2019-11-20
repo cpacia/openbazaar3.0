@@ -730,6 +730,9 @@ func (w *MockWallet) SweepWallet(tx iwallet.Tx, to iwallet.Address, feeLevel iwa
 // to push both transactions relevant for this wallet as well as transactions
 // sending to or spending from a watched address.
 func (w *MockWallet) SubscribeTransactions() <-chan iwallet.Transaction {
+	w.mtx.Lock()
+	defer w.mtx.Unlock()
+
 	ch := make(chan iwallet.Transaction)
 	w.txSubs = append(w.txSubs, ch)
 	return ch
