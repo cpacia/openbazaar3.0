@@ -127,11 +127,13 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	// New IPFS build config
 	ncfg := &core.BuildCfg{
-		Repo:   ipfsRepo,
-		Online: true,
+		Repo:      ipfsRepo,
+		Online:    true,
+		Permanent: true,
 		ExtraOpts: map[string]bool{
 			"mplex":  true,
 			"ipnsps": true,
+			"pubsub": true,
 		},
 		Routing: constructRouting,
 	}
