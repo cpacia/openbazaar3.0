@@ -365,7 +365,7 @@ func TestMockWallet_SignMultisigAfterTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = w1.ReleaseFundsAfterTimeout(dbtx, txn, *k2, rs)
+	_, err = w1.ReleaseFundsAfterTimeout(dbtx, txn, *k2, rs)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -376,16 +376,15 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 			return err
 		}
 
+		escrowTimeoutWallet, walletSupportsEscrowTimeout := wal.(iwallet.EscrowWithTimeout)
+		if !walletSupportsEscrowTimeout {
+			escrowTimeoutHours = 0
+		}
 		var (
 			address iwallet.Address
 			script  []byte
 		)
 		if escrowTimeoutHours > 0 {
-			escrowTimeoutWallet, ok := wal.(iwallet.EscrowWithTimeout)
-			if !ok {
-				return errors.New("wallet for selected currency does not support escrow timeouts")
-			}
-
 			timeout := time.Hour * time.Duration(escrowTimeoutHours)
 			address, script, err = escrowTimeoutWallet.CreateMultisigWithTimeout([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2, timeout, *vendorKey)
 			if err != nil {

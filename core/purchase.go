@@ -60,6 +60,10 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 		return orderID, paymentAddress, paymentAmount, err
 	}
 
+	if wallet.IsDust(paymentAmount.Amount) {
+		return orderID, paymentAddress, paymentAmount, ErrDustAmount
+	}
+
 	// If this is a direct payment we will first request an address from the vendor.
 	// If he is online and responds to our request we will update the payment address
 	// in the order with the address he gave us.
@@ -343,6 +347,10 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 	if !walletSupportsEscrow && purchase.Moderator != "" {
 		return nil, errors.New("selected payment currency does not support escrow transactions")
 	}
+	escrowTimeoutWallet, walletSupportsEscrowTimeout := wallet.(iwallet.EscrowWithTimeout)
+	if !walletSupportsEscrowTimeout {
+		escrowTimeoutHours = 0
+	}
 
 	var (
 		paymentMethod = pb.OrderOpen_Payment_DIRECT
@@ -397,11 +405,6 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 			script  []byte
 		)
 		if escrowTimeoutHours > 0 {
-			escrowTimeoutWallet, ok := wallet.(iwallet.EscrowWithTimeout)
-			if !ok {
-				return nil, errors.New("wallet for selected currency does not support escrow timeouts")
-			}
-
 			timeout := time.Hour * time.Duration(escrowTimeoutHours)
 			address, script, err = escrowTimeoutWallet.CreateMultisigWithTimeout([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2, timeout, *vendorKey)
 			if err != nil {

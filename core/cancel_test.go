@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	walletbase "github.com/cpacia/multiwallet/base"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -28,6 +29,10 @@ func TestOpenBazaarNode_CancelOrder(t *testing.T) {
 	}
 
 	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderNotification{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	orderAckSub0, err := network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,6 +114,12 @@ func TestOpenBazaarNode_CancelOrder(t *testing.T) {
 
 	select {
 	case <-orderSub0.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-orderAckSub0.Out():
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -228,19 +239,51 @@ func TestOpenBazaarNode_CancelOrder(t *testing.T) {
 }
 
 func TestOpenBazaarNode_releaseFromCancelableAddress(t *testing.T) {
-	network, err := NewMocknet(2)
+	node, err := MockNode()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer network.TearDown()
+	defer node.DestroyNode()
 
-	go network.StartWalletNetwork()
-
-	for _, node := range network.Nodes() {
-		go node.orderProcessor.Start()
+	orderOpen := &pb.OrderOpen{
+		Payment: &pb.OrderOpen_Payment{
+			Method:  pb.OrderOpen_Payment_CANCELABLE,
+			Coin:    iwallet.CtTestnetMock,
+			Address: "1234",
+		},
 	}
 
-	//listing := factory.NewPhysicalListing("tshirt")
+	order := new(models.Order)
+	if err := order.PutMessage(orderOpen); err != nil {
+		t.Fatal(err)
+	}
 
+	addr := iwallet.NewAddress("1234", iwallet.CtTestnetMock)
+	tx := walletbase.NewMockTransaction(nil, &addr)
+	if err := order.PutTransaction(tx); err != nil {
+		t.Fatal(err)
+	}
+
+	wTx, txid, err := node.releaseFromCancelableAddress(order)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := wTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	if txid == "" {
+		t.Fatal("failed to returned a valid txid")
+	}
+
+	if err := order.PutTransaction(walletbase.NewMockTransaction(&tx.To[0], nil)); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = node.releaseFromCancelableAddress(order)
+	if err == nil {
+		t.Fatal("Expected error spending non-existent coins")
+	}
 }

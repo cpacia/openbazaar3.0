@@ -11,7 +11,6 @@ import (
 )
 
 func IdentityFromKey(privkey []byte) (config.Identity, error) {
-
 	ident := config.Identity{}
 	sk, err := crypto.UnmarshalPrivateKey(privkey)
 	if err != nil {

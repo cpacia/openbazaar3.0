@@ -8,6 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-peer"
@@ -81,6 +82,9 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 				},
 			},
 		},
+		Payment: &pb.OrderOpen_Payment{
+			Coin: iwallet.CtTestnetMock,
+		},
 	}
 
 	tests := []struct {
@@ -121,7 +125,7 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 				order.SerializedOrderCancel = []byte{0x00}
 				return nil
 			},
-			expectedError: ErrUnexpectedMessage,
+			expectedError: nil,
 			expectedEvent: nil,
 		},
 		{

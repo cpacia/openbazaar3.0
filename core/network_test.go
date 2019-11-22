@@ -134,7 +134,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 			ID:                m1.MessageID,
 			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
 			SerializedMessage: ser,
-			Timestamp:         time.Now(),
+			Timestamp:         time.Now().Add(-time.Minute),
 			LastAttempt:       time.Now(),
 		})
 		if err != nil {
@@ -150,7 +150,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 			ID:                m2.MessageID,
 			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
 			SerializedMessage: ser,
-			Timestamp:         time.Now(),
+			Timestamp:         time.Now().Add(-time.Minute),
 			LastAttempt:       time.Now(),
 		})
 		if err != nil {
@@ -166,7 +166,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 			ID:                m3.MessageID,
 			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
 			SerializedMessage: ser,
-			Timestamp:         time.Now(),
+			Timestamp:         time.Now().Add(-time.Minute),
 			LastAttempt:       time.Now(),
 		})
 		if err != nil {

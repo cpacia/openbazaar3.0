@@ -8,6 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-peer"
@@ -22,7 +23,11 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 	}
 	defer teardown()
 
-	_, pub, err := crypto.GenerateEd25519Key(rand.Reader)
+	priv, pub, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pubkeyBytes, err := crypto.MarshalPublicKey(pub)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,10 +35,16 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	orderID := "1234"
+	sig, err := priv.Sign([]byte(orderID))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	rejectMsg := &pb.OrderReject{
-		Type:   pb.OrderReject_VALIDATION_ERROR,
-		Reason: "Test",
+		Type:      pb.OrderReject_VALIDATION_ERROR,
+		Reason:    "Test",
+		Signature: sig,
 	}
 
 	rejectAny, err := ptypes.MarshalAny(rejectMsg)
@@ -42,7 +53,7 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 	}
 
 	orderMsg := &npb.OrderMessage{
-		OrderID:     "1234",
+		OrderID:     orderID,
 		MessageType: npb.OrderMessage_ORDER_REJECT,
 		Message:     rejectAny,
 	}
@@ -60,6 +71,9 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 					VendorID: &pb.ID{
 						PeerID: vendorPeerID,
 						Handle: vendorHandle,
+						Pubkeys: &pb.ID_Pubkeys{
+							Identity: pubkeyBytes,
+						},
 					},
 					Item: &pb.Listing_Item{
 						Images: []*pb.Listing_Item_Image{
@@ -71,6 +85,9 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 					},
 				},
 			},
+		},
+		Payment: &pb.OrderOpen_Payment{
+			Coin: iwallet.CtTestnetMock,
 		},
 	}
 
@@ -113,7 +130,7 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 				order.SerializedOrderCancel = []byte{0x00}
 				return nil
 			},
-			expectedError: ErrUnexpectedMessage,
+			expectedError: nil,
 			expectedEvent: nil,
 		},
 		{

@@ -31,6 +31,10 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	orderAckSub0, err := network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	listing := factory.NewPhysicalListing("tshirt")
 
@@ -60,6 +64,12 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 
 	select {
 	case <-orderSub0.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-orderAckSub0.Out():
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}

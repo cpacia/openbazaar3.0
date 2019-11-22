@@ -21,6 +21,10 @@ var (
 
 	// ErrPeerUnreachable is returned due to an inability to connect to a peer.
 	ErrPeerUnreachable = errors.New("peer unreachable")
+
+	// ErrDustAmount is an error that is returned when the amount is less than the coin's
+	// dust threshold, thus making it unspendable.
+	ErrDustAmount = errors.New("dust amount")
 )
 
 type ErrTooManyItems []string

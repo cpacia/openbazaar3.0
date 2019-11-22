@@ -142,6 +142,10 @@ func (n *OpenBazaarNode) releaseFromCancelableAddress(order *models.Order) (iwal
 		}
 	}
 
+	if len(txn.From) == 0 {
+		return nil, "", errors.New("payment address is empty")
+	}
+
 	escrowFee, err := escrowWallet.EstimateEscrowFee(1, iwallet.FlNormal)
 	if err != nil {
 		return nil, "", err
