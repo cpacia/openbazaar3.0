@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
+func TestOpenBazaarNode_CancelOrder(t *testing.T) {
 	network, err := NewMocknet(2)
 	if err != nil {
 		t.Fatal(err)
@@ -51,100 +51,8 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 
 	purchase := factory.NewPurchase()
 	purchase.Items[0].ListingHash = index[0].Hash
-
-	// Address request direct order
-	orderID, _, _, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
-	if err != nil {
+	if err := network.Nodes()[1].PingNode(context.Background(), network.Nodes()[0].Identity()); err != nil {
 		t.Fatal(err)
-	}
-
-	select {
-	case <-orderSub0.Out():
-	case <-time.After(time.Second * 10):
-		t.Fatal("Timeout waiting on channel")
-	}
-
-	var order models.Order
-	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderID.String()).Last(&order).Error
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if order.SerializedOrderOpen == nil {
-		t.Error("Node 0 failed to save order")
-	}
-
-	var order2 models.Order
-	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderID.String()).Last(&order2).Error
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if order2.SerializedOrderOpen == nil {
-		t.Error("Node 1 failed to save order")
-	}
-	if !order2.OrderOpenAcked {
-		t.Error("Node 1 failed to record order open ACK")
-	}
-
-	confirmSub, err := network.Nodes()[1].eventBus.Subscribe(&events.OrderConfirmationNotification{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	confirmAck, err := network.Nodes()[0].eventBus.Subscribe(&events.MessageACK{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	done4 := make(chan struct{})
-	if err := network.Nodes()[0].ConfirmOrder(orderID, done4); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case <-done4:
-	case <-time.After(time.Second * 10):
-		t.Fatal("Timeout waiting on channel")
-	}
-
-	select {
-	case <-confirmSub.Out():
-	case <-time.After(time.Second * 10):
-		t.Fatal("Timeout waiting on channel")
-	}
-	select {
-	case <-confirmAck.Out():
-	case <-time.After(time.Second * 10):
-		t.Fatal("Timeout waiting on channel")
-	}
-
-	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderID.String()).Last(&order).Error
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if order.SerializedOrderConfirmation == nil {
-		t.Error("Node 0 failed to save order confirmation")
-	}
-	if !order.OrderConfirmationAcked {
-		t.Error("Node 0 failed to save order confirmation ack")
-	}
-
-	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderID.String()).Last(&order2).Error
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if order2.SerializedOrderConfirmation == nil {
-		t.Error("Node 1 failed to save order confirmation")
 	}
 
 	// Cancelable order
@@ -265,13 +173,13 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 		t.Fatal("Expected CANCELABLE order")
 	}
 
-	releaseSub, err := network.Nodes()[0].eventBus.Subscribe(&events.SpendFromPaymentAddress{})
+	releaseSub, err := network.Nodes()[1].eventBus.Subscribe(&events.SpendFromPaymentAddress{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	done5 := make(chan struct{})
-	if err := network.Nodes()[0].ConfirmOrder(orderID2, done5); err != nil {
+	if err := network.Nodes()[1].CancelOrder(orderID2, done5); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -287,15 +195,15 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 	}
 
 	var order6 models.Order
-	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
+	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderID2.String()).Last(&order6).Error
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if order6.SerializedOrderConfirmation == nil {
-		t.Error("Node 0 failed to save order confirmation")
+	if order6.SerializedOrderCancel == nil {
+		t.Error("Node 0 failed to save order cancel")
 	}
 
 	txs, err := order6.GetTransactions()
@@ -305,4 +213,34 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 	if len(txs) != 2 {
 		t.Errorf("Expected 2 transactions, got %d", len(txs))
 	}
+
+	var order7 models.Order
+	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("id = ?", orderID2.String()).Last(&order7).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if order7.SerializedOrderCancel == nil {
+		t.Error("Node 0 failed to save order cancel")
+	}
+}
+
+func TestOpenBazaarNode_releaseFromCancelableAddress(t *testing.T) {
+	network, err := NewMocknet(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer network.TearDown()
+
+	go network.StartWalletNetwork()
+
+	for _, node := range network.Nodes() {
+		go node.orderProcessor.Start()
+	}
+
+	//listing := factory.NewPhysicalListing("tshirt")
+
 }

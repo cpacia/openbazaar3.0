@@ -18,7 +18,7 @@ import (
 // that haven't yet been ACKed.
 const (
 	RetryInterval = time.Minute * 1
-	SendTimeout   = time.Minute
+	SendTimeout   = time.Second * 30
 )
 
 // Messenger manages the reliable sending of outgoing messages.

@@ -531,7 +531,7 @@ func (o *Order) CanReject(ourPeerID peer.ID) bool {
 }
 
 // CanConfirm returns whether or not this order is in a state where the user can
-// confirmed the order.
+// confirm the order.
 func (o *Order) CanConfirm(ourPeerID peer.ID) bool {
 	// OrderOpen must exist.
 	orderOpen, err := o.OrderOpenMessage()
@@ -547,6 +547,38 @@ func (o *Order) CanConfirm(ourPeerID peer.ID) bool {
 	}
 
 	// Cannot confirm if the order has progressed passed order open.
+	if o.SerializedOrderReject != nil || o.SerializedOrderCancel != nil ||
+		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillment != nil ||
+		o.SerializedOrderComplete != nil || o.SerializedDisputeOpen != nil ||
+		o.SerializedDisputeUpdate != nil || o.SerializedDisputeClosed != nil ||
+		o.SerializedRefunds != nil || o.SerializedPaymentFinalized != nil {
+
+		return false
+	}
+	return true
+}
+
+// CanCancel returns whether or not this order is in a state where the user can
+// cancel the order.
+func (o *Order) CanCancel(ourPeerID peer.ID) bool {
+	// OrderOpen must exist.
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return false
+	}
+
+	if len(orderOpen.Listings) == 0 ||
+		orderOpen.Listings[0].Listing == nil ||
+		orderOpen.Listings[0].Listing.VendorID == nil {
+		return false
+	}
+
+	// Only buyers can confirm.
+	if orderOpen.Listings[0].Listing.VendorID.String() == ourPeerID.Pretty() {
+		return false
+	}
+
+	// Cannot cancel if the order has progressed passed order open.
 	if o.SerializedOrderReject != nil || o.SerializedOrderCancel != nil ||
 		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillment != nil ||
 		o.SerializedOrderComplete != nil || o.SerializedDisputeOpen != nil ||

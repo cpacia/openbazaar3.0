@@ -111,7 +111,7 @@ func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message
 		// Order does not exist in the DB and the message type is not an order open. This can happen
 		// in the case where we download offline messages out of order. In this case we will park
 		// the message so that we can try again later if we receive other messages.
-		log.Warningf("Received %s message from peer %d for an order that does not exist yet", message.MessageType, peer)
+		log.Warningf("Received %s message from peer %d for an order that does not exist yet", message.MessageType, peer.Pretty())
 		order.ID = models.OrderID(message.OrderID)
 		if err := order.ParkMessage(message); err != nil {
 			return nil, err

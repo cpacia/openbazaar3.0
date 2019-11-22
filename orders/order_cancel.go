@@ -1,12 +1,15 @@
 package orders
 
 import (
+	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
@@ -27,13 +30,11 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 	}
 
 	if order.SerializedOrderReject != nil {
-		log.Errorf("Received ORDER_CANCEL message for order %s after ORDER_REJECT", order.ID)
-		return nil, ErrUnexpectedMessage
+		log.Warningf("Possible race: Received ORDER_CANCEL message for order %s after ORDER_REJECT", order.ID)
 	}
 
 	if order.SerializedOrderConfirmation != nil {
-		log.Errorf("Received ORDER_CANCEL message for order %s after ORDER_CONFIRMATION", order.ID)
-		return nil, ErrUnexpectedMessage
+		log.Warningf("Possible race: Received ORDER_CANCEL message for order %s after ORDER_CONFIRMATION", order.ID)
 	}
 
 	orderOpen, err := order.OrderOpenMessage()
@@ -42,6 +43,41 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	buyerPubkey, err := crypto.UnmarshalPublicKey(orderOpen.BuyerID.Pubkeys.Identity)
+	if err != nil {
+		return nil, err
+	}
+
+	valid, err := buyerPubkey.Verify([]byte(order.ID.String()), orderCancel.Signature)
+	if err != nil {
+		return nil, err
+	}
+
+	if !valid {
+		return nil, errors.New("invalid buyer signature on order cancel")
+	}
+
+	wallet, err := op.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+	if err != nil {
+		return nil, err
+	}
+
+	if orderCancel.TransactionID != "" && orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
+		// If this fails it's OK as the processor's unfunded order checking loop will
+		// retry at it's next interval.
+		tx, err := wallet.GetTransaction(iwallet.TransactionID(orderCancel.TransactionID))
+		if err == nil {
+			log.Info("Processing tx")
+			for _, from := range tx.From {
+				if from.Address.String() == order.PaymentAddress {
+					if err := op.processOutgoingPayment(dbtx, order, tx); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
 	}
 
 	event := &events.OrderCancelNotification{

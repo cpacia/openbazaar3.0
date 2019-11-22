@@ -14,13 +14,14 @@ message Message {
     enum MessageType {
         ACK                      = 0;
         PING                     = 1;
-        CHAT                     = 2;
-        FOLLOW                   = 3;
-        UNFOLLOW                 = 4;
-        STORE                    = 5;
-        ORDER                    = 6;
-        ADDRESS_REQUEST          = 7;
-        ADDRESS_RESPONSE         = 8;
+        PONG                     = 2;
+        CHAT                     = 3;
+        FOLLOW                   = 4;
+        UNFOLLOW                 = 5;
+        STORE                    = 6;
+        ORDER                    = 7;
+        ADDRESS_REQUEST          = 8;
+        ADDRESS_RESPONSE         = 9;
     }
 }
 

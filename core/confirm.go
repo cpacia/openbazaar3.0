@@ -41,63 +41,65 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 		return err
 	}
 
-	orderOpen, err := order.OrderOpenMessage()
-	if err != nil {
-		return err
-	}
-
-	signature, err := n.ipfsNode.PrivateKey.Sign([]byte(order.ID.String()))
-	if err != nil {
-		return err
-	}
-
-	confirmation := &pb.OrderConfirmation{
-		Signature: signature,
-	}
-
-	confirmAny, err := ptypes.MarshalAny(confirmation)
-	if err != nil {
-		return err
-	}
-
-	resp := npb.OrderMessage{
-		OrderID:     order.ID.String(),
-		MessageType: npb.OrderMessage_ORDER_CONFIRMATION,
-		Message:     confirmAny,
-	}
-
-	payload, err := ptypes.MarshalAny(&resp)
-	if err != nil {
-		return err
-	}
-
-	message := newMessageWithID()
-	message.MessageType = npb.Message_ORDER
-	message.Payload = payload
-
 	return n.repo.DB().Update(func(tx database.Tx) error {
-		if orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
-			wallet, err := n.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
-			if err != nil {
-				return err
-			}
-
-			escrowWallet, ok := wallet.(iwallet.Escrow)
-			if !ok {
-				return errors.New("wallet does not support escrow")
-			}
-
-			// FIXME: continue building this out
-			if escrowWallet != nil {
-
-			}
-		}
-
-		_, err := n.orderProcessor.ProcessMessage(tx, vendor, &resp)
+		orderOpen, err := order.OrderOpenMessage()
 		if err != nil {
 			return err
 		}
 
-		return n.messenger.ReliablySendMessage(tx, buyer, message, done)
+		signature, err := n.ipfsNode.PrivateKey.Sign([]byte(order.ID.String()))
+		if err != nil {
+			return err
+		}
+
+		confirmation := &pb.OrderConfirmation{
+			Signature: signature,
+		}
+
+		var (
+			wTx  iwallet.Tx
+			txid iwallet.TransactionID
+		)
+		if orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
+			wTx, txid, err = n.releaseFromCancelableAddress(&order)
+			if err != nil {
+				return err
+			}
+			confirmation.TransactionID = txid.String()
+		}
+
+		confirmAny, err := ptypes.MarshalAny(confirmation)
+		if err != nil {
+			return err
+		}
+
+		resp := npb.OrderMessage{
+			OrderID:     order.ID.String(),
+			MessageType: npb.OrderMessage_ORDER_CONFIRMATION,
+			Message:     confirmAny,
+		}
+
+		payload, err := ptypes.MarshalAny(&resp)
+		if err != nil {
+			return err
+		}
+
+		message := newMessageWithID()
+		message.MessageType = npb.Message_ORDER
+		message.Payload = payload
+
+		_, err = n.orderProcessor.ProcessMessage(tx, vendor, &resp)
+		if err != nil {
+			return err
+		}
+
+		if err := n.messenger.ReliablySendMessage(tx, buyer, message, done); err != nil {
+			return err
+		}
+
+		if orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
+			return wTx.Commit()
+		}
+		return nil
 	})
 }

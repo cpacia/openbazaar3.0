@@ -7,6 +7,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -33,11 +34,8 @@ func (op *OrderProcessor) processOrderConfirmationMessage(dbtx database.Tx, orde
 		return nil, ErrUnexpectedMessage
 	}
 
-	// FIXME: we should allow the message to be saved here and decide whether the cancel or confirmation
-	// will be considered valid based on which transaction confirmed in the blockchain.
 	if order.SerializedOrderCancel != nil {
-		log.Errorf("Received ORDER_CONFIRMATION message for order %s after ORDER_CANCEL", order.ID)
-		return nil, ErrUnexpectedMessage
+		log.Warningf("Possible race: Received ORDER_CONFIRMATION message for order %s after ORDER_CANCEL", order.ID)
 	}
 
 	orderOpen, err := order.OrderOpenMessage()
@@ -60,6 +58,26 @@ func (op *OrderProcessor) processOrderConfirmationMessage(dbtx database.Tx, orde
 
 	if !valid {
 		return nil, errors.New("invalid vendor signature on order confirmation")
+	}
+
+	wallet, err := op.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+	if err != nil {
+		return nil, err
+	}
+
+	if orderConfirmation.TransactionID != "" && orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
+		// If this fails it's OK as the processor's unfunded order checking loop will
+		// retry at it's next interval.
+		tx, err := wallet.GetTransaction(iwallet.TransactionID(orderConfirmation.TransactionID))
+		if err == nil {
+			for _, from := range tx.From {
+				if from.Address.String() == order.PaymentAddress {
+					if err := op.processOutgoingPayment(dbtx, order, tx); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
 	}
 
 	event := &events.OrderConfirmationNotification{

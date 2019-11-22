@@ -34,9 +34,15 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 		return err
 	}
 
+	signature, err := n.ipfsNode.PrivateKey.Sign([]byte(order.ID.String()))
+	if err != nil {
+		return err
+	}
+
 	reject := pb.OrderReject{
-		Type:   pb.OrderReject_USER_REJECT,
-		Reason: reason,
+		Type:      pb.OrderReject_USER_REJECT,
+		Reason:    reason,
+		Signature: signature,
 	}
 
 	rejectAny, err := ptypes.MarshalAny(&reject)

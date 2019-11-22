@@ -70,6 +70,7 @@ message OrderOpen {
 message OrderReject {
     RejectType type = 1;
     string reason   = 2;
+    bytes signature = 3;
 
     enum RejectType {
         USER_REJECT      = 0;
@@ -78,10 +79,15 @@ message OrderReject {
 }
 
 message OrderConfirmation {
-    bytes signature = 10;
+    string transactionID = 1; // Only cancelable orders.
+    bytes signature      = 2;
 }
 
-message OrderCancel {}
+message OrderCancel {
+    string transactionID = 1; // Only cancelable orders.
+    bytes signature      = 2;
+}
+
 message OrderFulfillment {}
 message OrderComplete {}
 message DisputeOpen {}

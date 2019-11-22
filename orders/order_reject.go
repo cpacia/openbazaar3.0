@@ -1,12 +1,14 @@
 package orders
 
 import (
+	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/golang/protobuf/ptypes"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
@@ -32,8 +34,7 @@ func (op *OrderProcessor) processOrderRejectMessage(dbtx database.Tx, order *mod
 	}
 
 	if order.SerializedOrderCancel != nil {
-		log.Errorf("Received ORDER_REJECT message for order %s after ORDER_CANCEL", order.ID)
-		return nil, ErrUnexpectedMessage
+		log.Warningf("Possible race: Received ORDER_REJECT message for order %s after ORDER_CANCEL", order.ID)
 	}
 
 	orderOpen, err := order.OrderOpenMessage()
@@ -42,6 +43,20 @@ func (op *OrderProcessor) processOrderRejectMessage(dbtx database.Tx, order *mod
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	vendorPubkey, err := crypto.UnmarshalPublicKey(orderOpen.Listings[0].Listing.VendorID.Pubkeys.Identity)
+	if err != nil {
+		return nil, err
+	}
+
+	valid, err := vendorPubkey.Verify([]byte(order.ID.String()), orderReject.Signature)
+	if err != nil {
+		return nil, err
+	}
+
+	if !valid {
+		return nil, errors.New("invalid vendor signature on order confirmation")
 	}
 
 	event := &events.OrderDeclinedNotification{

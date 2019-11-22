@@ -18,6 +18,9 @@ var (
 
 	// ErrIPFSDelayedShutdown is returned if the IPFS is lagging during shutdown.
 	ErrIPFSDelayedShutdown = errors.New("ipfs node delayed shutdown")
+
+	// ErrPeerUnreachable is returned due to an inability to connect to a peer.
+	ErrPeerUnreachable = errors.New("peer unreachable")
 )
 
 type ErrTooManyItems []string

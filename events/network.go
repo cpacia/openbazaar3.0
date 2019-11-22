@@ -48,3 +48,15 @@ type PublishFinished struct {
 // IPFSShutdown is an event that gets pushed when the IPFS node
 // shuts down.
 type IPFSShutdown struct{}
+
+// PingReceived is an event that gets pushed when a node receives
+// a PING message.
+type PingReceived struct {
+	Peer peer.ID
+}
+
+// PongReceived is an event that gets pushed when a node receives
+// a PONG message.
+type PongReceived struct {
+	Peer peer.ID
+}
