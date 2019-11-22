@@ -61,6 +61,7 @@ func (n *OpenBazaarNode) RefundOrder(orderID models.OrderID, done chan struct{})
 
 		refundPayload, err := ptypes.MarshalAny(refundMsg)
 		if err != nil {
+			wTx.Rollback()
 			return err
 		}
 
@@ -70,9 +71,11 @@ func (n *OpenBazaarNode) RefundOrder(orderID models.OrderID, done chan struct{})
 
 		_, err = n.orderProcessor.ProcessMessage(tx, vendor, refundMsg)
 		if err != nil {
+			wTx.Rollback()
 			return err
 		}
 		if err := n.messenger.ReliablySendMessage(tx, buyer, message, done); err != nil {
+			wTx.Rollback()
 			return err
 		}
 

@@ -90,10 +90,16 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 
 		_, err = n.orderProcessor.ProcessMessage(tx, vendor, &resp)
 		if err != nil {
+			if orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
+				wTx.Rollback()
+			}
 			return err
 		}
 
 		if err := n.messenger.ReliablySendMessage(tx, buyer, message, done); err != nil {
+			if orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
+				wTx.Rollback()
+			}
 			return err
 		}
 

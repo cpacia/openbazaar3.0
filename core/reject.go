@@ -95,6 +95,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 
 			refundPayload, err := ptypes.MarshalAny(refundMsg)
 			if err != nil {
+				wTx.Rollback()
 				return err
 			}
 
@@ -104,6 +105,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 
 			_, err = n.orderProcessor.ProcessMessage(tx, vendor, refundMsg)
 			if err != nil {
+				wTx.Rollback()
 				return err
 			}
 
@@ -113,10 +115,12 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 			)
 
 			if err := n.messenger.ReliablySendMessage(tx, buyer, message, done1); err != nil {
+				wTx.Rollback()
 				return err
 			}
 
 			if err := n.messenger.ReliablySendMessage(tx, buyer, refundResp, done2); err != nil {
+				wTx.Rollback()
 				return err
 			}
 

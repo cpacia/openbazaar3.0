@@ -80,10 +80,12 @@ func (n *OpenBazaarNode) CancelOrder(orderID models.OrderID, done chan struct{})
 	return n.repo.DB().Update(func(tx database.Tx) error {
 		_, err = n.orderProcessor.ProcessMessage(tx, buyer, &resp)
 		if err != nil {
+			wTx.Rollback()
 			return err
 		}
 
 		if err := n.messenger.ReliablySendMessage(tx, vendor, message, done); err != nil {
+			wTx.Rollback()
 			return err
 		}
 
