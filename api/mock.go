@@ -23,6 +23,7 @@ type mockNode struct {
 	deleteChatConversationFunc   func(peerID peer.ID) error
 	deleteGroupChatMessagesFunc  func(orderID models.OrderID) error
 	confirmOrderFunc             func(orderID models.OrderID, done chan struct{}) error
+	cancelOrderFunc              func(orderID models.OrderID, done chan struct{}) error
 	followNodeFunc               func(peerID peer.ID, done chan<- struct{}) error
 	unfollowNodeFunc             func(peerID peer.ID, done chan<- struct{}) error
 	getMyFollowersFunc           func() (models.Followers, error)
@@ -51,7 +52,9 @@ type mockNode struct {
 	getProfileFunc               func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)
 	purchaseFunc                 func(ctx context.Context, purchase *models.Purchase) (orderID models.OrderID, paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error)
 	estimateOrderSubtotalFunc    func(ctx context.Context, purchase *models.Purchase) (*models.CurrencyValue, error)
-	rejectOrderFunc              func(orderID models.OrderID, reason string, done chan struct{})
+	rejectOrderFunc              func(orderID models.OrderID, reason string, done chan struct{}) error
+	refundOrderFunc              func(orderID models.OrderID, done chan struct{}) error
+	pingNodeFunc                 func(ctx context.Context, peer peer.ID) error
 }
 
 func (m *mockNode) RequestAddress(ctx context.Context, to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error) {
@@ -86,6 +89,9 @@ func (m *mockNode) DeleteGroupChatMessages(orderID models.OrderID) error {
 }
 func (m *mockNode) ConfirmOrder(orderID models.OrderID, done chan struct{}) error {
 	return m.confirmOrderFunc(orderID, done)
+}
+func (m *mockNode) CancelOrder(orderID models.OrderID, done chan struct{}) error {
+	return m.cancelOrderFunc(orderID, done)
 }
 func (m *mockNode) FollowNode(peerID peer.ID, done chan<- struct{}) error {
 	return m.followNodeFunc(peerID, done)
@@ -172,5 +178,11 @@ func (m *mockNode) EstimateOrderSubtotal(ctx context.Context, purchase *models.P
 	return m.estimateOrderSubtotalFunc(ctx, purchase)
 }
 func (m *mockNode) RejectOrder(orderID models.OrderID, reason string, done chan struct{}) error {
-	return m.RejectOrder(orderID, reason, done)
+	return m.rejectOrderFunc(orderID, reason, done)
+}
+func (m *mockNode) RefundOrder(orderID models.OrderID, done chan struct{}) error {
+	return m.refundOrderFunc(orderID, done)
+}
+func (m *mockNode) PingNode(ctx context.Context, peer peer.ID) error {
+	return m.pingNodeFunc(ctx, peer)
 }

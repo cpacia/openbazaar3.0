@@ -24,6 +24,7 @@ type CoreIface interface {
 	DeleteChatConversation(peerID peer.ID) error
 	DeleteGroupChatMessages(orderID models.OrderID) error
 	ConfirmOrder(orderID models.OrderID, done chan struct{}) error
+	CancelOrder(orderID models.OrderID, done chan struct{}) error
 	FollowNode(peerID peer.ID, done chan<- struct{}) error
 	UnfollowNode(peerID peer.ID, done chan<- struct{}) error
 	GetMyFollowers() (models.Followers, error)
@@ -53,4 +54,6 @@ type CoreIface interface {
 	PurchaseListing(ctx context.Context, purchase *models.Purchase) (orderID models.OrderID, paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error)
 	EstimateOrderSubtotal(ctx context.Context, purchase *models.Purchase) (*models.CurrencyValue, error)
 	RejectOrder(orderID models.OrderID, reason string, done chan struct{}) error
+	RefundOrder(orderID models.OrderID, done chan struct{}) error
+	PingNode(ctx context.Context, peer peer.ID) error
 }
