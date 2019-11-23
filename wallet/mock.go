@@ -134,6 +134,10 @@ func (n *MockWalletNetwork) GenerateToAddress(addr iwallet.Address, amount iwall
 	return nil
 }
 
+var _ = iwallet.Wallet(&MockWallet{})
+var _ = iwallet.Escrow(&MockWallet{})
+var _ = iwallet.EscrowWithTimeout(&MockWallet{})
+
 // MockWallet is a mock wallet that conforms to the wallet interface. It can
 // be hooked up to the MockWalletNetwork to allow transactions between mock
 // wallets.
@@ -515,7 +519,10 @@ func (w *MockWallet) Transactions(limit int, offsetID iwallet.TransactionID) ([]
 	return sorted.transactions[offset:limit], nil
 }
 
-// GetTransaction returns a transaction given it's ID.
+// GetTransaction returns a transaction given it's ID. This is used by OpenBazaar to
+// request transactions paid to an order's payment address. This means we expect both
+// internal wallet transactions and transactions sending to or from a watched address
+// to be returned here.
 func (w *MockWallet) GetTransaction(id iwallet.TransactionID) (iwallet.Transaction, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
@@ -525,6 +532,34 @@ func (w *MockWallet) GetTransaction(id iwallet.TransactionID) (iwallet.Transacti
 		return tx, errors.New("not found")
 	}
 	return tx, nil
+}
+
+// GetAddressTransactions returns the transactions sending to or spending from this address.
+// Note this will only ever be called for an order's payment address transaction so for the
+// purpose of this method the wallet only needs to be able to track transactions paid to a
+// wallet address and any watched addresses.
+func (w *MockWallet) GetAddressTransactions(addr iwallet.Address) ([]iwallet.Transaction, error) {
+	w.mtx.RLock()
+	defer w.mtx.RUnlock()
+
+	var txs []iwallet.Transaction
+txloop:
+	for _, tx := range w.transactions {
+		for _, in := range tx.From {
+			if in.Address.String() == addr.String() {
+				txs = append(txs, tx)
+				continue txloop
+			}
+		}
+
+		for _, out := range tx.To {
+			if out.Address.String() == addr.String() {
+				txs = append(txs, tx)
+				continue txloop
+			}
+		}
+	}
+	return txs, nil
 }
 
 // EstimateSpendFee should return the anticipated fee to transfer a given amount of coins

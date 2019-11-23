@@ -114,6 +114,8 @@ type tx struct {
 	rollbackCache []interface{}
 	commitCache   []interface{}
 
+	commitHooks []func()
+
 	closed      bool
 	isForWrites bool
 }
@@ -156,6 +158,9 @@ func (t *tx) Commit() error {
 	if err := t.dbtx.Commit().Error; err != nil {
 		t.Rollback()
 		return err
+	}
+	for _, fn := range t.commitHooks {
+		fn()
 	}
 	return nil
 }
@@ -232,6 +237,12 @@ func (t *tx) Migrate(model interface{}) error {
 		return ErrReadOnly
 	}
 	return t.dbtx.AutoMigrate(model).Error
+}
+
+// RegisterCommitHook registers a callback that is invoked whenever a commit completes
+// successfully.
+func (t *tx) RegisterCommitHook(fn func()) {
+	t.commitHooks = append(t.commitHooks, fn)
 }
 
 // GetProfile returns the profile.

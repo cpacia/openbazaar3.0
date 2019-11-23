@@ -92,6 +92,10 @@ type Tx interface {
 	// model to the current schema.
 	Migrate(model interface{}) error
 
+	// RegisterCommitHook registers a callback that is invoked whenever a commit completes
+	// successfully.
+	RegisterCommitHook(fn func())
+
 	// PublicData provides atomic access to the IPFS data directory.
 	PublicData
 }

@@ -51,6 +51,7 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 	} else {
 		order.SetRole(models.RoleVendor)
 	}
+	order.Open = true
 
 	var validationError bool
 	// If the validation fails and we are the vendor, we send a REJECT message back

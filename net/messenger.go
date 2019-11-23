@@ -18,7 +18,7 @@ import (
 // that haven't yet been ACKed.
 const (
 	RetryInterval = time.Minute * 1
-	SendTimeout   = time.Second * 30
+	SendTimeout   = time.Second * 5
 )
 
 // Messenger manages the reliable sending of outgoing messages.
@@ -75,8 +75,10 @@ func (m *Messenger) ReliablySendMessage(tx database.Tx, peer peer.ID, message *p
 		return err
 	}
 
-	// Then send the message
-	go m.trySendMessage(peer, message, done)
+	// Send the message on commit.
+	tx.RegisterCommitHook(func() {
+		go m.trySendMessage(peer, message, done)
+	})
 
 	return nil
 }

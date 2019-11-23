@@ -17,7 +17,10 @@ import (
 	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/op/go-logging"
+	"time"
 )
+
+const rescanTransactionsInterval = time.Minute
 
 var (
 	log                  = logging.MustGetLogger("ORDR")
@@ -65,6 +68,8 @@ func NewOrderProcessor(cfg *Config) *OrderProcessor {
 // Start begins listening for transactions from the wallets that pertain to our
 // orders. When we find one we record the payment.
 func (op *OrderProcessor) Start() {
+	go op.checkForMorePayments()
+	ticker := time.NewTicker(rescanTransactionsInterval)
 	for _, wallet := range op.multiwallet {
 		go func(w iwallet.Wallet) {
 			sub := w.SubscribeTransactions()
@@ -72,6 +77,8 @@ func (op *OrderProcessor) Start() {
 				select {
 				case tx := <-sub:
 					op.processWalletTransaction(tx)
+				case <-ticker.C:
+					op.checkForMorePayments()
 				case <-op.shutdown:
 					return
 				}

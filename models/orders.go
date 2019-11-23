@@ -8,7 +8,9 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"time"
 )
 
 var (
@@ -68,6 +70,11 @@ type Order struct {
 	Transactions []byte
 
 	MyRole uint8
+
+	Open bool `gorm:"index"`
+
+	LastCheckForPayments time.Time
+	RescanPerformed      bool
 
 	SerializedOrderOpen []byte
 	OrderOpenAcked      bool
@@ -147,6 +154,15 @@ func (o *Order) Moderator() (peer.ID, error) {
 		return "", errors.New("no moderator for order")
 	}
 	return peer.IDB58Decode(orderOpen.Payment.Moderator)
+}
+
+// Timestamp returns the timestamp at which this order was opened.
+func (o *Order) Timestamp() (time.Time, error) {
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return time.Time{}, err
+	}
+	return ptypes.Timestamp(orderOpen.Timestamp)
 }
 
 // GetTransactions returns all the transactions associated with this order.
@@ -633,6 +649,9 @@ func (o *Order) IsFunded() (bool, error) {
 	)
 
 	txs, err := o.GetTransactions()
+	if !IsMessageNotExistError(err) {
+		return false, err
+	}
 	for _, tx := range txs {
 		for _, to := range tx.To {
 			if to.Address.String() == paymentAddress {
@@ -656,6 +675,9 @@ func (o *Order) FundingTotal() (iwallet.Amount, error) {
 	)
 
 	txs, err := o.GetTransactions()
+	if !IsMessageNotExistError(err) {
+		return iwallet.NewAmount(0), err
+	}
 	for _, tx := range txs {
 		for _, to := range tx.To {
 			if to.Address.String() == paymentAddress {
