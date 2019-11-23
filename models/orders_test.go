@@ -6,8 +6,10 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"testing"
+	"time"
 )
 
 func TestOrder_Role(t *testing.T) {
@@ -18,6 +20,30 @@ func TestOrder_Role(t *testing.T) {
 	ret := order.Role()
 	if ret != RoleVendor {
 		t.Errorf("Expected RoleVendor, got %d", ret)
+	}
+}
+
+func TestOrder_Timestamp(t *testing.T) {
+	var order Order
+
+	now := time.Now().UTC()
+	pbt, err := ptypes.TimestampProto(now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = order.PutMessage(&pb.OrderOpen{
+		Timestamp: pbt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	check, err := order.Timestamp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if now != check {
+		t.Fatal("Returned incorrect timestamp")
 	}
 }
 
@@ -494,6 +520,287 @@ func TestOrder_ParkedMessages(t *testing.T) {
 	}
 }
 
+func TestOrder_CanCancel(t *testing.T) {
+	tests := []struct {
+		setup     func(order *Order) error
+		ourID     string
+		canCancel bool
+	}{
+		{
+			// Success
+			setup: func(order *Order) error {
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: true,
+		},
+		{
+			// Nil vendorID
+			setup: func(order *Order) error {
+				err := order.PutMessage(&pb.OrderOpen{})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Is vendor
+			setup: func(order *Order) error {
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+			canCancel: false,
+		},
+		{
+			// Order is nil
+			setup: func(order *Order) error {
+				return nil
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil reject
+			setup: func(order *Order) error {
+				order.SerializedOrderReject = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil cancel
+			setup: func(order *Order) error {
+				order.SerializedOrderCancel = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil confirmation
+			setup: func(order *Order) error {
+				order.SerializedOrderConfirmation = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil fulfillment
+			setup: func(order *Order) error {
+				order.SerializedOrderFulfillment = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil complete
+			setup: func(order *Order) error {
+				order.SerializedOrderComplete = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil dispute open
+			setup: func(order *Order) error {
+				order.SerializedDisputeOpen = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil dispute close
+			setup: func(order *Order) error {
+				order.SerializedDisputeClosed = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil dispute update
+			setup: func(order *Order) error {
+				order.SerializedDisputeUpdate = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil refund
+			setup: func(order *Order) error {
+				order.SerializedRefunds = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+		{
+			// Non nil payment finalized
+			setup: func(order *Order) error {
+				order.SerializedPaymentFinalized = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canCancel: false,
+		},
+	}
+
+	for i, test := range tests {
+		var order Order
+		if err := test.setup(&order); err != nil {
+			t.Errorf("Test %d setup failed: %s", i, err)
+		}
+
+		pid, err := peer.IDB58Decode(test.ourID)
+		if err != nil {
+			t.Errorf("Test %d peerID decode error: %s", i, err)
+		}
+
+		canCancel := order.CanCancel(pid)
+		if canCancel != test.canCancel {
+			t.Errorf("Test %d: Got incorrect result. Expected %t, got %t", i, test.canCancel, canCancel)
+		}
+	}
+}
+
 func TestOrder_ErroredMessages(t *testing.T) {
 	var (
 		order Order
@@ -740,6 +1047,149 @@ func TestOrder_CanReject(t *testing.T) {
 		canReject := order.CanReject(pid)
 		if canReject != test.canReject {
 			t.Errorf("Got incorrect result. Expected %t, got %t", test.canReject, canReject)
+		}
+	}
+}
+
+func TestOrder_CanRefund(t *testing.T) {
+	tests := []struct {
+		setup     func(order *Order) error
+		ourID     string
+		canRefund bool
+	}{
+		{
+			// Success
+			setup: func(order *Order) error {
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+					Payment: &pb.OrderOpen_Payment{
+						Method: pb.OrderOpen_Payment_DIRECT,
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canRefund: true,
+		},
+		{
+			// Nil buyerID
+			setup: func(order *Order) error {
+				err := order.PutMessage(&pb.OrderOpen{})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canRefund: false,
+		},
+		{
+			// Is buyer
+			setup: func(order *Order) error {
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+					},
+					Payment: &pb.OrderOpen_Payment{
+						Method: pb.OrderOpen_Payment_DIRECT,
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canRefund: false,
+		},
+		{
+			// Order is nil
+			setup: func(order *Order) error {
+				return nil
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canRefund: false,
+		},
+		{
+			// Cancelable
+			setup: func(order *Order) error {
+				order.SerializedOrderReject = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+					Payment: &pb.OrderOpen_Payment{
+						Method: pb.OrderOpen_Payment_CANCELABLE,
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canRefund: false,
+		},
+		{
+			// Non nil cancel
+			setup: func(order *Order) error {
+				order.SerializedOrderCancel = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+					Payment: &pb.OrderOpen_Payment{
+						Method: pb.OrderOpen_Payment_DIRECT,
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canRefund: false,
+		},
+		{
+			// Non nil complete
+			setup: func(order *Order) error {
+				order.SerializedOrderComplete = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+					Payment: &pb.OrderOpen_Payment{
+						Method: pb.OrderOpen_Payment_DIRECT,
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canRefund: false,
+		},
+		{
+			// Non nil payment finalized
+			setup: func(order *Order) error {
+				order.SerializedPaymentFinalized = []byte{0x00}
+				err := order.PutMessage(&pb.OrderOpen{
+					BuyerID: &pb.ID{
+						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+					},
+					Payment: &pb.OrderOpen_Payment{
+						Method: pb.OrderOpen_Payment_DIRECT,
+					},
+				})
+				return err
+			},
+			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canRefund: false,
+		},
+	}
+
+	for i, test := range tests {
+		var order Order
+		if err := test.setup(&order); err != nil {
+			t.Errorf("Test %d setup failed: %s", i, err)
+		}
+
+		pid, err := peer.IDB58Decode(test.ourID)
+		if err != nil {
+			t.Errorf("Test %d peerID decode error: %s", i, err)
+		}
+
+		canRefund := order.CanRefund(pid)
+		if canRefund != test.canRefund {
+			t.Errorf("Test %d: Got incorrect result. Expected %t, got %t", i, test.canRefund, canRefund)
 		}
 	}
 }

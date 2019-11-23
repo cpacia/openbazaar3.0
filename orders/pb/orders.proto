@@ -92,7 +92,9 @@ message OrderFulfillment {}
 message OrderComplete {}
 message DisputeOpen {}
 message DisputeUpdate {}
-message DisputeClose {}
+message DisputeClose {
+    string transactionID = 1;
+}
 
 message Refund {
     oneof refundInfo {

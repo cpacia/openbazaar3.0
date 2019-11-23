@@ -255,7 +255,7 @@ func (op *OrderProcessor) checkForMorePayments() {
 						knownTxsMap[txid] = true
 					}
 				}
-			} else if err != nil && !models.IsMessageNotExistError(err) {
+			} else if !models.IsMessageNotExistError(err) {
 				log.Errorf("Error loading payment sent messages: %s", err)
 			}
 
@@ -270,7 +270,7 @@ func (op *OrderProcessor) checkForMorePayments() {
 						}
 					}
 				}
-			} else if err != nil && !models.IsMessageNotExistError(err) {
+			} else if !models.IsMessageNotExistError(err) {
 				log.Errorf("Error loading refund messages: %s", err)
 			}
 
@@ -283,7 +283,7 @@ func (op *OrderProcessor) checkForMorePayments() {
 						knownTxsMap[txid] = true
 					}
 				}
-			} else if err != nil && !models.IsMessageNotExistError(err) {
+			} else if !models.IsMessageNotExistError(err) {
 				log.Errorf("Error loading order confirmation message: %s", err)
 			}
 
@@ -296,8 +296,21 @@ func (op *OrderProcessor) checkForMorePayments() {
 						knownTxsMap[txid] = true
 					}
 				}
-			} else if err != nil && !models.IsMessageNotExistError(err) {
+			} else if !models.IsMessageNotExistError(err) {
 				log.Errorf("Error loading order cancel message: %s", err)
+			}
+
+			disputeClosedMsg, err := order.DisputeClosedMessage()
+			if err == nil {
+				if disputeClosedMsg.TransactionID != "" {
+					txid := iwallet.TransactionID(disputeClosedMsg.TransactionID)
+					if !knownTxsMap[txid] {
+						missingTxids = append(missingTxids, txid)
+						knownTxsMap[txid] = true
+					}
+				}
+			} else if !models.IsMessageNotExistError(err) {
+				log.Errorf("Error loading dispute closed message: %s", err)
 			}
 
 			for _, missing := range missingTxids {

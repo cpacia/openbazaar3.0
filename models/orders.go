@@ -590,7 +590,7 @@ func (o *Order) CanCancel(ourPeerID peer.ID) bool {
 	}
 
 	// Only buyers can confirm.
-	if orderOpen.Listings[0].Listing.VendorID.String() == ourPeerID.Pretty() {
+	if orderOpen.Listings[0].Listing.VendorID.PeerID == ourPeerID.Pretty() {
 		return false
 	}
 
@@ -649,7 +649,7 @@ func (o *Order) IsFunded() (bool, error) {
 	)
 
 	txs, err := o.GetTransactions()
-	if !IsMessageNotExistError(err) {
+	if err != nil && !IsMessageNotExistError(err) {
 		return false, err
 	}
 	for _, tx := range txs {
@@ -675,7 +675,7 @@ func (o *Order) FundingTotal() (iwallet.Amount, error) {
 	)
 
 	txs, err := o.GetTransactions()
-	if !IsMessageNotExistError(err) {
+	if err != nil && !IsMessageNotExistError(err) {
 		return iwallet.NewAmount(0), err
 	}
 	for _, tx := range txs {
