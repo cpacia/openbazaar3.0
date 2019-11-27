@@ -28,8 +28,8 @@ var (
 	defaultConfigFile = filepath.Join(DefaultHomeDir, defaultConfigFilename)
 	defaultLogDir     = filepath.Join(DefaultHomeDir, defaultLogDirname)
 
-	fileLogFormat   = logging.MustStringFormatter(`%{time:2006-01-02T15:04:05} [%{level}] [%{module}] %{message}`)
-	stdoutLogFormat = logging.MustStringFormatter(`%{color:reset}%{color}%{time:15:04:05.000} [%{level}] [%{module}] %{message}`)
+	fileLogFormat   = logging.MustStringFormatter(`%{time:2006-01-02 T15:04:05.000} [%{level}] [%{module}] %{message}`)
+	stdoutLogFormat = logging.MustStringFormatter(`%{color:reset}%{color}%{time:15:04:05} [%{level}] [%{module}] %{message}`)
 	logLevelMap     = map[string]logging.Level{
 		"debug":    logging.DEBUG,
 		"info":     logging.INFO,
