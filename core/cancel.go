@@ -150,6 +150,9 @@ func (n *OpenBazaarNode) releaseFromCancelableAddress(order *models.Order) (iwal
 	if err != nil {
 		return nil, "", err
 	}
+	// The escrow fee is calculated as 100% of EstimateEscrowFee for the first input.
+	// Plus 50% of EstimateEscrowFee for each additional input.
+	escrowFee = escrowFee.Add(escrowFee.Div(iwallet.NewAmount(2)).Mul(iwallet.NewAmount(len(txn.From)-1)))
 
 	txn.To = append(txn.To, iwallet.SpendInfo{
 		Address: toAddress,
