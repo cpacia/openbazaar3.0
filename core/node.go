@@ -101,7 +101,9 @@ func (n *OpenBazaarNode) Start() {
 		go n.publishHandler()
 		go n.multiwallet.Start()
 		go n.gateway.Serve()
-		n.removeDisabledCoinsFromListings()
+		if err := n.removeDisabledCoinsFromListings(); err != nil {
+			log.Errorf("Error removing disabled coins from listings: %s", err)
+		}
 	}
 }
 

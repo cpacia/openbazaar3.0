@@ -74,6 +74,7 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 // The function should update the listing point in place and return a boolean
 // expressing whether or not the listing was updated.
 func (n *OpenBazaarNode) UpdateAllListings(updateFunc func(l *pb.Listing) (bool, error), done chan<- struct{}) error {
+	listingsUpdated := false
 	err := n.repo.DB().Update(func(tx database.Tx) error {
 		index, err := tx.GetListingIndex()
 		if err != nil {
@@ -105,8 +106,13 @@ func (n *OpenBazaarNode) UpdateAllListings(updateFunc func(l *pb.Listing) (bool,
 				}
 
 				updatedMetadata = append(updatedMetadata, *newLmd)
+				listingsUpdated = true
 			}
 		}
+		if !listingsUpdated {
+			return nil
+		}
+
 		for _, lmd := range updatedMetadata {
 			index.UpdateListing(lmd)
 		}
@@ -123,6 +129,11 @@ func (n *OpenBazaarNode) UpdateAllListings(updateFunc func(l *pb.Listing) (bool,
 		maybeCloseDone(done)
 		return err
 	}
+	if !listingsUpdated {
+		maybeCloseDone(done)
+		return nil
+	}
+
 	n.Publish(done)
 	return nil
 }
