@@ -33,6 +33,7 @@ type CoreIface interface {
 	GetFollowers(ctx context.Context, peerID peer.ID, useCache bool) (models.Followers, error)
 	GetFollowing(ctx context.Context, peerID peer.ID, useCache bool) (models.Following, error)
 	SaveListing(listing *pb.Listing, done chan<- struct{}) error
+	UpdateAllListings(updateFunc func(l *pb.Listing) (bool, error), done chan<- struct{}) error
 	DeleteListing(slug string, done chan<- struct{}) error
 	GetMyListings() (models.ListingIndex, error)
 	GetListings(ctx context.Context, peerID peer.ID, useCache bool) (models.ListingIndex, error)

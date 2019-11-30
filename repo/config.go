@@ -76,6 +76,7 @@ type Config struct {
 	Profile               string   `long:"profile" description:"Enable HTTP profiling on given port -- NOTE port must be between 1024 and 65536"`
 	CPUProfile            string   `long:"cpuprofile" description:"Write CPU profile to the specified file"`
 	IPFSOnly              bool     `long:"ipfsonly" description:"Disable all OpenBazaar functionality except the IPFS networking."`
+	EnabledWallets        []string `long:"enabledwallet" description:"Only enable wallets in this list. Available wallets: [BTC, BCH, LTC, ZEC, ETH]"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command

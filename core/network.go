@@ -381,7 +381,6 @@ func (n *OpenBazaarNode) publishHandler() {
 			case p := <-n.publishChan:
 				publishCancel()
 				publishCtx, publishCancel = context.WithCancel(context.Background())
-				defer publishCancel()
 				lastPublish = time.Now()
 				tick = time.After(republishInterval - time.Since(lastPublish))
 				go n.publish(publishCtx, p.done)

@@ -40,6 +40,7 @@ import (
 	"os"
 	"path"
 	"runtime/pprof"
+	"strings"
 	"time"
 )
 
@@ -179,12 +180,16 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	messenger := obnet.NewMessenger(service, obRepo.DB())
 	tracker := NewFollowerTracker(obRepo, bus, ipfsNode.PeerHost.Network())
 
+	enabledWallets := make([]iwallet.CoinType, len(cfg.EnabledWallets))
+	for i, ew := range cfg.EnabledWallets {
+		enabledWallets[i] = iwallet.CoinType(strings.ToUpper(ew))
+	}
 	mw, err := multiwallet.NewMultiwallet(&multiwallet.Config{
 		DataDir:    cfg.DataDir,
 		UseTestnet: cfg.Testnet,
 		LogLevel:   cfg.LogLevel,
 		LogDir:     cfg.LogDir,
-		Wallets:    []iwallet.CoinType{iwallet.CtBitcoinCash},
+		Wallets:    enabledWallets,
 	})
 	if err != nil {
 		return nil, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cpacia/openbazaar3.0/models/factory"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
 	"strings"
@@ -52,6 +53,95 @@ func TestOpenBazaarNode_SaveListing(t *testing.T) {
 	_, err = node.GetMyListingByCID(c)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestOpenBazaarNode_UpdateAllListings(t *testing.T) {
+	node, err := MockNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer node.DestroyNode()
+
+	var (
+		listing1 = factory.NewPhysicalListing("ron-swanson-shirt")
+		listing2 = factory.NewPhysicalListing("bag-of-shit")
+		newTitle = "new title"
+	)
+
+	done := make(chan struct{})
+	if err := node.SaveListing(listing1, done); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+	done2 := make(chan struct{})
+	if err := node.SaveListing(listing2, done2); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done2:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	oldIndex, err := node.GetMyListings()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done3 := make(chan struct{})
+	err = node.UpdateAllListings(func(listing *pb.Listing) (bool, error) {
+		listing.Item.Title = newTitle
+		return true, nil
+	}, done3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done3:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	newListing1, err := node.GetMyListingBySlug("ron-swanson-shirt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if newListing1.Listing.Item.Title != newTitle {
+		t.Error("Failed to update title on listing1")
+	}
+
+	newListing2, err := node.GetMyListingBySlug("bag-of-shit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if newListing2.Listing.Item.Title != newTitle {
+		t.Error("Failed to update title on listing2")
+	}
+
+	newIndex, err := node.GetMyListings()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(newIndex) != 2 {
+		t.Errorf("Returned incorrect number of listings. Expected %d, got %d", 2, len(newIndex))
+	}
+
+	for _, lmd := range newIndex {
+		for _, l := range oldIndex {
+			if l.Hash == lmd.Hash {
+				t.Error("Failed to update listing hash")
+			}
+		}
+		if lmd.Title != newTitle {
+			t.Error("Failed to update title in listing index")
+		}
 	}
 }
 
@@ -210,6 +300,51 @@ func Test_generateListingSlug(t *testing.T) {
 		if slug != test.expected {
 			t.Errorf("Expected slug %s, got %s", test.expected, slug)
 		}
+	}
+}
+
+func TestOpenBazaarNode_removeDisabledCoinsFromListings(t *testing.T) {
+	node, err := MockNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer node.DestroyNode()
+
+	var (
+		listing1                 = factory.NewPhysicalListing("ron-swanson-shirt")
+		expectedAcceptedCurrency = "MCK"
+	)
+	listing1.Metadata.AcceptedCurrencies = []string{expectedAcceptedCurrency, "USD"}
+
+	node.multiwallet[iwallet.CoinType("USD")] = node.multiwallet[iwallet.CtMock]
+
+	done := make(chan struct{})
+	if err := node.SaveListing(listing1, done); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	delete(node.multiwallet, iwallet.CoinType("USD"))
+
+	if err := node.removeDisabledCoinsFromListings(); err != nil {
+		t.Fatal(err)
+	}
+
+	retListing, err := node.GetMyListingBySlug("ron-swanson-shirt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(retListing.Listing.Metadata.AcceptedCurrencies) != 1 {
+		t.Errorf("Expected %d accepted currencies, got %d", 1, len(retListing.Listing.Metadata.AcceptedCurrencies))
+	}
+
+	if retListing.Listing.Metadata.AcceptedCurrencies[0] != expectedAcceptedCurrency {
+		t.Errorf("Expected accepted currency %s, got %s", expectedAcceptedCurrency, retListing.Listing.Metadata.AcceptedCurrencies[0])
 	}
 }
 

@@ -36,141 +36,7 @@ import (
 // index and update the listing count in the profile.
 func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) error {
 	err := n.repo.DB().Update(func(tx database.Tx) error {
-		// Set the escrow timeout.
-		if n.UsingTestnet() {
-			// Testnet should be set to one hour unless otherwise
-			// specified. This allows for easier testing.
-			if listing.Metadata.EscrowTimeoutHours == 0 {
-				listing.Metadata.EscrowTimeoutHours = 1
-			}
-		} else {
-			listing.Metadata.EscrowTimeoutHours = EscrowTimeout
-		}
-
-		// If slug is not set create a new one.
-		if listing.Slug == "" {
-			var err error
-			listing.Slug, err = n.generateListingSlug(listing.Item.Title)
-			if err != nil {
-				return err
-			}
-		}
-
-		currencyMap := make(map[string]bool)
-		for _, acceptedCurrency := range listing.Metadata.AcceptedCurrencies {
-			_, err := n.multiwallet.WalletForCurrencyCode(acceptedCurrency)
-			if err != nil {
-				return fmt.Errorf("currency %s is not found in multiwallet", acceptedCurrency)
-			}
-			if currencyMap[normalizeCurrencyCode(acceptedCurrency)] {
-				return errors.New("duplicate accepted currency in listing")
-			}
-			currencyMap[normalizeCurrencyCode(acceptedCurrency)] = true
-		}
-
-		// Sanitize a few critical fields
-		if listing.Item == nil {
-			return errors.New("no item in listing")
-		}
-		sanitizer := bluemonday.UGCPolicy()
-		for _, opt := range listing.Item.Options {
-			opt.Name = sanitizer.Sanitize(opt.Name)
-			for _, v := range opt.Variants {
-				v.Name = sanitizer.Sanitize(v.Name)
-			}
-		}
-		for _, so := range listing.ShippingOptions {
-			so.Name = sanitizer.Sanitize(so.Name)
-			for _, serv := range so.Services {
-				serv.Name = sanitizer.Sanitize(serv.Name)
-			}
-		}
-
-		// Set listing version
-		if listing.Metadata.Version <= 0 {
-			listing.Metadata.Version = ListingVersion
-		}
-
-		// Add the vendor ID to the listing
-		profile, err := tx.GetProfile()
-		if err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		pubkey, err := crypto.MarshalPublicKey(n.ipfsNode.PrivateKey.GetPublic())
-		if err != nil {
-			return err
-		}
-
-		idHash := sha256.Sum256([]byte(n.Identity().Pretty()))
-		sig, err := n.escrowMasterKey.Sign(idHash[:])
-		if err != nil {
-			return err
-		}
-		listing.VendorID = &pb.ID{
-			PeerID: n.Identity().Pretty(),
-			Pubkeys: &pb.ID_Pubkeys{
-				Identity: pubkey,
-				Escrow:   n.escrowMasterKey.PubKey().SerializeCompressed(),
-			},
-			Sig: sig.Serialize(),
-		}
-		if profile != nil {
-			listing.VendorID.Handle = profile.Handle
-		}
-
-		var couponsToStore []models.Coupon
-		for i, coupon := range listing.Coupons {
-			hash := coupon.GetHash()
-			code := coupon.GetDiscountCode()
-
-			_, err := multihash.FromB58String(hash)
-			if err != nil {
-				couponMH, err := utils.MultihashSha256([]byte(code))
-				if err != nil {
-					return err
-				}
-
-				listing.Coupons[i].Code = &pb.Listing_Coupon_Hash{Hash: couponMH.B58String()}
-				hash = couponMH.B58String()
-			}
-			coupon := models.Coupon{Slug: listing.Slug, Code: code, Hash: hash}
-			couponsToStore = append(couponsToStore, coupon)
-		}
-		if len(couponsToStore) > 0 {
-			for _, coupon := range couponsToStore {
-				if err := tx.Save(&coupon); err != nil {
-					return err
-				}
-			}
-		}
-
-		// Sign listing
-		sl, err := n.signListing(listing)
-		if err != nil {
-			return err
-		}
-
-		// Check the listing data is correct for continuing
-		if err := n.validateListing(sl); err != nil {
-			return err
-		}
-
-		// Save listing
-		if err := tx.SetListing(sl); err != nil {
-			return err
-		}
-
-		m := jsonpb.Marshaler{
-			Indent:       "    ",
-			EmitDefaults: false,
-		}
-		ser, err := m.MarshalToString(sl)
-		if err != nil {
-			return err
-		}
-
-		// Update listing index
-		cid, err := n.cid([]byte(ser))
+		cid, err := n.saveListingToDB(tx, listing)
 		if err != nil {
 			return err
 		}
@@ -195,6 +61,63 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 			return err
 		}
 		return nil
+	})
+	if err != nil {
+		maybeCloseDone(done)
+		return err
+	}
+	n.Publish(done)
+	return nil
+}
+
+// UpdateAllListings will iterate over each listing and pass it in to updateFunc.
+// The function should update the listing point in place and return a boolean
+// expressing whether or not the listing was updated.
+func (n *OpenBazaarNode) UpdateAllListings(updateFunc func(l *pb.Listing) (bool, error), done chan<- struct{}) error {
+	err := n.repo.DB().Update(func(tx database.Tx) error {
+		index, err := tx.GetListingIndex()
+		if err != nil {
+			return err
+		}
+
+		var updatedMetadata []models.ListingMetadata
+		for _, lmd := range index {
+			signedListing, err := tx.GetListing(lmd.Slug)
+			if err != nil {
+				return err
+			}
+			listing := signedListing.Listing
+
+			updated, err := updateFunc(listing)
+			if err != nil {
+				return err
+			}
+
+			if updated {
+				cid, err := n.saveListingToDB(tx, listing)
+				if err != nil {
+					return err
+				}
+
+				newLmd, err := models.NewListingMetadataFromListing(listing, cid)
+				if err != nil {
+					return err
+				}
+
+				updatedMetadata = append(updatedMetadata, *newLmd)
+			}
+		}
+		for _, lmd := range updatedMetadata {
+			index.UpdateListing(lmd)
+		}
+
+		// Save updated index.
+		if err := tx.SetListingIndex(index); err != nil {
+			return err
+		}
+
+		// Update profile counts
+		return n.updateAndSaveProfile(tx)
 	})
 	if err != nil {
 		maybeCloseDone(done)
@@ -389,6 +312,146 @@ func (n *OpenBazaarNode) generateListingSlug(title string) (string, error) {
 	}
 }
 
+// saveListingToDB updates any needed fields in the listing and saves or updates the
+// listing on disk and the coupon database table.
+func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) (cid.Cid, error) {
+	// Set the escrow timeout.
+	if n.UsingTestnet() {
+		// Testnet should be set to one hour unless otherwise
+		// specified. This allows for easier testing.
+		if listing.Metadata.EscrowTimeoutHours == 0 {
+			listing.Metadata.EscrowTimeoutHours = 1
+		}
+	} else {
+		listing.Metadata.EscrowTimeoutHours = EscrowTimeout
+	}
+
+	// If slug is not set create a new one.
+	if listing.Slug == "" {
+		var err error
+		listing.Slug, err = n.generateListingSlug(listing.Item.Title)
+		if err != nil {
+			return cid.Cid{}, err
+		}
+	}
+
+	currencyMap := make(map[string]bool)
+	for _, acceptedCurrency := range listing.Metadata.AcceptedCurrencies {
+		_, err := n.multiwallet.WalletForCurrencyCode(acceptedCurrency)
+		if err != nil {
+			return cid.Cid{}, fmt.Errorf("currency %s is not found in multiwallet", acceptedCurrency)
+		}
+		if currencyMap[normalizeCurrencyCode(acceptedCurrency)] {
+			return cid.Cid{}, errors.New("duplicate accepted currency in listing")
+		}
+		currencyMap[normalizeCurrencyCode(acceptedCurrency)] = true
+	}
+
+	// Sanitize a few critical fields
+	if listing.Item == nil {
+		return cid.Cid{}, errors.New("no item in listing")
+	}
+	sanitizer := bluemonday.UGCPolicy()
+	for _, opt := range listing.Item.Options {
+		opt.Name = sanitizer.Sanitize(opt.Name)
+		for _, v := range opt.Variants {
+			v.Name = sanitizer.Sanitize(v.Name)
+		}
+	}
+	for _, so := range listing.ShippingOptions {
+		so.Name = sanitizer.Sanitize(so.Name)
+		for _, serv := range so.Services {
+			serv.Name = sanitizer.Sanitize(serv.Name)
+		}
+	}
+
+	// Set listing version
+	if listing.Metadata.Version <= 0 {
+		listing.Metadata.Version = ListingVersion
+	}
+
+	// Add the vendor ID to the listing
+	profile, err := dbtx.GetProfile()
+	if err != nil && !os.IsNotExist(err) {
+		return cid.Cid{}, err
+	}
+	pubkey, err := crypto.MarshalPublicKey(n.ipfsNode.PrivateKey.GetPublic())
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	idHash := sha256.Sum256([]byte(n.Identity().Pretty()))
+	sig, err := n.escrowMasterKey.Sign(idHash[:])
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	listing.VendorID = &pb.ID{
+		PeerID: n.Identity().Pretty(),
+		Pubkeys: &pb.ID_Pubkeys{
+			Identity: pubkey,
+			Escrow:   n.escrowMasterKey.PubKey().SerializeCompressed(),
+		},
+		Sig: sig.Serialize(),
+	}
+	if profile != nil {
+		listing.VendorID.Handle = profile.Handle
+	}
+
+	var couponsToStore []models.Coupon
+	for i, coupon := range listing.Coupons {
+		hash := coupon.GetHash()
+		code := coupon.GetDiscountCode()
+
+		_, err := multihash.FromB58String(hash)
+		if err != nil {
+			couponMH, err := utils.MultihashSha256([]byte(code))
+			if err != nil {
+				return cid.Cid{}, err
+			}
+
+			listing.Coupons[i].Code = &pb.Listing_Coupon_Hash{Hash: couponMH.B58String()}
+			hash = couponMH.B58String()
+		}
+		coupon := models.Coupon{Slug: listing.Slug, Code: code, Hash: hash}
+		couponsToStore = append(couponsToStore, coupon)
+	}
+	if len(couponsToStore) > 0 {
+		for _, coupon := range couponsToStore {
+			if err := dbtx.Save(&coupon); err != nil {
+				return cid.Cid{}, err
+			}
+		}
+	}
+
+	// Sign listing
+	sl, err := n.signListing(listing)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	// Check the listing data is correct for continuing
+	if err := n.validateListing(sl); err != nil {
+		return cid.Cid{}, err
+	}
+
+	// Save listing
+	if err := dbtx.SetListing(sl); err != nil {
+		return cid.Cid{}, err
+	}
+
+	m := jsonpb.Marshaler{
+		Indent:       "    ",
+		EmitDefaults: false,
+	}
+	ser, err := m.MarshalToString(sl)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	// Update listing index
+	return n.cid([]byte(ser))
+}
+
 // signListing signs a protobuf serialization of the listing with the inventory
 // zeroed out (see serializeSignatureFormat below).
 func (n *OpenBazaarNode) signListing(listing *pb.Listing) (*pb.SignedListing, error) {
@@ -401,6 +464,34 @@ func (n *OpenBazaarNode) signListing(listing *pb.Listing) (*pb.SignedListing, er
 		return nil, err
 	}
 	return &pb.SignedListing{Listing: listing, Signature: sig}, nil
+}
+
+// removeDisabledCoinsFromListings loops over all listings and removes any accepted
+// currencies that are listed for a wallet that is not enabled by this node.
+func (n *OpenBazaarNode) removeDisabledCoinsFromListings() error {
+	enabledCoins := make(map[string]bool)
+	for ct := range n.multiwallet {
+		enabledCoins[ct.CurrencyCode()] = true
+	}
+
+	return n.UpdateAllListings(func(listing *pb.Listing) (bool, error) {
+		var (
+			newAcceptedCurrencies = make([]string, 0, len(listing.Metadata.AcceptedCurrencies))
+			updated               = false
+		)
+
+		for _, acceptedCurrency := range listing.Metadata.AcceptedCurrencies {
+			if enabledCoins[acceptedCurrency] {
+				newAcceptedCurrencies = append(newAcceptedCurrencies, acceptedCurrency)
+			} else {
+				updated = true
+			}
+		}
+		if updated {
+			listing.Metadata.AcceptedCurrencies = newAcceptedCurrencies
+		}
+		return updated, nil
+	}, nil)
 }
 
 // validateListing performs a ton of checks to make sure the listing is formatted correctly.

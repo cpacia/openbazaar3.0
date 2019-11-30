@@ -101,6 +101,7 @@ func (n *OpenBazaarNode) Start() {
 		go n.publishHandler()
 		go n.multiwallet.Start()
 		go n.gateway.Serve()
+		n.removeDisabledCoinsFromListings()
 	}
 }
 

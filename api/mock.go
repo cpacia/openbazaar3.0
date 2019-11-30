@@ -32,6 +32,7 @@ type mockNode struct {
 	getFollowersFunc             func(ctx context.Context, peerID peer.ID, useCache bool) (models.Followers, error)
 	getFollowingFunc             func(ctx context.Context, peerID peer.ID, useCache bool) (models.Following, error)
 	saveListingFunc              func(listing *pb.Listing, done chan<- struct{}) error
+	updateAllListingsFunc        func(updateFunc func(l *pb.Listing) (bool, error), done chan<- struct{}) error
 	deleteListingFunc            func(slug string, done chan<- struct{}) error
 	getMyListingsFunc            func() (models.ListingIndex, error)
 	getListingsFunc              func(ctx context.Context, peerID peer.ID, useCache bool) (models.ListingIndex, error)
@@ -117,6 +118,9 @@ func (m *mockNode) GetFollowing(ctx context.Context, peerID peer.ID, useCache bo
 }
 func (m *mockNode) SaveListing(listing *pb.Listing, done chan<- struct{}) error {
 	return m.saveListingFunc(listing, done)
+}
+func (m *mockNode) UpdateAllListings(updateFunc func(l *pb.Listing) (bool, error), done chan<- struct{}) error {
+	return m.updateAllListingsFunc(updateFunc, done)
 }
 func (m *mockNode) DeleteListing(slug string, done chan<- struct{}) error {
 	return m.deleteListingFunc(slug, done)
