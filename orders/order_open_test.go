@@ -762,7 +762,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				wal, err := processor.multiwallet.WalletForCurrencyCode("TMCK")
+				wal, err := processor.multiwallet.WalletForCurrencyCode("MCK")
 				if err != nil {
 					return nil, err
 				}
@@ -1027,7 +1027,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				wal, err := processor.multiwallet.WalletForCurrencyCode("TMCK")
+				wal, err := processor.multiwallet.WalletForCurrencyCode("MCK")
 				if err != nil {
 					return nil, err
 				}
@@ -1122,7 +1122,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				wal, err := processor.multiwallet.WalletForCurrencyCode("TMCK")
+				wal, err := processor.multiwallet.WalletForCurrencyCode("MCK")
 				if err != nil {
 					return nil, err
 				}
@@ -1174,7 +1174,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				wal, err := processor.multiwallet.WalletForCurrencyCode("TMCK")
+				wal, err := processor.multiwallet.WalletForCurrencyCode("MCK")
 				if err != nil {
 					return nil, err
 				}
@@ -1224,7 +1224,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				wal, err := processor.multiwallet.WalletForCurrencyCode("TMCK")
+				wal, err := processor.multiwallet.WalletForCurrencyCode("MCK")
 				if err != nil {
 					return nil, err
 				}

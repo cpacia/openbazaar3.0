@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/api"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
@@ -60,7 +61,7 @@ type OpenBazaarNode struct {
 	followerTracker *FollowerTracker
 
 	// multiwallet is a map of cyptocurrency wallets.
-	multiwallet wallet.Multiwallet
+	multiwallet multiwallet.Multiwallet
 
 	// orderProcessor is the engine we use for processing all orders.
 	orderProcessor *orders.OrderProcessor
@@ -98,6 +99,7 @@ func (n *OpenBazaarNode) Start() {
 		go n.orderProcessor.Start()
 		go n.syncMessages()
 		go n.publishHandler()
+		go n.multiwallet.Start()
 		go n.gateway.Serve()
 	}
 }
@@ -118,6 +120,7 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 		if n.gateway != nil {
 			n.gateway.Close()
 		}
+		n.multiwallet.Close()
 	}
 	n.repo.Close()
 
@@ -154,6 +157,11 @@ func (n *OpenBazaarNode) DestroyNode() {
 // IPFSNode returns the underlying IPFS node instance.
 func (n *OpenBazaarNode) IPFSNode() *core.IpfsNode {
 	return n.ipfsNode
+}
+
+// Multiwallet returns the underlying Multiwallet instance.
+func (n *OpenBazaarNode) Multiwallet() multiwallet.Multiwallet {
+	return n.multiwallet
 }
 
 // Identity returns the peer ID for this node.

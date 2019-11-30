@@ -170,7 +170,7 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wallet1, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode(iwallet.CtTestnetMock)
+	wallet1, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode(iwallet.CtMock)
 	if err != nil {
 		t.Fatal(err)
 	}

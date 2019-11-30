@@ -68,7 +68,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 	}
 
 	modInfo := &models.ModeratorInfo{
-		AcceptedCurrencies: []string{"TMCK"},
+		AcceptedCurrencies: []string{"MCK"},
 		Fee: models.ModeratorFee{
 			Percentage: 10,
 			FeeType:    models.PercentageFee,
@@ -134,7 +134,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		t.Error("Node 1 failed to record order open ACK")
 	}
 
-	wallet0, err := network.Nodes()[0].multiwallet.WalletForCurrencyCode(iwallet.CtTestnetMock)
+	wallet0, err := network.Nodes()[0].multiwallet.WalletForCurrencyCode(iwallet.CtMock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wallet1, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode(iwallet.CtTestnetMock)
+	wallet1, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode(iwallet.CtMock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -638,7 +638,7 @@ func Test_buildRefundMessage(t *testing.T) {
 					ID: "123",
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtMock),
 							Amount:  iwallet.NewAmount(10000),
 						},
 					},
@@ -680,7 +680,7 @@ func Test_buildRefundMessage(t *testing.T) {
 					ID: "123",
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtMock),
 							Amount:  iwallet.NewAmount(10000),
 						},
 					},
@@ -728,7 +728,7 @@ func Test_buildRefundMessage(t *testing.T) {
 					To: []iwallet.SpendInfo{
 						{
 							ID:      []byte{0x01, 0x01},
-							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtMock),
 							Amount:  iwallet.NewAmount(10000),
 						},
 					},
@@ -742,7 +742,7 @@ func Test_buildRefundMessage(t *testing.T) {
 					From: []iwallet.SpendInfo{
 						{
 							ID:      []byte{0x01, 0x01},
-							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtMock),
 							Amount:  iwallet.NewAmount(10000),
 						},
 					},
@@ -755,7 +755,7 @@ func Test_buildRefundMessage(t *testing.T) {
 					ID: "789",
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtMock),
 							Amount:  iwallet.NewAmount(5000),
 						},
 					},

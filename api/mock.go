@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
@@ -45,6 +46,7 @@ type mockNode struct {
 	publishFunc                  func(done chan<- struct{})
 	usingTestnetFunc             func() bool
 	ipfsNodeFunc                 func() *core.IpfsNode
+	multiwalletFunc              func() multiwallet.Multiwallet
 	identityFunc                 func() peer.ID
 	subscribeEventFunc           func(event interface{}) (events.Subscription, error)
 	setProfileFunc               func(profile *models.Profile, done chan<- struct{}) error
@@ -155,6 +157,9 @@ func (m *mockNode) UsingTestnet() bool {
 }
 func (m *mockNode) IPFSNode() *core.IpfsNode {
 	return m.ipfsNodeFunc()
+}
+func (m *mockNode) Multiwallet() multiwallet.Multiwallet {
+	return m.multiwalletFunc()
 }
 func (m *mockNode) Identity() peer.ID {
 	return m.identityFunc()

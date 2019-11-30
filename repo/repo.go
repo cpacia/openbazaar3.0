@@ -134,7 +134,7 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 			Value: ratingKey.Serialize(),
 		}
 		dbBip44Key = &models.Key{
-			Name:  "escrow",
+			Name:  "bip44",
 			Value: []byte(bip44Key.String()),
 		}
 		dbMnemonic = &models.Key{

@@ -82,7 +82,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	// Create and save the moderator info in node 2 and block until the saving is finished.
 	modInfo := &models.ModeratorInfo{
-		AcceptedCurrencies: []string{"TMCK"},
+		AcceptedCurrencies: []string{"MCK"},
 		Fee: models.ModeratorFee{
 			Percentage: 10,
 			FeeType:    models.PercentageFee,
@@ -196,7 +196,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 
 	// Generate some mock coins and send them to node 1.
-	wallet, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode("TMCK")
+	wallet, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode("MCK")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -428,7 +428,7 @@ func TestOpenBazaarNode_EstimateOrderSubtotal(t *testing.T) {
 			},
 		},
 		AlternateContactInfo: "peter@protonmail.com",
-		PaymentCoin:          "TMCK",
+		PaymentCoin:          "MCK",
 	}
 
 	val, err := network.Nodes()[1].EstimateOrderSubtotal(context.Background(), purchase)
@@ -489,7 +489,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 	}
 
 	modInfo := &models.ModeratorInfo{
-		AcceptedCurrencies: []string{"TMCK"},
+		AcceptedCurrencies: []string{"MCK"},
 		Fee: models.ModeratorFee{
 			Percentage: 10,
 			FeeType:    models.PercentageFee,
@@ -543,7 +543,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 				},
 				AlternateContactInfo: "peter@protonmail.com",
 				RefundAddress:        &refundAddr,
-				PaymentCoin:          "TMCK",
+				PaymentCoin:          "MCK",
 			},
 			checkOrder: func(purchase *models.Purchase, order *pb.OrderOpen) error {
 				if order.Shipping.ShipTo != purchase.ShipTo {
@@ -690,7 +690,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 						},
 					},
 				},
-				PaymentCoin: "TMCK",
+				PaymentCoin: "MCK",
 			},
 			checkOrder: func(purchase *models.Purchase, order *pb.OrderOpen) error {
 				if order.RefundAddress == "" {
@@ -723,7 +723,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 					},
 				},
 				Moderator:   network.Nodes()[1].Identity().Pretty(),
-				PaymentCoin: "TMCK",
+				PaymentCoin: "MCK",
 			},
 			checkOrder: func(purchase *models.Purchase, order *pb.OrderOpen) error {
 				if order.Payment.Moderator != network.Nodes()[1].ipfsNode.Identity.Pretty() {
@@ -815,7 +815,7 @@ func Test_createOrderUnkownVersion(t *testing.T) {
 				},
 			},
 		},
-		PaymentCoin: "TMCK",
+		PaymentCoin: "MCK",
 	}
 
 	_, err = network.Nodes()[0].createOrder(context.Background(), purchase)

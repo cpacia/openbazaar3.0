@@ -59,7 +59,7 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	op.multiwallet["TMCK"] = wn.Wallets()[0]
+	op.multiwallet["MCK"] = wn.Wallets()[0]
 
 	_, pub, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
@@ -113,7 +113,7 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 			},
 		},
 		Payment: &pb.OrderOpen_Payment{
-			Coin:    "TMCK",
+			Coin:    "MCK",
 			Address: addr.String(),
 		},
 	}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
@@ -46,6 +47,7 @@ type CoreIface interface {
 	Publish(done chan<- struct{})
 	UsingTestnet() bool
 	IPFSNode() *core.IpfsNode
+	Multiwallet() multiwallet.Multiwallet
 	Identity() peer.ID
 	SubscribeEvent(event interface{}) (events.Subscription, error)
 	SetProfile(profile *models.Profile, done chan<- struct{}) error

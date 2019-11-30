@@ -13,7 +13,7 @@ func NewPhysicalListing(slug string) *pb.Listing {
 		RefundPolicy:       "Sample Refund policy",
 		Metadata: &pb.Listing_Metadata{
 			Version:            1,
-			AcceptedCurrencies: []string{"TMCK"},
+			AcceptedCurrencies: []string{"MCK"},
 			PricingCurrency: &pb.Currency{
 				Code:         "USD",
 				Divisibility: 2,
@@ -123,7 +123,7 @@ func NewDigitalListing(slug string) *pb.Listing {
 		RefundPolicy:       "Sample Refund policy",
 		Metadata: &pb.Listing_Metadata{
 			Version:            1,
-			AcceptedCurrencies: []string{"TMCK"},
+			AcceptedCurrencies: []string{"MCK"},
 			PricingCurrency: &pb.Currency{
 				Code:         "USD",
 				Divisibility: 2,
@@ -187,12 +187,12 @@ func NewSignedListing() *pb.SignedListing {
     "listing": {
         "slug": "ron-swanson-shirt",
         "vendorID": {
-            "peerID": "12D3KooWDtKsJoBQFawv18Z2R2rv2LH1B16rH7E17rxmgrsyimEA",
+            "peerID": "12D3KooWFKi1TgtdCSn571Sv6jkud58dneiSeVmUjxRM4QgJEAfc",
             "pubkeys": {
-                "identity": "CAESIDxyeDgYwu97EvgnnmO26VlpbJRPZtnAN3QpIbHLKswT",
-                "escrow": "At1sTCxyq1LJDOW+ufKGQ+vcvWqIXTrYfp7aN9S2P4kA"
+                "identity": "CAESIFHOthBNLNHwxcQC+mYhZtB9xO1Xd8iIMQToUm0elMu7",
+                "escrow": "Agpdqnu/m8Qq8cJuJJGCnkT0ZosVuVJ0Lqy76oDQsqmY"
             },
-            "sig": "MEQCIHU5Q7h0Yt9DWdwpodtWtyUc39lRHa6+nbmOm9C4BRH/AiBtGkBARJvLS5aH1JyhyqtSp7dV4MwCNo0oN3SrgqpZww=="
+            "sig": "MEQCICklJuGy2/FlXAcY5fkFtrBQR1F1BIUewsY7/0BOgRokAiAdDxeGk8/i9Av2n23Yq0OwAIfnhL8iAYFpzRbef1iRfg=="
         },
         "metadata": {
             "version": 1,
@@ -200,9 +200,8 @@ func NewSignedListing() *pb.SignedListing {
             "format": "FIXED_PRICE",
             "expiry": "2038-01-19T03:14:07.000Z",
             "acceptedCurrencies": [
-                "TMCK"
+                "MCK"
             ],
-            "escrowTimeoutHours": 1080,
             "pricingCurrency": {
                 "code": "USD",
                 "divisibility": 2
@@ -366,7 +365,7 @@ func NewSignedListing() *pb.SignedListing {
         "termsAndConditions": "Sample Terms and Conditions",
         "refundPolicy": "Sample Refund policy"
     },
-    "signature": "uk5F2sZm88ubcmADbqxmss5k0FV72tUdj0rij0SQJ6CT6M8Bljo9BI1RVEtsgruWf8xXQ5n/vGvxuzrBlvD6DQ=="
+    "signature": "ef+mD7WagP43eXBH6J/CwjmNYvBRgz1sopb19ZV7LkKi5xTvEcadbA1U6QwWVPK/Is+RQbtuRDgpXjmbuqLeBA=="
 }`
 	sl := new(pb.SignedListing)
 	jsonpb.UnmarshalString(j, sl)

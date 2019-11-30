@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/OpenBazaar/jsonpb"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -34,7 +35,7 @@ type Config struct {
 	Db                   database.Database
 	EscrowPrivateKey     *btcec.PrivateKey
 	Messenger            *net.Messenger
-	Multiwallet          wallet.Multiwallet
+	Multiwallet          multiwallet.Multiwallet
 	ExchangeRateProvider *wallet.ExchangeRateProvider
 	EventBus             events.Bus
 }
@@ -44,7 +45,7 @@ type OrderProcessor struct {
 	identity         peer.ID
 	db               database.Database
 	messenger        *net.Messenger
-	multiwallet      wallet.Multiwallet
+	multiwallet      multiwallet.Multiwallet
 	escrowPrivateKey *btcec.PrivateKey
 	erp              *wallet.ExchangeRateProvider
 	bus              events.Bus

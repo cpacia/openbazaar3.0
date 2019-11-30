@@ -116,7 +116,7 @@ func (n *MockWalletNetwork) GenerateToAddress(addr iwallet.Address, amount iwall
 			{
 				ID:      prevHashBytes,
 				Amount:  amount,
-				Address: iwallet.NewAddress(hex.EncodeToString(prevAddrBytes), iwallet.CtTestnetMock),
+				Address: iwallet.NewAddress(hex.EncodeToString(prevAddrBytes), iwallet.CtMock),
 			},
 		},
 		To: []iwallet.SpendInfo{
@@ -159,6 +159,8 @@ type MockWallet struct {
 	txSubs    []chan iwallet.Transaction
 	blockSubs []chan iwallet.BlockInfo
 
+	addrResponse *iwallet.Address
+
 	bus events.Bus
 
 	done chan struct{}
@@ -179,7 +181,7 @@ func NewMockWallet() *MockWallet {
 	for i := 0; i < 10; i++ {
 		b := make([]byte, 20)
 		rand.Read(b)
-		addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
+		addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtMock)
 		mw.addrs[addr] = false
 	}
 
@@ -230,6 +232,10 @@ func (tx *dbTx) Rollback() error {
 // for testing integration with the OpenBazaarNode.
 func (w *MockWallet) SetEventBus(bus events.Bus) {
 	w.bus = bus
+}
+
+func (w *MockWallet) SetAddressResponse(addr iwallet.Address) {
+	w.addrResponse = &addr
 }
 
 // Start is called when the openbazaar-go daemon starts up. At this point in time
@@ -314,7 +320,7 @@ func (w *MockWallet) Start() {
 					}
 				}
 				if w.bus != nil {
-					w.bus.Emit(&events.BlockReceived{CurrencyCode: "TMCK", BlockInfo: blockInfo})
+					w.bus.Emit(&events.BlockReceived{CurrencyCode: "MCK", BlockInfo: blockInfo})
 				}
 				w.mtx.Unlock()
 			case <-w.done:
@@ -385,6 +391,12 @@ func (w *MockWallet) CurrentAddress() (iwallet.Address, error) {
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
 
+	if w.addrResponse != nil {
+		resp := *w.addrResponse
+		w.addrResponse = nil
+		return resp, nil
+	}
+
 	for addr, used := range w.addrs {
 		if !used {
 			return addr, nil
@@ -392,7 +404,7 @@ func (w *MockWallet) CurrentAddress() (iwallet.Address, error) {
 	}
 	b := make([]byte, 20)
 	rand.Read(b)
-	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
+	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtMock)
 	w.addrs[addr] = false
 	return addr, nil
 }
@@ -409,9 +421,15 @@ func (w *MockWallet) NewAddress() (iwallet.Address, error) {
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
 
+	if w.addrResponse != nil {
+		resp := *w.addrResponse
+		w.addrResponse = nil
+		return resp, nil
+	}
+
 	b := make([]byte, 20)
 	rand.Read(b)
-	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
+	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtMock)
 	w.addrs[addr] = false
 	return addr, nil
 }
@@ -422,8 +440,8 @@ func (w *MockWallet) ValidateAddress(addr iwallet.Address) error {
 	if len(addr.String()) != 40 {
 		return errors.New("invalid address length")
 	}
-	if addr.CoinType() != iwallet.CtTestnetMock {
-		return errors.New("address's cointype is not CtTestnetMock")
+	if addr.CoinType() != iwallet.CtMock {
+		return errors.New("address's cointype is not CtMock")
 	}
 	return nil
 }
@@ -437,7 +455,7 @@ func (w *MockWallet) HasKey(addr iwallet.Address) (bool, error) {
 func (w *MockWallet) newAddress() (iwallet.Address, error) {
 	b := make([]byte, 20)
 	rand.Read(b)
-	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtTestnetMock)
+	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtMock)
 	w.addrs[addr] = false
 	return addr, nil
 }
@@ -851,7 +869,7 @@ func (w *MockWallet) CreateMultisigAddress(keys []btcec.PublicKey, threshold int
 	redeemScript = append(redeemScript, t...)
 
 	h := sha256.Sum256(redeemScript)
-	addr := iwallet.NewAddress(hex.EncodeToString(h[:]), iwallet.CtTestnetMock)
+	addr := iwallet.NewAddress(hex.EncodeToString(h[:]), iwallet.CtMock)
 	return addr, redeemScript, nil
 }
 
@@ -875,7 +893,7 @@ func (w *MockWallet) CreateMultisigWithTimeout(keys []btcec.PublicKey, threshold
 	redeemScript = append(redeemScript, expiry...)
 
 	h := sha256.Sum256(redeemScript)
-	addr := iwallet.NewAddress(hex.EncodeToString(h[:]), iwallet.CtTestnetMock)
+	addr := iwallet.NewAddress(hex.EncodeToString(h[:]), iwallet.CtMock)
 	return addr, redeemScript, nil
 }
 

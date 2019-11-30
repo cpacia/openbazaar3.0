@@ -111,7 +111,7 @@ func NewOrder() (*pb.OrderOpen, crypto.PrivKey, error) {
 			Method:           pb.OrderOpen_Payment_CANCELABLE,
 			Amount:           "4992221",
 			Address:          "d2a09570b1275d9f865cf290f5aca9f514d1ac4e5b770fdc0b59153059a8c09c",
-			Coin:             "TMCK",
+			Coin:             "MCK",
 			EscrowReleaseFee: "10",
 			Script:           "036d60859d9a78554a69e15cf6044c7c3d81744038048719e87cdbe3ab5d159f100221ec8c291efd5f39d100590d5ec2038655ea1ece51de656255a1f7567fd731d900000001",
 		},

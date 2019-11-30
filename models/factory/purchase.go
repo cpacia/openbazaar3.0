@@ -36,6 +36,6 @@ func NewPurchase() *models.Purchase {
 			},
 		},
 		AlternateContactInfo: "peter@protonmail.com",
-		PaymentCoin:          "TMCK",
+		PaymentCoin:          "MCK",
 	}
 }

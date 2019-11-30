@@ -73,7 +73,7 @@ func TestOpenBazaarNode_CancelOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wallet1, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode(iwallet.CtTestnetMock)
+	wallet1, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode(iwallet.CtMock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestOpenBazaarNode_releaseFromCancelableAddress(t *testing.T) {
 	orderOpen := &pb.OrderOpen{
 		Payment: &pb.OrderOpen_Payment{
 			Method:  pb.OrderOpen_Payment_CANCELABLE,
-			Coin:    iwallet.CtTestnetMock,
+			Coin:    iwallet.CtMock,
 			Address: "1234",
 		},
 	}
@@ -259,7 +259,7 @@ func TestOpenBazaarNode_releaseFromCancelableAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addr := iwallet.NewAddress("1234", iwallet.CtTestnetMock)
+	addr := iwallet.NewAddress("1234", iwallet.CtMock)
 	tx := walletbase.NewMockTransaction(nil, &addr)
 	if err := order.PutTransaction(tx); err != nil {
 		t.Fatal(err)

@@ -2,6 +2,7 @@ package orders
 
 import (
 	"context"
+	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/repo"
@@ -34,9 +35,9 @@ func newMockOrderProcessor() (*OrderProcessor, func(), error) {
 
 	messenger := net.NewMessenger(service, r.DB())
 
-	wal := wallet.NewMockWallet()
-	mw := make(wallet.Multiwallet)
-	mw[iwallet.CtTestnetMock] = wal
+	mw := multiwallet.Multiwallet{
+		iwallet.CtMock: wallet.NewMockWallet(),
+	}
 
 	erp, err := wallet.NewMockExchangeRates()
 	if err != nil {

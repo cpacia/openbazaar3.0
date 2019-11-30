@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/api"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
@@ -15,12 +17,14 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
+	iwallet "github.com/cpacia/wallet-interface"
 	bitswap "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-datastore"
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/corehttp"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
+	"github.com/jinzhu/gorm"
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
@@ -36,6 +40,7 @@ import (
 	"os"
 	"path"
 	"runtime/pprof"
+	"time"
 )
 
 var (
@@ -174,7 +179,57 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	messenger := obnet.NewMessenger(service, obRepo.DB())
 	tracker := NewFollowerTracker(obRepo, bus, ipfsNode.PeerHost.Network())
 
-	mw := wallet.Multiwallet{} // TODO: wire this up.
+	mw, err := multiwallet.NewMultiwallet(&multiwallet.Config{
+		DataDir:    cfg.DataDir,
+		UseTestnet: cfg.Testnet,
+		LogLevel:   cfg.LogLevel,
+		LogDir:     cfg.LogDir,
+		Wallets:    []iwallet.CoinType{iwallet.CtBitcoinCash},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for ct, wallet := range mw {
+		// Create wallet if not exists. This will fail if the bip44 key has been deleted
+		// from the db, however we are not yet deleting keys or the mnemonic for encryption
+		// purposes.
+		if !wallet.WalletExists() {
+			var bip44ModelKey models.Key
+			err = obRepo.DB().View(func(tx database.Tx) error {
+				return tx.Read().Where("name = ?", "bip44").First(&bip44ModelKey).Error
+			})
+			if gorm.IsRecordNotFoundError(err) {
+				return nil, fmt.Errorf("can not initialize wallet %s: seed does not exist in database", ct.CurrencyCode())
+			} else if err != nil {
+				return nil, err
+			}
+
+			bip44Key, err := hdkeychain.NewKeyFromString(string(bip44ModelKey.Value))
+			if err != nil {
+				return nil, err
+			}
+
+			def, err := models.CurrencyDefinitions.Lookup(ct.CurrencyCode())
+			if err != nil {
+				return nil, err
+			}
+
+			coinTypeKey, err := bip44Key.Child(hdkeychain.HardenedKeyStart + uint32(def.Bip44Code))
+			if err != nil {
+				return nil, err
+			}
+
+			accountKey, err := coinTypeKey.Child(hdkeychain.HardenedKeyStart + 0)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := wallet.CreateWallet(*accountKey, nil, time.Now()); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	erp := wallet.NewExchangeRateProvider(nil, cfg.ExchangeRateProviders) // TODO: wire up proxy
 

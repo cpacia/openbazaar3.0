@@ -54,7 +54,7 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 				To: []iwallet.SpendInfo{
 					{
 						ID:      nil,
-						Address: iwallet.NewAddress("abcd", iwallet.CtTestnetMock),
+						Address: iwallet.NewAddress("abcd", iwallet.CtMock),
 						Amount:  iwallet.NewAmount(4992221),
 					},
 				},
@@ -127,7 +127,7 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 				To: []iwallet.SpendInfo{
 					{
 						ID:      nil,
-						Address: iwallet.NewAddress("abcd", iwallet.CtTestnetMock),
+						Address: iwallet.NewAddress("abcd", iwallet.CtMock),
 						Amount:  iwallet.NewAmount(4992221),
 					},
 				},
@@ -192,7 +192,7 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 				From: []iwallet.SpendInfo{
 					{
 						ID:      nil,
-						Address: iwallet.NewAddress("abcd", iwallet.CtTestnetMock),
+						Address: iwallet.NewAddress("abcd", iwallet.CtMock),
 						Amount:  iwallet.NewAmount(4992221),
 					},
 				},
@@ -244,7 +244,7 @@ func TestOrderProcessor_checkForMorePayments(t *testing.T) {
 	wn.Start()
 	wn.Wallets()[0].SetEventBus(op.bus)
 
-	op.multiwallet[iwallet.CtTestnetMock] = wn.Wallets()[0]
+	op.multiwallet[iwallet.CtMock] = wn.Wallets()[0]
 
 	orderOpen, _, err := factory.NewOrder()
 	if err != nil {
@@ -277,7 +277,7 @@ func TestOrderProcessor_checkForMorePayments(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fundingTxid, err := wn.Wallets()[0].Spend(wtx, iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtTestnetMock), iwallet.NewAmount(orderOpen.Payment.Amount), iwallet.FlNormal)
+		fundingTxid, err := wn.Wallets()[0].Spend(wtx, iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CtMock), iwallet.NewAmount(orderOpen.Payment.Amount), iwallet.FlNormal)
 		if err != nil {
 			t.Fatal(err)
 		}

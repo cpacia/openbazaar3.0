@@ -83,7 +83,7 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 			},
 		},
 		Payment: &pb.OrderOpen_Payment{
-			Coin: iwallet.CtTestnetMock,
+			Coin: iwallet.CtMock,
 		},
 	}
 

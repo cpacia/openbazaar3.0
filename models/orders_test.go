@@ -1424,7 +1424,7 @@ func TestOrder_IsFunded(t *testing.T) {
 				return order.PutTransaction(iwallet.Transaction{
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress("aaaaaa", iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress("aaaaaa", iwallet.CtMock),
 							Amount:  iwallet.NewAmount("1000"),
 						},
 					},
@@ -1448,7 +1448,7 @@ func TestOrder_IsFunded(t *testing.T) {
 					ID: "123",
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress("aaaaaa", iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress("aaaaaa", iwallet.CtMock),
 							Amount:  iwallet.NewAmount("100"),
 						},
 					},
@@ -1461,7 +1461,7 @@ func TestOrder_IsFunded(t *testing.T) {
 					ID: "456",
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress("aaaaaa", iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress("aaaaaa", iwallet.CtMock),
 							Amount:  iwallet.NewAmount("900"),
 						},
 					},
@@ -1485,7 +1485,7 @@ func TestOrder_IsFunded(t *testing.T) {
 				return order.PutTransaction(iwallet.Transaction{
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress("aaaaaa", iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress("aaaaaa", iwallet.CtMock),
 							Amount:  iwallet.NewAmount("100"),
 						},
 					},
@@ -1530,7 +1530,7 @@ func TestOrder_FundingTotal(t *testing.T) {
 				return order.PutTransaction(iwallet.Transaction{
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress("aaaaaa", iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress("aaaaaa", iwallet.CtMock),
 							Amount:  iwallet.NewAmount("1000"),
 						},
 					},
@@ -1554,7 +1554,7 @@ func TestOrder_FundingTotal(t *testing.T) {
 					ID: "123",
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress("aaaaaa", iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress("aaaaaa", iwallet.CtMock),
 							Amount:  iwallet.NewAmount("100"),
 						},
 					},
@@ -1567,7 +1567,7 @@ func TestOrder_FundingTotal(t *testing.T) {
 					ID: "456",
 					To: []iwallet.SpendInfo{
 						{
-							Address: iwallet.NewAddress("aaaaaa", iwallet.CtTestnetMock),
+							Address: iwallet.NewAddress("aaaaaa", iwallet.CtMock),
 							Amount:  iwallet.NewAmount("900"),
 						},
 					},

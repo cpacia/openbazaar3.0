@@ -41,7 +41,7 @@ func Test_processPaymentSentMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	op.multiwallet["TMCK"] = wn.Wallets()[0]
+	op.multiwallet["MCK"] = wn.Wallets()[0]
 
 	_, pub, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
@@ -80,7 +80,7 @@ func Test_processPaymentSentMessage(t *testing.T) {
 				order.PaymentAddress = addr.String()
 				return order.PutMessage(&pb.OrderOpen{
 					Payment: &pb.OrderOpen_Payment{
-						Coin:   "TMCK",
+						Coin:   "MCK",
 						Amount: "1000",
 					},
 				})

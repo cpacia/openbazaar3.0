@@ -87,7 +87,7 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 			},
 		},
 		Payment: &pb.OrderOpen_Payment{
-			Coin: iwallet.CtTestnetMock,
+			Coin: iwallet.CtMock,
 		},
 	}
 

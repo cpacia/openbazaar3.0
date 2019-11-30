@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -60,8 +61,9 @@ func MockNode() (*OpenBazaarNode, error) {
 	w := wallet.NewMockWallet()
 	w.SetEventBus(bus)
 
-	mw := make(wallet.Multiwallet)
-	mw[iwallet.CtTestnetMock] = w
+	mw := multiwallet.Multiwallet{
+		iwallet.CtMock: w,
+	}
 
 	erp, err := wallet.NewMockExchangeRates()
 	if err != nil {
@@ -161,8 +163,9 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		w := wn.Wallets()[i]
 		w.SetEventBus(bus)
 
-		mw := make(wallet.Multiwallet)
-		mw[iwallet.CtTestnetMock] = w
+		mw := multiwallet.Multiwallet{
+			iwallet.CtMock: w,
+		}
 
 		erp, err := wallet.NewMockExchangeRates()
 		if err != nil {

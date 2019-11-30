@@ -58,7 +58,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	}
 
 	modInfo := &models.ModeratorInfo{
-		AcceptedCurrencies: []string{"TMCK"},
+		AcceptedCurrencies: []string{"MCK"},
 		Fee: models.ModeratorFee{
 			Percentage: 10,
 			FeeType:    models.PercentageFee,
@@ -184,7 +184,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	wallet0, err := network.Nodes()[0].multiwallet.WalletForCurrencyCode(iwallet.CtTestnetMock)
+	wallet0, err := network.Nodes()[0].multiwallet.WalletForCurrencyCode(iwallet.CtMock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wallet1, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode(iwallet.CtTestnetMock)
+	wallet1, err := network.Nodes()[1].multiwallet.WalletForCurrencyCode(iwallet.CtMock)
 	if err != nil {
 		t.Fatal(err)
 	}
