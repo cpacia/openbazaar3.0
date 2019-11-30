@@ -92,6 +92,7 @@ func (g *Gateway) newV1Router() *mux.Router {
 		r.HandleFunc("/v1/wallet/address/{coinType}", g.handleGETAddress).Methods("GET")
 		r.HandleFunc("/v1/wallet/balance", g.handleGETBalance).Methods("GET")
 		r.HandleFunc("/v1/wallet/balance/{coinType}", g.handleGETBalance).Methods("GET")
+		r.HandleFunc("/v1/wallet/transactions/{coinType}", g.handleGETTransactions).Methods("GET")
 		r.HandleFunc("/v1/ob/profile", g.handlePOSTProfile).Methods("POST")
 		r.HandleFunc("/v1/ob/profile", g.handlePUTProfile).Methods("PUT")
 		r.HandleFunc("/v1/ob/follow/{peerID}", g.handlePOSTFollow).Methods("POST")

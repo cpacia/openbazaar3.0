@@ -234,8 +234,56 @@ func (w *MockWallet) SetEventBus(bus events.Bus) {
 	w.bus = bus
 }
 
+// SetAddressResponse can be used to set the response for CurrentAddress
+// and NewAddress for testing purposes.
 func (w *MockWallet) SetAddressResponse(addr iwallet.Address) {
 	w.addrResponse = &addr
+}
+
+// GenerateTransaction generates a mock transaction paying this wallet
+// and returns it.
+func (w *MockWallet) GenerateTransaction(amount iwallet.Amount) iwallet.Transaction {
+	w.mtx.Lock()
+	defer w.mtx.Unlock()
+
+	txidBytes := make([]byte, 32)
+	rand.Read(txidBytes)
+
+	prevHashBytes := make([]byte, 36)
+	rand.Read(prevHashBytes)
+
+	prevAddrBytes := make([]byte, 20)
+	rand.Read(prevAddrBytes)
+
+	b := make([]byte, 20)
+	rand.Read(b)
+	addr := iwallet.NewAddress(hex.EncodeToString(b), iwallet.CtMock)
+	w.addrs[addr] = false
+
+	txn := iwallet.Transaction{
+		ID:    iwallet.TransactionID(hex.EncodeToString(txidBytes)),
+		Value: amount,
+		From: []iwallet.SpendInfo{
+			{
+				ID:      prevHashBytes,
+				Amount:  amount,
+				Address: iwallet.NewAddress(hex.EncodeToString(prevAddrBytes), iwallet.CtMock),
+			},
+		},
+		To: []iwallet.SpendInfo{
+			{
+				Address: addr,
+				Amount:  amount,
+				ID:      append(txidBytes, []byte{0x00, 0x00, 0x00, 0x00}...),
+			},
+		},
+	}
+	return txn
+}
+
+// IngestTransaction ingests a transaction into the MockWallet.
+func (w *MockWallet) IngestTransaction(txn iwallet.Transaction) {
+	w.incoming <- txn
 }
 
 // Start is called when the openbazaar-go daemon starts up. At this point in time
@@ -292,7 +340,10 @@ func (w *MockWallet) Start() {
 				}
 				if relevant || watched {
 					tx.Value = total
-					tx.Timestamp = time.Now()
+					defaultTime := time.Time{}
+					if tx.Timestamp == defaultTime {
+						tx.Timestamp = time.Now()
+					}
 					w.transactions[tx.ID] = tx
 					if w.bus != nil {
 						w.bus.Emit(&events.TransactionReceived{Transaction: tx})

@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"runtime/debug"
 	"strings"
+	"time"
 )
 
 // DefaultCurrencyDivisibility is the Divisibility of the Currency if not
@@ -26,16 +27,16 @@ var (
 
 	CurrencyDefinitions = CurrencyDictionary{
 		// Testing
-		"MCK": {Name: "Mock", Code: CurrencyCode("MCK"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8},
+		"MCK": {Name: "Mock", Code: CurrencyCode("MCK"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, BlockInterval: time.Minute * 10},
 
 		// Crypto
-		"BTC":   {Name: "Bitcoin", Code: CurrencyCode("BTC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 0},
-		"BCH":   {Name: "Bitcoin Cash", Code: CurrencyCode("BCH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 145},
-		"LTC":   {Name: "Litecoin", Code: CurrencyCode("LTC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 2},
-		"ZEC":   {Name: "Zcash", Code: CurrencyCode("ZEC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 133},
-		"ETH":   {Name: "Ethereum", Code: CurrencyCode("ETH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 18, Bip44Code: 60},
-		"XMR":   {Name: "Monero", Code: CurrencyCode("XMR"), CurrencyType: CurrencyTypeCrypto, Divisibility: 12, Bip44Code: 128},
-		"DASH":  {Name: "Dash", Code: CurrencyCode("DASH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 5},
+		"BTC":   {Name: "Bitcoin", Code: CurrencyCode("BTC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 0, BlockInterval: time.Minute * 10},
+		"BCH":   {Name: "Bitcoin Cash", Code: CurrencyCode("BCH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 145, BlockInterval: time.Minute * 10},
+		"LTC":   {Name: "Litecoin", Code: CurrencyCode("LTC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 2, BlockInterval: time.Second * 150},
+		"ZEC":   {Name: "Zcash", Code: CurrencyCode("ZEC"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 133, BlockInterval: time.Second * 150},
+		"ETH":   {Name: "Ethereum", Code: CurrencyCode("ETH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 18, Bip44Code: 60, BlockInterval: time.Second * 12},
+		"XMR":   {Name: "Monero", Code: CurrencyCode("XMR"), CurrencyType: CurrencyTypeCrypto, Divisibility: 12, Bip44Code: 128, BlockInterval: time.Minute * 2},
+		"DASH":  {Name: "Dash", Code: CurrencyCode("DASH"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 5, BlockInterval: time.Second * 150},
 		"XRP":   {Name: "Ripple", Code: CurrencyCode("XRP"), CurrencyType: CurrencyTypeCrypto, Divisibility: 6, Bip44Code: 144},
 		"BNB":   {Name: "Binance Coin", Code: CurrencyCode("BNB"), CurrencyType: CurrencyTypeCrypto, Divisibility: 8, Bip44Code: 714},
 		"USDT":  {Name: "Tether", Code: CurrencyCode("USDT"), CurrencyType: CurrencyTypeCrypto, Divisibility: 6},
@@ -279,11 +280,12 @@ func (c CurrencyCode) String() string {
 
 // Currency defines the characteristics of a currency
 type Currency struct {
-	Name         string
-	Code         CurrencyCode
-	Divisibility uint
-	CurrencyType CurrencyType
-	Bip44Code    uint
+	Name          string
+	Code          CurrencyCode
+	Divisibility  uint
+	CurrencyType  CurrencyType
+	Bip44Code     uint
+	BlockInterval time.Duration
 }
 
 // String returns a readable representation of CurrencyDefinition

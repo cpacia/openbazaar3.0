@@ -57,6 +57,8 @@ type mockNode struct {
 	rejectOrderFunc              func(orderID models.OrderID, reason string, done chan struct{}) error
 	refundOrderFunc              func(orderID models.OrderID, done chan struct{}) error
 	pingNodeFunc                 func(ctx context.Context, peer peer.ID) error
+	saveTransactionMetadataFunc  func(metadata *models.TransactionMetadata) error
+	getTransactionMetadataFunc   func(txid iwallet.TransactionID) (models.TransactionMetadata, error)
 }
 
 func (m *mockNode) RequestAddress(ctx context.Context, to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error) {
@@ -190,4 +192,10 @@ func (m *mockNode) RefundOrder(orderID models.OrderID, done chan struct{}) error
 }
 func (m *mockNode) PingNode(ctx context.Context, peer peer.ID) error {
 	return m.pingNodeFunc(ctx, peer)
+}
+func (m *mockNode) SaveTransactionMetadata(metadata *models.TransactionMetadata) error {
+	return m.saveTransactionMetadataFunc(metadata)
+}
+func (m *mockNode) GetTransactionMetadata(txid iwallet.TransactionID) (models.TransactionMetadata, error) {
+	return m.getTransactionMetadataFunc(txid)
 }

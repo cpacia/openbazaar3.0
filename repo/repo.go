@@ -410,6 +410,7 @@ func autoMigrateDatabase(db database.Database) error {
 		&models.Coupon{},
 		&models.Event{},
 		&models.Order{},
+		&models.TransactionMetadata{},
 	}
 
 	return db.Update(func(tx database.Tx) error {

@@ -58,4 +58,6 @@ type CoreIface interface {
 	RejectOrder(orderID models.OrderID, reason string, done chan struct{}) error
 	RefundOrder(orderID models.OrderID, done chan struct{}) error
 	PingNode(ctx context.Context, peer peer.ID) error
+	SaveTransactionMetadata(metadata *models.TransactionMetadata) error
+	GetTransactionMetadata(txid iwallet.TransactionID) (models.TransactionMetadata, error)
 }
