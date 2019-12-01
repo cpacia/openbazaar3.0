@@ -33,6 +33,8 @@ type walletWrapper struct {
 	Wallet interface{} `json:"wallet"`
 }
 
+type notifierStarted struct{}
+
 // Notifier manages translating events into notifications and
 // sending them to websockets.
 type Notifier struct {
@@ -89,6 +91,7 @@ func (n *Notifier) Start() {
 		log.Errorf("Error subscribing to events: %s", err)
 	}
 
+	n.bus.Emit(&notifierStarted{})
 	for {
 		select {
 		case event := <-notificationSub.Out():
