@@ -80,7 +80,7 @@ func (op *OrderProcessor) processOrderConfirmationMessage(dbtx database.Tx, orde
 		}
 	}
 
-	event := &events.OrderConfirmationNotification{
+	event := &events.OrderConfirmation{
 		OrderID: order.ID.String(),
 		Thumbnail: events.Thumbnail{
 			Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,

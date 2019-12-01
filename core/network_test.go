@@ -20,7 +20,7 @@ func Test_SendAndReceiveAcks(t *testing.T) {
 
 	defer network.TearDown()
 
-	sub, err := network.Nodes()[1].SubscribeEvent(&events.ChatMessageNotification{})
+	sub, err := network.Nodes()[1].SubscribeEvent(&events.ChatMessage{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sub, err := mocknet.Nodes()[1].SubscribeEvent(&events.ChatMessageNotification{})
+	sub, err := mocknet.Nodes()[1].SubscribeEvent(&events.ChatMessage{})
 	if err != nil {
 		t.Fatal(err)
 	}

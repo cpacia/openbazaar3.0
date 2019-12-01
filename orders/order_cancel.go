@@ -80,7 +80,7 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 		}
 	}
 
-	event := &events.OrderCancelNotification{
+	event := &events.OrderCancel{
 		OrderID: order.ID.String(),
 		Thumbnail: events.Thumbnail{
 			Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,

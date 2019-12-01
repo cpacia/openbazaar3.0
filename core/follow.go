@@ -239,9 +239,8 @@ func (n *OpenBazaarNode) handleFollowMessage(from peer.ID, message *pb.Message) 
 	}
 
 	log.Infof("Received FOLLOW message from %s", from)
-	n.eventBus.Emit(&events.FollowNotification{
+	n.eventBus.Emit(&events.Follow{
 		PeerID: from.Pretty(),
-		ID:     message.MessageID,
 	})
 	return nil
 }
@@ -285,9 +284,8 @@ func (n *OpenBazaarNode) handleUnFollowMessage(from peer.ID, message *pb.Message
 		return nil
 	}
 
-	n.eventBus.Emit(&events.UnfollowNotification{
+	n.eventBus.Emit(&events.Unfollow{
 		PeerID: from.Pretty(),
-		ID:     message.MessageID,
 	})
 	return nil
 }

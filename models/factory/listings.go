@@ -1,9 +1,14 @@
 package factory
 
 import (
-	"github.com/OpenBazaar/jsonpb"
+	"crypto/sha256"
+	"encoding/hex"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	peer "github.com/libp2p/go-libp2p-peer"
 )
 
 func NewPhysicalListing(slug string) *pb.Listing {
@@ -18,9 +23,10 @@ func NewPhysicalListing(slug string) *pb.Listing {
 				Code:         "USD",
 				Divisibility: 2,
 			},
-			Expiry:       &timestamp.Timestamp{Seconds: 2147483647},
-			Format:       pb.Listing_Metadata_FIXED_PRICE,
-			ContractType: pb.Listing_Metadata_PHYSICAL_GOOD,
+			Expiry:             &timestamp.Timestamp{Seconds: 2147483647},
+			Format:             pb.Listing_Metadata_FIXED_PRICE,
+			ContractType:       pb.Listing_Metadata_PHYSICAL_GOOD,
+			EscrowTimeoutHours: 1080,
 		},
 		Item: &pb.Listing_Item{
 			Title: "Ron Swanson Tshirt",
@@ -183,192 +189,29 @@ func NewCryptoListing(slug string) *pb.Listing {
 }
 
 func NewSignedListing() *pb.SignedListing {
-	j := `{
-    "listing": {
-        "slug": "ron-swanson-shirt",
-        "vendorID": {
-            "peerID": "12D3KooWFKi1TgtdCSn571Sv6jkud58dneiSeVmUjxRM4QgJEAfc",
-            "pubkeys": {
-                "identity": "CAESIFHOthBNLNHwxcQC+mYhZtB9xO1Xd8iIMQToUm0elMu7",
-                "escrow": "Agpdqnu/m8Qq8cJuJJGCnkT0ZosVuVJ0Lqy76oDQsqmY"
-            },
-            "sig": "MEQCICklJuGy2/FlXAcY5fkFtrBQR1F1BIUewsY7/0BOgRokAiAdDxeGk8/i9Av2n23Yq0OwAIfnhL8iAYFpzRbef1iRfg=="
-        },
-        "metadata": {
-            "version": 1,
-            "contractType": "PHYSICAL_GOOD",
-            "format": "FIXED_PRICE",
-            "expiry": "2038-01-19T03:14:07.000Z",
-            "acceptedCurrencies": [
-                "MCK"
-            ],
-            "pricingCurrency": {
-                "code": "USD",
-                "divisibility": 2
-            }
-        },
-        "item": {
-            "title": "Ron Swanson Tshirt",
-            "description": "Example item",
-            "processingTime": "3 days",
-            "tags": [
-                "tshirts"
-            ],
-            "images": [
-                {
-                    "filename": "image.jpg",
-                    "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                    "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                    "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                    "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                    "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
-                },
-                {
-                    "filename": "image.jpg",
-                    "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                    "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                    "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                    "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                    "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
-                }
-            ],
-            "categories": [
-                "tshirts"
-            ],
-            "grams": 14,
-            "condition": "new",
-            "options": [
-                {
-                    "name": "Size",
-                    "description": "What size do you want your shirt?",
-                    "variants": [
-                        {
-                            "name": "Small",
-                            "image": {
-                                "filename": "image.jpg",
-                                "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
-                            }
-                        },
-                        {
-                            "name": "Large",
-                            "image": {
-                                "filename": "image.jpg",
-                                "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "Color",
-                    "description": "What color do you want your shirt?",
-                    "variants": [
-                        {
-                            "name": "Red",
-                            "image": {
-                                "filename": "image.jpg",
-                                "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
-                            }
-                        },
-                        {
-                            "name": "Green",
-                            "image": {
-                                "filename": "image.jpg",
-                                "original": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "large": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "medium": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "small": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
-                                "tiny": "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub"
-                            }
-                        }
-                    ]
-                }
-            ],
-            "skus": [
-                {
-                    "selections": [
-                        {
-                            "option": "Size",
-                            "variant": "Large"
-                        },
-                        {
-                            "option": "Color",
-                            "variant": "Red"
-                        }
-                    ],
-                    "productID": "1",
-                    "quantity": "12",
-                    "surcharge": "0"
-                },
-                {
-                    "selections": [
-                        {
-                            "option": "Size",
-                            "variant": "Small"
-                        },
-                        {
-                            "option": "Color",
-                            "variant": "Green"
-                        }
-                    ],
-                    "productID": "2",
-                    "quantity": "44",
-                    "surcharge": "0"
-                }
-            ],
-            "price": "100"
-        },
-        "shippingOptions": [
-            {
-                "name": "usps",
-                "type": "FIXED_PRICE",
-                "regions": [
-                    "ALL"
-                ],
-                "services": [
-                    {
-                        "name": "standard",
-                        "estimatedDelivery": "3 days",
-                        "price": "20"
-                    }
-                ]
-            }
-        ],
-        "taxes": [
-            {
-                "taxType": "Sales tax",
-                "taxRegions": [
-                    "UNITED_STATES"
-                ],
-                "taxShipping": true,
-                "percentage": 7
-            }
-        ],
-        "coupons": [
-            {
-                "title": "Insider's Discount",
-                "discountCode": "insider",
-                "percentDiscount": 5
-            }
-        ],
-        "termsAndConditions": "Sample Terms and Conditions",
-        "refundPolicy": "Sample Refund policy"
-    },
-    "signature": "ef+mD7WagP43eXBH6J/CwjmNYvBRgz1sopb19ZV7LkKi5xTvEcadbA1U6QwWVPK/Is+RQbtuRDgpXjmbuqLeBA=="
-}`
-	sl := new(pb.SignedListing)
-	jsonpb.UnmarshalString(j, sl)
+	privKeyBytes, _ := hex.DecodeString("08011240522f4983cfc829245dff096e41fc6f56a84a4ec960db89af6d746e98d38bf9bd0667074541e46bfc5fdcc68d0a80a26fc50875178a3af4c2f30c7199dbf452c7")
+	privkey, _ := crypto.UnmarshalPrivateKey(privKeyBytes)
+	pubkeyBytes, _ := privkey.GetPublic().Bytes()
+	pid, _ := peer.IDFromPublicKey(privkey.GetPublic())
 
-	return sl
+	escrowPrivkeyBytes, _ := hex.DecodeString("781405f8b9f4000d3f3dc319c2ed82be6c5812c0f8d7bd086a5bfe1930f3225e")
+	escrowPrivkey, escrowPubkey := btcec.PrivKeyFromBytes(btcec.S256(), escrowPrivkeyBytes)
+
+	sigHash := sha256.Sum256([]byte(pid.Pretty()))
+	sig, _ := escrowPrivkey.Sign(sigHash[:])
+
+	listing := NewPhysicalListing("ron-swanson-shirt")
+	listing.VendorID = &pb.ID{
+		PeerID: pid.Pretty(),
+		Pubkeys: &pb.ID_Pubkeys{
+			Identity: pubkeyBytes,
+			Escrow:   escrowPubkey.SerializeCompressed(),
+		},
+		Sig: sig.Serialize(),
+	}
+
+	ser, _ := proto.Marshal(listing)
+	listingSig, _ := privkey.Sign(ser)
+
+	return &pb.SignedListing{Listing: listing, Signature: listingSig}
 }

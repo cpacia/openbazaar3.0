@@ -289,7 +289,7 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		if err != nil {
 			return err
 		}
-		n.eventBus.Emit(incomingMsg.ToChatNotification())
+		n.eventBus.Emit(incomingMsg.ToChatEvent())
 		return nil
 	case pb.ChatMessage_READ:
 		defer n.sendAckMessage(message.MessageID, from)
@@ -307,17 +307,16 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		if err != nil {
 			return err
 		}
-		n.eventBus.Emit(&events.ChatReadNotification{
+		n.eventBus.Emit(&events.ChatRead{
 			OrderID:   chatMsg.OrderID,
 			PeerID:    from.String(),
 			MessageID: chatMsg.ReadID,
 		})
 		return nil
 	case pb.ChatMessage_TYPING:
-		n.eventBus.Emit(&events.ChatTypingNotification{
-			MessageID: message.MessageID,
-			PeerID:    from.Pretty(),
-			OrderID:   chatMsg.OrderID,
+		n.eventBus.Emit(&events.ChatTyping{
+			PeerID:  from.Pretty(),
+			OrderID: chatMsg.OrderID,
 		})
 		return nil
 

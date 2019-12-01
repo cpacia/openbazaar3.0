@@ -28,7 +28,7 @@ func TestOpenBazaarNode_CancelOrder(t *testing.T) {
 		go node.orderProcessor.Start()
 	}
 
-	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderNotification{})
+	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
 	if err != nil {
 		t.Fatal(err)
 	}

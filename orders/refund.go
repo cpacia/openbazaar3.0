@@ -71,7 +71,7 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 		log.Infof("Processed own REFUND for order %s", order.ID)
 	}
 
-	event := &events.RefundNotification{
+	event := &events.Refund{
 		OrderID: order.ID.String(),
 		Thumbnail: events.Thumbnail{
 			Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,

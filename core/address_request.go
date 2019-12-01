@@ -36,7 +36,7 @@ func (n *OpenBazaarNode) RequestAddress(ctx context.Context, to peer.ID, coinTyp
 	message.MessageType = pb.Message_ADDRESS_REQUEST
 	message.Payload = payload
 
-	sub, err := n.eventBus.Subscribe(&events.AddressRequestResponseNotification{})
+	sub, err := n.eventBus.Subscribe(&events.AddressRequestResponse{})
 	if err != nil {
 		return iwallet.Address{}, err
 	}
@@ -50,7 +50,7 @@ func (n *OpenBazaarNode) RequestAddress(ctx context.Context, to peer.ID, coinTyp
 	for {
 		select {
 		case resp := <-sub.Out():
-			addrReqResp := resp.(*events.AddressRequestResponseNotification)
+			addrReqResp := resp.(*events.AddressRequestResponse)
 
 			// We only care about responses from our peer and for our coin type. If we receive anything else
 			// we'll just continue.
@@ -119,7 +119,7 @@ func (n *OpenBazaarNode) handleAddressResponse(from peer.ID, message *pb.Message
 		return err
 	}
 
-	n.eventBus.Emit(&events.AddressRequestResponseNotification{
+	n.eventBus.Emit(&events.AddressRequestResponse{
 		PeerID:  from.Pretty(),
 		Address: resp.Address,
 		Coin:    resp.Coin,

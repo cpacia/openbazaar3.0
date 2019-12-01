@@ -99,7 +99,7 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 				return order.PutMessage(orderOpen)
 			},
 			expectedError: nil,
-			expectedEvent: &events.OrderConfirmationNotification{
+			expectedEvent: &events.OrderConfirmation{
 				OrderID: orderID,
 				Thumbnail: events.Thumbnail{
 					Tiny:  tinyImageHash,

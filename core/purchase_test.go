@@ -44,7 +44,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 
 	// Create order event subscription for node 0.
-	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderNotification{})
+	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 
 	// Validate the event is correct.
-	orderNotif := orderEvent.(*events.OrderNotification)
+	orderNotif := orderEvent.(*events.NewOrder)
 	if orderNotif.BuyerID != network.Nodes()[1].Identity().Pretty() {
 		t.Errorf("Incorrect notification peer ID: expected %s, got %s", network.Nodes()[1].Identity().Pretty(), orderNotif.BuyerID)
 	}
@@ -223,7 +223,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	}
 
 	// Send the payment for the order from node 1 to node 0 and block until node 1 detects the payment.
-	paymentSub, err := network.Nodes()[1].eventBus.Subscribe(&events.PaymentNotification{})
+	paymentSub, err := network.Nodes()[1].eventBus.Subscribe(&events.OrderPaymentReceived{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,7 +290,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
-	orderNotif = orderEvent.(*events.OrderNotification)
+	orderNotif = orderEvent.(*events.NewOrder)
 
 	// Load the order from node 0 and make sure it was saved correctly.
 	var order3 models.Order

@@ -65,7 +65,7 @@ func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
 			expectedError: nil,
 			expectedEvent: func(orderOpen *pb.OrderOpen) interface{} {
 				orderID, _ := utils.CalcOrderID(orderOpen)
-				return &events.OrderNotification{
+				return &events.NewOrder{
 					BuyerHandle: orderOpen.BuyerID.Handle,
 					BuyerID:     orderOpen.BuyerID.PeerID,
 					ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),

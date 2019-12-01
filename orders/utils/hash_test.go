@@ -1,8 +1,9 @@
-package utils
+package utils_test
 
 import (
 	"encoding/hex"
 	"github.com/cpacia/openbazaar3.0/models/factory"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"testing"
 )
 
@@ -12,7 +13,7 @@ func TestMultihashSha256(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mh, err := MultihashSha256(b)
+	mh, err := utils.MultihashSha256(b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,12 +27,12 @@ func TestMultihashSha256(t *testing.T) {
 func TestHashListing(t *testing.T) {
 	sl := factory.NewSignedListing()
 
-	mh, err := HashListing(sl)
+	mh, err := utils.HashListing(sl)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expected := "QmVQHxZLBqaZgocUxw47GUW3HC1BHiV9WUfDGKPZPmmJ32"
+	expected := "QmPnCqZNxaDGEKmfBXjoew21YZv1H365b4C4pFeNCdDiUC"
 	if mh.B58String() != expected {
 		t.Errorf("Incorrect hash returned expected %s, got %s", expected, mh.B58String())
 	}

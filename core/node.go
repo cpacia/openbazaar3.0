@@ -6,11 +6,13 @@ import (
 	"github.com/cpacia/openbazaar3.0/api"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
+	"github.com/cpacia/openbazaar3.0/notifications"
 	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	"github.com/ipfs/go-ipfs/core"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"os"
 	"sync/atomic"
 	"time"
 )
@@ -69,6 +71,10 @@ type OpenBazaarNode struct {
 	// exchangeRates is a provider of exchange rate data for various currencies.
 	exchangeRates *wallet.ExchangeRateProvider
 
+	// notifier listens to events coming off the bus, marshals them to notifications
+	// and sends them off to the websocket.
+	notifier *notifications.Notifier
+
 	// gateway is the openbazaar API.
 	gateway *api.Gateway
 
@@ -101,7 +107,8 @@ func (n *OpenBazaarNode) Start() {
 		go n.publishHandler()
 		go n.multiwallet.Start()
 		go n.gateway.Serve()
-		if err := n.removeDisabledCoinsFromListings(); err != nil {
+		go n.notifier.Start()
+		if err := n.removeDisabledCoinsFromListings(); err != nil && !os.IsNotExist(err) {
 			log.Errorf("Error removing disabled coins from listings: %s", err)
 		}
 	}

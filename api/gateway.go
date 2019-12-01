@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-ipfs/core/corehttp"
 	"github.com/op/go-logging"
@@ -29,6 +30,8 @@ type Gateway struct {
 	node     CoreIface
 	handler  http.Handler
 	config   *GatewayConfig
+	hub      *hub
+	shutdown chan struct{}
 }
 
 // NewGateway instantiates a new gateway. We multiplex the ob API along with the
@@ -39,6 +42,7 @@ func NewGateway(node CoreIface, config *GatewayConfig, options ...corehttp.Serve
 			node:     node,
 			config:   config,
 			listener: config.Listener,
+			shutdown: make(chan struct{}),
 		}
 		topMux = http.NewServeMux()
 	)
@@ -50,8 +54,12 @@ func NewGateway(node CoreIface, config *GatewayConfig, options ...corehttp.Serve
 	}
 	r.Use(g.AuthenticationMiddleware)
 
+	g.hub = newHub()
+	go g.hub.run()
+
 	topMux.Handle("/v1/ob/", r)
 	topMux.Handle("/v1/wallet/", r)
+	topMux.Handle("/ws", g.AuthenticationMiddleware(newWebsocketHandler(g.hub)))
 
 	var (
 		err error
@@ -69,7 +77,19 @@ func NewGateway(node CoreIface, config *GatewayConfig, options ...corehttp.Serve
 
 // Close shutsdown the Gateway listener.
 func (g *Gateway) Close() error {
+	close(g.shutdown)
 	return g.listener.Close()
+}
+
+// NotifyWebsockets marshals the message to JSON and broadcasts it
+// to all existing websocket connections.
+func (g *Gateway) NotifyWebsockets(message interface{}) error {
+	out, err := json.MarshalIndent(message, "", "    ")
+	if err != nil {
+		return err
+	}
+	g.hub.Broadcast <- out
+	return nil
 }
 
 // Serve begins listening on the configured address.

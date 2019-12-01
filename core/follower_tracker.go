@@ -148,11 +148,11 @@ func (t *FollowerTracker) listenEvents() {
 	if err != nil {
 		log.Error("Error subscribing to PeerDisconnected event: %s", err)
 	}
-	followerSub, err := t.bus.Subscribe(&events.FollowNotification{})
+	followerSub, err := t.bus.Subscribe(&events.Follow{})
 	if err != nil {
 		log.Error("Error subscribing to FollowNotification event: %s", err)
 	}
-	unfollowerSub, err := t.bus.Subscribe(&events.UnfollowNotification{})
+	unfollowerSub, err := t.bus.Subscribe(&events.Unfollow{})
 	if err != nil {
 		log.Error("Error subscribing to UnfollowNotification event: %s", err)
 	}
@@ -210,7 +210,7 @@ func (t *FollowerTracker) listenEvents() {
 			t.mtx.Unlock()
 			t.bus.Emit(&events.TrackerPeerDisconnected{Peer: notif.Peer})
 		case event := <-followerSub.Out():
-			notif, ok := event.(*events.FollowNotification)
+			notif, ok := event.(*events.Follow)
 			if !ok {
 				log.Error("Follower tracker type assertion failed on FollowNotification")
 				continue
@@ -226,7 +226,7 @@ func (t *FollowerTracker) listenEvents() {
 			t.bus.Emit(&events.TrackerFollow{Peer: pid})
 
 		case event := <-unfollowerSub.Out():
-			notif, ok := event.(*events.UnfollowNotification)
+			notif, ok := event.(*events.Unfollow)
 			if !ok {
 				log.Error("Follower tracker type assertion failed on UnfollowNotification")
 				continue

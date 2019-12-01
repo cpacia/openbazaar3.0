@@ -59,7 +59,7 @@ func (op *OrderProcessor) processOrderRejectMessage(dbtx database.Tx, order *mod
 		return nil, errors.New("invalid vendor signature on order confirmation")
 	}
 
-	event := &events.OrderDeclinedNotification{
+	event := &events.OrderDeclined{
 		OrderID: order.ID.String(),
 		Thumbnail: events.Thumbnail{
 			Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,

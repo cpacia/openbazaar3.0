@@ -133,7 +133,7 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 			if err != nil {
 				return err
 			}
-			notif := events.PaymentNotification{
+			notif := events.OrderPaymentReceived{
 				OrderID:      order.ID.String(),
 				FundingTotal: fundingTotal.String(),
 				CoinType:     orderOpen.Payment.Coin,
@@ -146,7 +146,7 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 
 	case models.RoleVendor:
 		if funded {
-			op.bus.Emit(&events.OrderFundedNotification{
+			op.bus.Emit(&events.OrderFunded{
 				BuyerHandle: orderOpen.BuyerID.Handle,
 				BuyerID:     orderOpen.BuyerID.PeerID,
 				ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),

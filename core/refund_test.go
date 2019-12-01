@@ -30,7 +30,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		go node.orderProcessor.Start()
 	}
 
-	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderNotification{})
+	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	fundingSub, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
+	fundingSub, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFunded{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	refundSub, err := network.Nodes()[1].eventBus.Subscribe(&events.RefundNotification{})
+	refundSub, err := network.Nodes()[1].eventBus.Subscribe(&events.Refund{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +270,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 
 	// Now test sending another transaction to the payment address and make sure the
 	// second refund works OK.
-	fundingSub2, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
+	fundingSub2, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFunded{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +293,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	refundSub2, err := network.Nodes()[1].eventBus.Subscribe(&events.RefundNotification{})
+	refundSub2, err := network.Nodes()[1].eventBus.Subscribe(&events.Refund{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,7 +353,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 	}
 
 	// Now repeat everything with a moderated order.
-	orderSub1, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderNotification{})
+	orderSub1, err := network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		t.Error("Node 1 failed to record order open ACK")
 	}
 
-	fundingSub3, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
+	fundingSub3, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFunded{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -437,7 +437,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	refundSub3, err := network.Nodes()[1].eventBus.Subscribe(&events.RefundNotification{})
+	refundSub3, err := network.Nodes()[1].eventBus.Subscribe(&events.Refund{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -513,7 +513,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 
 	// Now test sending another transaction to the payment address and make sure the
 	// second refund works OK.
-	fundingSub4, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
+	fundingSub4, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFunded{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -536,7 +536,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	refundSub4, err := network.Nodes()[1].eventBus.Subscribe(&events.RefundNotification{})
+	refundSub4, err := network.Nodes()[1].eventBus.Subscribe(&events.Refund{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -86,7 +86,7 @@ func Test_processPaymentSentMessage(t *testing.T) {
 				})
 			},
 			expectedError: nil,
-			expectedEvent: &events.PaymentSentNotification{
+			expectedEvent: &events.PaymentSentReceived{
 				OrderID: "1234",
 				Txid:    txs[0].ID.String(),
 			},

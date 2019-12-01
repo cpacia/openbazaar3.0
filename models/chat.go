@@ -44,8 +44,8 @@ func (cm *ChatMessage) GetPeerID() (peer.ID, error) {
 	return peer.IDB58Decode(cm.PeerID)
 }
 
-func (cm *ChatMessage) ToChatNotification() *events.ChatMessageNotification {
-	return &events.ChatMessageNotification{
+func (cm *ChatMessage) ToChatEvent() *events.ChatMessage {
+	return &events.ChatMessage{
 		MessageID: cm.MessageID,
 		Timestamp: cm.Timestamp,
 		PeerID:    cm.PeerID,

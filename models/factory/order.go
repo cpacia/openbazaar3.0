@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
+	"github.com/cpacia/openbazaar3.0/wallet"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/libp2p/go-libp2p-crypto"
@@ -63,6 +65,32 @@ func NewOrder() (*pb.OrderOpen, crypto.PrivKey, error) {
 		return nil, nil, err
 	}
 
+	chaincode, err := hex.DecodeString("ab4363f632d094270418472d5a5e99c12d38a21a5ded12ddb086102235d69206")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	myPubkey, err := utils.GenerateEscrowPublicKey(escrowPubkey, chaincode)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	vendorEscrowKey, err := btcec.ParsePubKey(listing.Listing.VendorID.Pubkeys.Escrow, btcec.S256())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	theirPubkey, err := utils.GenerateEscrowPublicKey(vendorEscrowKey, chaincode)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	w := wallet.NewMockWallet()
+	addr, script, err := w.CreateMultisigAddress([]btcec.PublicKey{*myPubkey, *theirPubkey}, 1)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	order := &pb.OrderOpen{
 		Listings: []*pb.SignedListing{
 			listing,
@@ -110,10 +138,11 @@ func NewOrder() (*pb.OrderOpen, crypto.PrivKey, error) {
 		Payment: &pb.OrderOpen_Payment{
 			Method:           pb.OrderOpen_Payment_CANCELABLE,
 			Amount:           "4992221",
-			Address:          "d2a09570b1275d9f865cf290f5aca9f514d1ac4e5b770fdc0b59153059a8c09c",
+			Address:          addr.String(),
 			Coin:             "MCK",
 			EscrowReleaseFee: "10",
-			Script:           "036d60859d9a78554a69e15cf6044c7c3d81744038048719e87cdbe3ab5d159f100221ec8c291efd5f39d100590d5ec2038655ea1ece51de656255a1f7567fd731d900000001",
+			Script:           hex.EncodeToString(script),
+			Chaincode:        hex.EncodeToString(chaincode),
 		},
 		RatingKeys:           [][]byte{ratingKey},
 		AlternateContactInfo: "peter@familyguy.net",

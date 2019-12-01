@@ -40,7 +40,7 @@ func TestFollowerTracker_ConnectDisconnect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	node.eventBus.Emit(&events.FollowNotification{PeerID: p.Pretty()})
+	node.eventBus.Emit(&events.Follow{PeerID: p.Pretty()})
 	node.eventBus.Emit(&events.PeerConnected{Peer: p})
 
 	select {

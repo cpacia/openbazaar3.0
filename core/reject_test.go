@@ -25,7 +25,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		go node.orderProcessor.Start()
 	}
 
-	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderNotification{})
+	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Error("Node 1 failed to record order open ACK")
 	}
 
-	rejectSub, err := network.Nodes()[1].eventBus.Subscribe(&events.OrderDeclinedNotification{})
+	rejectSub, err := network.Nodes()[1].eventBus.Subscribe(&events.OrderDeclined{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +235,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	fundingSub, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
+	fundingSub, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFunded{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	rejectSub, err = network.Nodes()[1].eventBus.Subscribe(&events.OrderDeclinedNotification{})
+	rejectSub, err = network.Nodes()[1].eventBus.Subscribe(&events.OrderDeclined{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	refundSub, err := network.Nodes()[1].eventBus.Subscribe(&events.RefundNotification{})
+	refundSub, err := network.Nodes()[1].eventBus.Subscribe(&events.Refund{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +341,7 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	fundingSub2, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFundedNotification{})
+	fundingSub2, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFunded{})
 	if err != nil {
 		t.Fatal(err)
 	}

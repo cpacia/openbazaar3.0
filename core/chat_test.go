@@ -82,7 +82,7 @@ func TestOpenBazaarNode_SendTypingMessage(t *testing.T) {
 
 	defer network.TearDown()
 
-	sub, err := network.Nodes()[1].eventBus.Subscribe(&events.ChatTypingNotification{})
+	sub, err := network.Nodes()[1].eventBus.Subscribe(&events.ChatTyping{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestOpenBazaarNode_SendTypingMessage(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	notif, ok := event.(*events.ChatTypingNotification)
+	notif, ok := event.(*events.ChatTyping)
 	if !ok {
 		t.Fatal("Failed to type assert ChatTypingNotification")
 	}
@@ -121,7 +121,7 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 
 	defer network.TearDown()
 
-	sub, err := network.Nodes()[1].eventBus.Subscribe(&events.ChatMessageNotification{})
+	sub, err := network.Nodes()[1].eventBus.Subscribe(&events.ChatMessage{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
-	notif, ok := event.(*events.ChatMessageNotification)
+	notif, ok := event.(*events.ChatMessage)
 	if !ok {
 		t.Fatal("Failed to type assert ChatMessageNotification")
 	}
@@ -159,7 +159,7 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 		t.Errorf("Received incorrect peer ID. Expected %s, got %s", network.Nodes()[0].Identity().Pretty(), notif.PeerID)
 	}
 
-	sub2, err := network.Nodes()[0].eventBus.Subscribe(&events.ChatReadNotification{})
+	sub2, err := network.Nodes()[0].eventBus.Subscribe(&events.ChatRead{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
-	notif2, ok := event2.(*events.ChatReadNotification)
+	notif2, ok := event2.(*events.ChatRead)
 	if !ok {
 		t.Fatal("Failed to type assert ChatReadNotification")
 	}

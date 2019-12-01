@@ -181,7 +181,7 @@ func Test_handleFollowAndUnfollow(t *testing.T) {
 	defer mocknet.TearDown()
 
 	// Test follow
-	sub, err := mocknet.Nodes()[1].eventBus.Subscribe(&events.FollowNotification{})
+	sub, err := mocknet.Nodes()[1].eventBus.Subscribe(&events.Follow{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func Test_handleFollowAndUnfollow(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	notif, ok := event.(*events.FollowNotification)
+	notif, ok := event.(*events.Follow)
 	if !ok {
 		t.Fatalf("Event type assertion failed")
 	}
@@ -220,7 +220,7 @@ func Test_handleFollowAndUnfollow(t *testing.T) {
 	}
 
 	// Test unfollow
-	sub2, err := mocknet.Nodes()[1].eventBus.Subscribe(&events.UnfollowNotification{})
+	sub2, err := mocknet.Nodes()[1].eventBus.Subscribe(&events.Unfollow{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func Test_handleFollowAndUnfollow(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	notif2, ok := event2.(*events.UnfollowNotification)
+	notif2, ok := event2.(*events.Unfollow)
 	if !ok {
 		t.Fatalf("Event type assertion failed")
 	}

@@ -62,7 +62,7 @@ func (op *OrderProcessor) processPaymentSentMessage(dbtx database.Tx, order *mod
 
 	log.Infof("Received PAYMENT_SENT message for order %s", order.ID)
 
-	event := &events.PaymentSentNotification{
+	event := &events.PaymentSentReceived{
 		OrderID: order.ID.String(),
 		Txid:    payment.TransactionID,
 	}

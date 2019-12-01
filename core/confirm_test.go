@@ -27,7 +27,7 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 		go node.orderProcessor.Start()
 	}
 
-	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderNotification{})
+	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 		t.Error("Node 1 failed to record order open ACK")
 	}
 
-	confirmSub, err := network.Nodes()[1].eventBus.Subscribe(&events.OrderConfirmationNotification{})
+	confirmSub, err := network.Nodes()[1].eventBus.Subscribe(&events.OrderConfirmation{})
 	if err != nil {
 		t.Fatal(err)
 	}

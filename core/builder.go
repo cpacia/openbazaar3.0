@@ -14,6 +14,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	obnet "github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/net/pb"
+	"github.com/cpacia/openbazaar3.0/notifications"
 	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
@@ -271,6 +272,8 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	obNode.notifier = notifications.NewNotifier(bus, obRepo.DB(), obNode.gateway.NotifyWebsockets)
 
 	obNode.registerHandlers()
 	obNode.listenNetworkEvents()

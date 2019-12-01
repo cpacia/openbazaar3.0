@@ -132,7 +132,7 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 				return order.PutMessage(orderOpen)
 			},
 			expectedError: nil,
-			expectedEvent: &events.RefundNotification{
+			expectedEvent: &events.Refund{
 				OrderID: "1234",
 				Thumbnail: events.Thumbnail{
 					Tiny:  tinyImageHash,
