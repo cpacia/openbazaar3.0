@@ -21,7 +21,16 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strconv"
 	"sync"
+)
+
+const (
+	// defaultRepoVersion is the current repo version used for migrations.
+	defaultRepoVersion = 0
+
+	// versionFileName is the name of the version file.
+	versionFileName = "version"
 )
 
 var log = logging.MustGetLogger("REPO")
@@ -80,10 +89,17 @@ func (r *Repo) DestroyRepo() error {
 	return os.RemoveAll(r.dataDir)
 }
 
+// writeVersion writes the version number to file.
+func (r *Repo) writeVersion(version int) error {
+	versionStr := strconv.Itoa(version)
+	return ioutil.WriteFile(path.Join(r.dataDir, versionFileName), []byte(versionStr), os.ModePerm)
+}
+
 func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 	var (
 		dbIdentity, dbEscrowKey, dbRatingKey, dbBip44Key, dbMnemonic *models.Key
 		err                                                          error
+		isNew bool
 	)
 	ipfsDir := path.Join(dataDir, "ipfs")
 	if !fsrepo.IsInitialized(ipfsDir) {
@@ -96,8 +112,9 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 				return nil, err
 			}
 		}
-		seed := bip39.NewSeed(mnemonicSeed, "")
-		identityKey, err := IdentityKeyFromSeed(seed, 0)
+		
+		identitySeed := bip39.NewSeed(mnemonicSeed, "Secret Passphrase")
+		identityKey, err := IdentityKeyFromSeed(identitySeed, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +133,8 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 			return nil, err
 		}
 
-		escrowKey, ratingKey, bip44Key, err := createHDKeys(seed)
+		hdSeed := bip39.NewSeed(mnemonicSeed, "")
+		escrowKey, ratingKey, bip44Key, err := createHDKeys(hdSeed)
 		if err != nil {
 			return nil, err
 		}
@@ -144,6 +162,7 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 		if err := cleanIdentityFromConfig(ipfsDir); err != nil {
 			return nil, err
 		}
+		isNew = true
 	}
 
 	var db database.Database
@@ -199,10 +218,16 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 		return nil, err
 	}
 
-	return &Repo{
+	r := &Repo{
 		dataDir: dataDir,
 		db:      db,
-	}, nil
+	}
+	if isNew {
+		if err := r.writeVersion(defaultRepoVersion); err != nil {
+			return nil, err
+		}
+	}
+	return r, nil
 }
 
 func checkWriteable(dir string) error {

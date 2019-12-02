@@ -253,7 +253,6 @@ func (fdb *FlatFileDB) initializeDirectory() error {
 		fdb.dataPathJoin("images", "large"),
 		fdb.dataPathJoin("images", "original"),
 		fdb.dataPathJoin("posts"),
-		fdb.dataPathJoin("channel"),
 		fdb.dataPathJoin("files"),
 	}
 

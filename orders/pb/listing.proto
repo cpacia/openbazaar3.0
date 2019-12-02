@@ -37,7 +37,7 @@ message Listing {
 
         enum Format {
             FIXED_PRICE  = 0;
-            MARKET_PRICE = 2;
+            MARKET_PRICE = 1;
         }
     }
 
