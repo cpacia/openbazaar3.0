@@ -189,7 +189,7 @@ func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
 				t.Errorf("Test %d: event returned when validation failed", i)
 			}
 			if order.Role() != models.RoleVendor {
-				t.Errorf("Test %d: expected role vendor got %d", i, order.Role())
+				t.Errorf("Test %d: expected role vendor got %s", i, order.Role())
 			}
 			return nil
 		})

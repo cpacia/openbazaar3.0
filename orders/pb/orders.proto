@@ -128,5 +128,5 @@ message PaymentSentList {
 }
 
 message RefundList {
-    repeated Refund refunds = 1;
+    repeated Refund messages = 1;
 }

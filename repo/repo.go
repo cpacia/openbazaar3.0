@@ -99,7 +99,7 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 	var (
 		dbIdentity, dbEscrowKey, dbRatingKey, dbBip44Key, dbMnemonic *models.Key
 		err                                                          error
-		isNew bool
+		isNew                                                        bool
 	)
 	ipfsDir := path.Join(dataDir, "ipfs")
 	if !fsrepo.IsInitialized(ipfsDir) {
@@ -112,7 +112,7 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 				return nil, err
 			}
 		}
-		
+
 		identitySeed := bip39.NewSeed(mnemonicSeed, "Secret Passphrase")
 		identityKey, err := IdentityKeyFromSeed(identitySeed, 0)
 		if err != nil {

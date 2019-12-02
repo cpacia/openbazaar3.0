@@ -94,6 +94,12 @@ func (n *OpenBazaarNode) add(ctx context.Context, filePath string) (cid.Cid, err
 	return node.Cid(), nil
 }
 
+// cid returns the content ID of the byte array. Note care must be taken when using this
+// as of now it seems the only IPFS API I can find requires adding the file to get the cid.
+// Thus we unpin the file after adding so it doesn't persist forever. If this file was
+// supposed to be pinning then this function may unintentionally unpin it. Where we use
+// this function currently this is OK since we do a publish immediately after which would
+// re-pin any unpin objects in the data directory.
 func (n *OpenBazaarNode) cid(file []byte) (cid.Cid, error) {
 	api, err := coreapi.NewCoreAPI(n.ipfsNode)
 	if err != nil {

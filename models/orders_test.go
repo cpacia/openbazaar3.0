@@ -19,7 +19,7 @@ func TestOrder_Role(t *testing.T) {
 
 	ret := order.Role()
 	if ret != RoleVendor {
-		t.Errorf("Expected RoleVendor, got %d", ret)
+		t.Errorf("Expected RoleVendor, got %s", ret)
 	}
 }
 

@@ -47,17 +47,17 @@ func (id OrderID) String() string {
 }
 
 // OrderRole specifies this node's role in the order.
-type OrderRole uint8
+type OrderRole string
 
 const (
 	// RoleUnknown means we haven't yet determined the role.
-	RoleUnknown OrderRole = iota
+	RoleUnknown OrderRole = "unknown"
 	// RoleBuyer represents a buyer.
-	RoleBuyer
+	RoleBuyer = "buyer"
 	// RoleVendor represents a vendor.
-	RoleVendor
+	RoleVendor = "vendor"
 	// RoleModerator represents a moderator.
-	RoleModerator
+	RoleModerator = "moderator"
 )
 
 // Order holds the state of all orders. This model is saved in the
@@ -67,49 +67,49 @@ type Order struct {
 
 	PaymentAddress string `gorm:"index"`
 
-	Transactions []byte
+	Transactions json.RawMessage
 
-	MyRole uint8
+	MyRole string
 
 	Open bool `gorm:"index"`
 
 	LastCheckForPayments time.Time
 	RescanPerformed      bool
 
-	SerializedOrderOpen []byte
+	SerializedOrderOpen json.RawMessage
 	OrderOpenAcked      bool
 
-	SerializedOrderReject []byte
+	SerializedOrderReject json.RawMessage
 	OrderRejectAcked      bool
 
-	SerializedOrderCancel []byte
+	SerializedOrderCancel json.RawMessage
 	OrderCancelAcked      bool
 
-	SerializedOrderConfirmation []byte
+	SerializedOrderConfirmation json.RawMessage
 	OrderConfirmationAcked      bool
 
-	SerializedOrderFulfillment []byte
+	SerializedOrderFulfillment json.RawMessage
 	OrderFulfillmentAcked      bool
 
-	SerializedOrderComplete []byte
+	SerializedOrderComplete json.RawMessage
 	OrderCompleteAcked      bool
 
-	SerializedDisputeOpen []byte
+	SerializedDisputeOpen json.RawMessage
 	DisputeOpenAcked      bool
 
-	SerializedDisputeUpdate []byte
+	SerializedDisputeUpdate json.RawMessage
 	DisputeUpdateAcked      bool
 
-	SerializedDisputeClosed []byte
+	SerializedDisputeClosed json.RawMessage
 	DisputeClosedAcked      bool
 
-	SerializedRefunds []byte
+	SerializedRefunds json.RawMessage
 	RefundAcked       bool
 
-	SerializedPaymentSent []byte
+	SerializedPaymentSent json.RawMessage
 	PaymentSentAcked      bool
 
-	SerializedPaymentFinalized []byte
+	SerializedPaymentFinalized json.RawMessage
 	PaymentFinalizedAcked      bool
 
 	ParkedMessages  []byte
@@ -123,7 +123,7 @@ func (o *Order) Role() OrderRole {
 
 // SetRole sets the role of the user for this order.
 func (o *Order) SetRole(role OrderRole) {
-	o.MyRole = uint8(role)
+	o.MyRole = string(role)
 }
 
 // Buyer returns the peer ID of the buyer for this order.
@@ -321,7 +321,7 @@ func (o *Order) Refunds() ([]*pb.Refund, error) {
 		return nil, err
 	}
 	var refunds []*pb.Refund
-	refunds = append(refunds, refundList.Refunds...)
+	refunds = append(refunds, refundList.Messages...)
 	return refunds, nil
 }
 
@@ -387,7 +387,7 @@ func (o *Order) PutMessage(message proto.Message) error {
 				return err
 			}
 		}
-		for _, r := range refundList.Refunds {
+		for _, r := range refundList.Messages {
 			if r.GetTransactionID() != "" && r.GetTransactionID() == message.(*pb.Refund).GetTransactionID() {
 				return ErrDuplicateTransaction
 			}
@@ -406,7 +406,7 @@ func (o *Order) PutMessage(message proto.Message) error {
 				}
 			}
 		}
-		refundList.Refunds = append(refundList.Refunds, message.(*pb.Refund))
+		refundList.Messages = append(refundList.Messages, message.(*pb.Refund))
 		ser, err := marshaler.MarshalToString(refundList)
 		if err != nil {
 			return err
@@ -686,4 +686,94 @@ func (o *Order) FundingTotal() (iwallet.Amount, error) {
 		}
 	}
 	return totalPaid, nil
+}
+
+// MarshalJSON provides custom JSON marshalling for the order model. Since this method is primarily
+// used to return data to the API, this is the appropriate place to normalize the data to the format
+// the API is expecting.
+func (o *Order) MarshalJSON() ([]byte, error) {
+	out := make(map[string]interface{})
+	out["orderID"] = o.ID.String()
+	out["role"] = string(o.Role())
+
+	if o.SerializedOrderOpen != nil {
+		out["orderOpen"] = o.SerializedOrderOpen
+		out["orderOpenAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedOrderReject != nil {
+		out["orderReject"] = o.SerializedOrderReject
+		out["orderRejectAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedOrderCancel != nil {
+		out["orderCancel"] = o.SerializedOrderCancel
+		out["orderCancelAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedOrderConfirmation != nil {
+		out["orderConfirmation"] = o.SerializedOrderConfirmation
+		out["orderConfirmationAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedOrderFulfillment != nil {
+		out["orderFulfillment"] = o.SerializedOrderFulfillment
+		out["orderFulfillmentAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedOrderComplete != nil {
+		out["orderComplete"] = o.SerializedOrderComplete
+		out["orderCompleteAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedDisputeOpen != nil {
+		out["disputeOpen"] = o.SerializedDisputeOpen
+		out["disputeOpenAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedDisputeClosed != nil {
+		out["disputeClosed"] = o.SerializedDisputeClosed
+		out["disputeClosedAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedDisputeUpdate != nil {
+		out["disputeUpdate"] = o.SerializedDisputeUpdate
+		out["disputeUpdateAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedPaymentFinalized != nil {
+		out["orderOpen"] = o.SerializedOrderOpen
+		out["paymentFinalizedAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedRefunds != nil {
+		refundList := new(pb.RefundList)
+		if err := jsonpb.UnmarshalString(string(o.SerializedRefunds), refundList); err != nil {
+			return nil, err
+		}
+		ser := make([]json.RawMessage, 0, len(refundList.Messages))
+		for _, refund := range refundList.Messages {
+			serializedRefund, err := marshaler.MarshalToString(refund)
+			if err != nil {
+				return nil, err
+			}
+			ser = append(ser, []byte(serializedRefund))
+		}
+		out["refunds"] = ser
+		out["refundsAcked"] = o.RefundAcked
+	}
+	if o.SerializedPaymentSent != nil {
+		paymentSentList := new(pb.PaymentSentList)
+		if err := jsonpb.UnmarshalString(string(o.SerializedPaymentSent), paymentSentList); err != nil {
+			return nil, err
+		}
+		ser := make([]json.RawMessage, 0, len(paymentSentList.Messages))
+		for _, payment := range paymentSentList.Messages {
+			serializedPayment, err := marshaler.MarshalToString(payment)
+			if err != nil {
+				return nil, err
+			}
+			ser = append(ser, []byte(serializedPayment))
+		}
+		out["paymentsSent"] = ser
+		out["paymentsSentAcked"] = o.PaymentSentAcked
+	}
+	if o.ParkedMessages != nil {
+		out["parkedMessages"] = o.ParkedMessages
+	}
+	if o.ErroredMessages != nil {
+		out["erroredMessages"] = o.ErroredMessages
+	}
+
+	return json.Marshal(out)
 }
