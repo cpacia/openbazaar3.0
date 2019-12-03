@@ -102,6 +102,8 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 		validationError = true
 	}
 
+	// TODO: if role == Vendor && autoConfirm && < mispaymentBuffer send orderConfirmation.
+
 	var event interface{}
 	// TODO: do we want to emit an event in the case of a validation error?
 	if !validationError && op.identity != peer {

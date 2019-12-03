@@ -164,8 +164,12 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	var (
 		dbEscrowKey models.Key
 		dbRatingKey models.Key
+		prefs       models.UserPreferences
 	)
 	err = obRepo.DB().View(func(tx database.Tx) error {
+		if err := tx.Read().First(&prefs).Error; err != nil {
+			return err
+		}
 		if err := tx.Read().Where("name = ?", "escrow").First(&dbEscrowKey).Error; err != nil {
 			return err
 		}
@@ -176,7 +180,12 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	ratingKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbRatingKey.Value)
 
 	bus := events.NewBus()
-	bm := obnet.NewBanManager(nil) // TODO: load ids from db
+
+	blocked, err := prefs.BlockedNodes()
+	if err != nil {
+		return nil, err
+	}
+	bm := obnet.NewBanManager(blocked)
 	service := obnet.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
 	messenger := obnet.NewMessenger(service, obRepo.DB())
 	tracker := NewFollowerTracker(obRepo, bus, ipfsNode.PeerHost.Network())

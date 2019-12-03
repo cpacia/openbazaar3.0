@@ -133,13 +133,12 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 			if err != nil {
 				return err
 			}
-			notif := events.OrderPaymentReceived{
-				OrderID:      order.ID.String(),
-				FundingTotal: fundingTotal.String(),
-				CoinType:     orderOpen.Payment.Coin,
-			}
 			dbtx.RegisterCommitHook(func() {
-				op.bus.Emit(&notif)
+				op.bus.Emit(&events.OrderPaymentReceived{
+					OrderID:      order.ID.String(),
+					FundingTotal: fundingTotal.String(),
+					CoinType:     orderOpen.Payment.Coin,
+				})
 			})
 			log.Infof("Payment detected: Order %s fully funded", order.ID)
 		} else {

@@ -31,6 +31,10 @@ const (
 
 	// versionFileName is the name of the version file.
 	versionFileName = "version"
+
+	// defaultMispaymentBuffer is the default buffer to use when calculating a
+	// mispayment.
+	defaultMispaymentBuffer = 1.0
 )
 
 var log = logging.MustGetLogger("REPO")
@@ -207,6 +211,15 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 			if err := tx.Save(&dbMnemonic); err != nil {
 				return err
 			}
+		}
+		err := tx.Save(&models.UserPreferences{
+			AutoConfirm:       true,
+			MisPaymentBuffer:  defaultMispaymentBuffer,
+			ShowNsfw:          true,
+			ShowNotifications: true,
+		})
+		if err != nil {
+			return err
 		}
 		return nil
 	})
@@ -436,6 +449,7 @@ func autoMigrateDatabase(db database.Database) error {
 		&models.Event{},
 		&models.Order{},
 		&models.TransactionMetadata{},
+		&models.UserPreferences{},
 	}
 
 	return db.Update(func(tx database.Tx) error {
