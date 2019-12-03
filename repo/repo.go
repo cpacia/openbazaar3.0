@@ -212,14 +212,16 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 				return err
 			}
 		}
-		err := tx.Save(&models.UserPreferences{
-			AutoConfirm:       true,
-			MisPaymentBuffer:  defaultMispaymentBuffer,
-			ShowNsfw:          true,
-			ShowNotifications: true,
-		})
-		if err != nil {
-			return err
+		if isNew {
+			err := tx.Save(&models.UserPreferences{
+				AutoConfirm:       true,
+				MisPaymentBuffer:  defaultMispaymentBuffer,
+				ShowNsfw:          true,
+				ShowNotifications: true,
+			})
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})

@@ -55,8 +55,10 @@ type prefsJSON struct {
 // BlockedNodes returns the blocked peer IDs.
 func (prefs *UserPreferences) BlockedNodes() ([]peer.ID, error) {
 	var peerIDStrs []string
-	if err := json.Unmarshal(prefs.Blocked, &peerIDStrs); err != nil {
-		return nil, err
+	if prefs.Blocked != nil {
+		if err := json.Unmarshal(prefs.Blocked, &peerIDStrs); err != nil {
+			return nil, err
+		}
 	}
 	ret := make([]peer.ID, len(peerIDStrs))
 	for _, s := range peerIDStrs {
