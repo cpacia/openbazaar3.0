@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -819,7 +820,7 @@ func Test_createOrderUnkownVersion(t *testing.T) {
 	}
 
 	_, err = network.Nodes()[0].createOrder(context.Background(), purchase)
-	if err != ErrUnknownListingVersion {
+	if err != coreiface.ErrUnknownListingVersion {
 		t.Errorf("Expected test to failed due to unknown listing version")
 	}
 }

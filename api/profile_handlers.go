@@ -23,18 +23,18 @@ func (g *Gateway) handleGETProfile(w http.ResponseWriter, r *http.Request) {
 	if peerIDStr == "" || peerIDStr == g.node.Identity().Pretty() {
 		profile, err = g.node.GetMyProfile()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			http.Error(w, wrapError(err), http.StatusNotFound)
 			return
 		}
 	} else {
 		pid, err := peer.IDB58Decode(peerIDStr)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, wrapError(err), http.StatusBadRequest)
 			return
 		}
 		profile, err = g.node.GetProfile(r.Context(), pid, useCache)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			http.Error(w, wrapError(err), http.StatusNotFound)
 			return
 		}
 	}
@@ -49,12 +49,12 @@ func (g *Gateway) handlePOSTProfile(w http.ResponseWriter, r *http.Request) {
 
 	var profile models.Profile
 	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
 	}
 
 	if err := g.node.SetProfile(&profile, nil); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -67,12 +67,12 @@ func (g *Gateway) handlePUTProfile(w http.ResponseWriter, r *http.Request) {
 
 	var profile models.Profile
 	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
 	}
 
 	if err := g.node.SetProfile(&profile, nil); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -82,7 +82,7 @@ func (g *Gateway) handlePOSTFetchProfiles(w http.ResponseWriter, r *http.Request
 
 	var peerIDs []string
 	if err := json.NewDecoder(r.Body).Decode(&peerIDs); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
 	}
 

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cpacia/openbazaar3.0/models"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"net/http"
@@ -37,7 +38,7 @@ func TestProfileHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
 			},
 		},
 		{
@@ -71,7 +72,7 @@ func TestProfileHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
 			},
 		},
 		{
@@ -85,7 +86,7 @@ func TestProfileHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "multihash length inconsistent: expected 13535, got 0"}`)), nil
 			},
 		},
 		{
@@ -122,7 +123,7 @@ func TestProfileHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("not found\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found"}`)), nil
 			},
 		},
 		{
@@ -158,7 +159,7 @@ func TestProfileHandlers(t *testing.T) {
 			body:       []byte(`{"name": "Ron Swanson"}`),
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
 			},
 		},
 		{
@@ -194,7 +195,7 @@ func TestProfileHandlers(t *testing.T) {
 			body:       []byte(`{"name": "Ron Swanson"`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("unexpected EOF\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "unexpected EOF"}`)), nil
 			},
 		},
 		{
@@ -230,7 +231,7 @@ func TestProfileHandlers(t *testing.T) {
 			body:       []byte(`{"name": "Ron Swanson"}`),
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
 			},
 		},
 		{
@@ -266,7 +267,7 @@ func TestProfileHandlers(t *testing.T) {
 			body:       []byte(`{"name": "Ron Swanson"`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("unexpected EOF\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "unexpected EOF"}`)), nil
 			},
 		},
 		{
@@ -336,7 +337,7 @@ func TestProfileHandlers(t *testing.T) {
 			body:       []byte(`["12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi"`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("unexpected EOF\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "unexpected EOF"}`)), nil
 			},
 		},
 		{

@@ -1,4 +1,4 @@
-package core
+package coreiface
 
 import (
 	"errors"
@@ -25,6 +25,18 @@ var (
 	// ErrDustAmount is an error that is returned when the amount is less than the coin's
 	// dust threshold, thus making it unspendable.
 	ErrDustAmount = errors.New("dust amount")
+
+	// ErrInternalServer may be included in the error wrapper to signal that the error
+	// was generated exclusively due to a server side error and not bad input data.
+	ErrInternalServer = errors.New("internal server error")
+
+	// ErrBadRequest is included in the error wrapper when the error was generated
+	// due to bad input data.
+	ErrBadRequest = errors.New("bad request")
+
+	// ErrNotFound is included in the error wrapper when the error was generated
+	// due to a requested asset not being found.
+	ErrNotFound = errors.New("not found")
 )
 
 type ErrTooManyItems []string

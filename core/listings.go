@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/OpenBazaar/jsonpb"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -148,7 +149,7 @@ func (n *OpenBazaarNode) DeleteListing(slug string, done chan<- struct{}) error 
 
 		index, err := tx.GetListingIndex()
 		if err != nil {
-			return err
+			return fmt.Errorf("%w: listing index not found", coreiface.ErrNotFound)
 		}
 		index.DeleteListing(slug)
 		if err := tx.SetListingIndex(index); err != nil {
@@ -156,7 +157,7 @@ func (n *OpenBazaarNode) DeleteListing(slug string, done chan<- struct{}) error 
 		}
 
 		if err := tx.DeleteListing(slug); err != nil {
-			return err
+			return fmt.Errorf("%w: listing not found", coreiface.ErrNotFound)
 		}
 
 		if err := n.updateAndSaveProfile(tx); err != nil {
@@ -180,7 +181,10 @@ func (n *OpenBazaarNode) GetMyListings() (models.ListingIndex, error) {
 	)
 	err = n.repo.DB().View(func(tx database.Tx) error {
 		index, err = tx.GetListingIndex()
-		return err
+		if err != nil {
+			return fmt.Errorf("%w: listing index not found", coreiface.ErrNotFound)
+		}
+		return nil
 	})
 	return index, err
 }
@@ -214,7 +218,7 @@ func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.SignedListing, err
 	err = n.repo.DB().View(func(tx database.Tx) error {
 		listing, err = tx.GetListing(slug)
 		if err != nil {
-			return err
+			return fmt.Errorf("%w: listing not found", coreiface.ErrNotFound)
 		}
 		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !gorm.IsRecordNotFoundError(err) {
 			return err
@@ -240,15 +244,15 @@ func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, erro
 	err = n.repo.DB().View(func(tx database.Tx) error {
 		index, err := tx.GetListingIndex()
 		if err != nil {
-			return err
+			return fmt.Errorf("%w: listing index not found", coreiface.ErrNotFound)
 		}
 		slug, err := index.GetListingSlug(cid)
 		if err != nil {
-			return err
+			return fmt.Errorf("%w: listing not found in index", coreiface.ErrNotFound)
 		}
 		listing, err = tx.GetListing(slug)
 		if err != nil {
-			return err
+			return fmt.Errorf("%w: listing not found", coreiface.ErrNotFound)
 		}
 		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !gorm.IsRecordNotFoundError(err) {
 			return err
@@ -313,7 +317,7 @@ func (n *OpenBazaarNode) generateListingSlug(title string) (string, error) {
 	slugToTry := slugBase
 	for {
 		_, err := n.GetMyListingBySlug(slugToTry)
-		if os.IsNotExist(err) {
+		if errors.Is(err, coreiface.ErrNotFound) {
 			return slugToTry, nil
 		} else if err != nil {
 			return "", err
@@ -350,17 +354,17 @@ func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) 
 	for _, acceptedCurrency := range listing.Metadata.AcceptedCurrencies {
 		_, err := n.multiwallet.WalletForCurrencyCode(acceptedCurrency)
 		if err != nil {
-			return cid.Cid{}, fmt.Errorf("currency %s is not found in multiwallet", acceptedCurrency)
+			return cid.Cid{}, fmt.Errorf("%w: currency %s is not found in multiwallet", coreiface.ErrBadRequest, acceptedCurrency)
 		}
 		if currencyMap[normalizeCurrencyCode(acceptedCurrency)] {
-			return cid.Cid{}, errors.New("duplicate accepted currency in listing")
+			return cid.Cid{}, fmt.Errorf("%w: duplicate accepted currency in listing", coreiface.ErrBadRequest)
 		}
 		currencyMap[normalizeCurrencyCode(acceptedCurrency)] = true
 	}
 
 	// Sanitize a few critical fields
 	if listing.Item == nil {
-		return cid.Cid{}, errors.New("no item in listing")
+		return cid.Cid{}, fmt.Errorf("%w: no item in listing", coreiface.ErrBadRequest)
 	}
 	sanitizer := bluemonday.UGCPolicy()
 	for _, opt := range listing.Item.Options {
@@ -426,6 +430,9 @@ func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) 
 		coupon := models.Coupon{Slug: listing.Slug, Code: code, Hash: hash}
 		couponsToStore = append(couponsToStore, coupon)
 	}
+	if err := dbtx.Delete("slug", listing.Slug, nil, &models.Coupon{}); err != nil {
+		return cid.Cid{}, err
+	}
 	if len(couponsToStore) > 0 {
 		for _, coupon := range couponsToStore {
 			if err := dbtx.Save(&coupon); err != nil {
@@ -442,7 +449,11 @@ func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) 
 
 	// Check the listing data is correct for continuing
 	if err := n.validateListing(sl); err != nil {
-		return cid.Cid{}, err
+		if errors.Is(err, coreiface.ErrInternalServer) {
+			return cid.Cid{}, err
+		} else {
+			return cid.Cid{}, fmt.Errorf("%w: %w", coreiface.ErrBadRequest, err)
+		}
 	}
 
 	// Save listing
@@ -525,10 +536,10 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 
 	// Slug
 	if sl.Listing.Slug == "" {
-		return ErrMissingField("slug")
+		return coreiface.ErrMissingField("slug")
 	}
 	if len(sl.Listing.Slug) > SentenceMaxCharacters {
-		return ErrTooManyCharacters{"slug", strconv.Itoa(SentenceMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"slug", strconv.Itoa(SentenceMaxCharacters)}
 	}
 	if strings.Contains(sl.Listing.Slug, " ") {
 		return errors.New("slugs cannot contain spaces")
@@ -539,7 +550,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 
 	// Metadata
 	if sl.Listing.Metadata == nil {
-		return ErrMissingField("metadata")
+		return coreiface.ErrMissingField("metadata")
 	}
 	if sl.Listing.Metadata.ContractType > pb.Listing_Metadata_CRYPTOCURRENCY {
 		return errors.New("invalid contract type")
@@ -548,55 +559,61 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 		return errors.New("invalid listing format")
 	}
 	if sl.Listing.Metadata.Expiry == nil {
-		return ErrMissingField("metadata.expiry")
+		return coreiface.ErrMissingField("metadata.expiry")
 	}
 	if time.Unix(sl.Listing.Metadata.Expiry.Seconds, 0).Before(time.Now()) {
 		return errors.New("listing expiration must be in the future")
 	}
 	if len(sl.Listing.Metadata.Language) > WordMaxCharacters {
-		return ErrTooManyCharacters{"metadata.language", strconv.Itoa(WordMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"metadata.language", strconv.Itoa(WordMaxCharacters)}
 	}
 	if !n.testnet && sl.Listing.Metadata.EscrowTimeoutHours > EscrowTimeout {
 		return fmt.Errorf("escrow timeout must be less than or equal to %d hours", EscrowTimeout)
 	}
 	if len(sl.Listing.Metadata.AcceptedCurrencies) == 0 {
-		return ErrMissingField("metadata.acceptedcurrencies")
+		return coreiface.ErrMissingField("metadata.acceptedcurrencies")
 	}
 	if len(sl.Listing.Metadata.AcceptedCurrencies) > MaxListItems {
-		return ErrTooManyItems{"metadata.acceptedcurrencies", strconv.Itoa(MaxListItems)}
+		return coreiface.ErrTooManyItems{"metadata.acceptedcurrencies", strconv.Itoa(MaxListItems)}
 	}
 	for _, c := range sl.Listing.Metadata.AcceptedCurrencies {
 		if len(c) > WordMaxCharacters {
-			return ErrTooManyCharacters{"metadata.acceptedcurrencies", strconv.Itoa(WordMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"metadata.acceptedcurrencies", strconv.Itoa(WordMaxCharacters)}
 		}
 	}
 	if sl.Listing.Metadata.PricingCurrency == nil {
-		return ErrMissingField("metadata.pricingcurrency")
+		return coreiface.ErrMissingField("metadata.pricingcurrency")
 	}
 	if sl.Listing.Metadata.PricingCurrency.Code == "" {
-		return ErrMissingField("metadata.pricingcurrency.code")
+		return coreiface.ErrMissingField("metadata.pricingcurrency.code")
 	}
 	if len(sl.Listing.Metadata.PricingCurrency.Code) > WordMaxCharacters {
-		return ErrTooManyCharacters{"metadata.pricingcurrency.code", strconv.Itoa(WordMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"metadata.pricingcurrency.code", strconv.Itoa(WordMaxCharacters)}
 	}
-	// TODO: validate divisibility
+	def, err := models.CurrencyDefinitions.Lookup(sl.Listing.Metadata.PricingCurrency.Code)
+	if err != nil {
+		return errors.New("unknown pricing currency")
+	}
+	if sl.Listing.Metadata.PricingCurrency.Divisibility != uint32(def.Divisibility) {
+		return errors.New("divisibility differs from expected value")
+	}
 
 	// Item
 	if sl.Listing.Item.Title == "" {
-		return ErrMissingField("item.title")
+		return coreiface.ErrMissingField("item.title")
 	}
 	price, _ := new(big.Int).SetString(sl.Listing.Item.Price, 10)
 	if sl.Listing.Metadata.ContractType != pb.Listing_Metadata_CRYPTOCURRENCY && price.Cmp(big.NewInt(0)) == 0 {
 		return errors.New("zero price listings are not allowed")
 	}
 	if len(sl.Listing.Item.Title) > TitleMaxCharacters {
-		return ErrTooManyCharacters{"item.title", strconv.Itoa(TitleMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"item.title", strconv.Itoa(TitleMaxCharacters)}
 	}
 	if len(sl.Listing.Item.Description) > DescriptionMaxCharacters {
-		return ErrTooManyCharacters{"item.description", strconv.Itoa(DescriptionMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"item.description", strconv.Itoa(DescriptionMaxCharacters)}
 	}
 	if len(sl.Listing.Item.ProcessingTime) > SentenceMaxCharacters {
-		return ErrTooManyCharacters{"item.processingtime", strconv.Itoa(SentenceMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"item.processingtime", strconv.Itoa(SentenceMaxCharacters)}
 	}
 	if len(sl.Listing.Item.Tags) > MaxTags {
 		return fmt.Errorf("number of tags exceeds the max of %d", MaxTags)
@@ -606,14 +623,14 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 			return errors.New("tags must not be empty")
 		}
 		if len(tag) > WordMaxCharacters {
-			return ErrTooManyCharacters{"item.tags", strconv.Itoa(WordMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"item.tags", strconv.Itoa(WordMaxCharacters)}
 		}
 	}
 	if len(sl.Listing.Item.Images) == 0 {
-		return ErrMissingField("item.images")
+		return coreiface.ErrMissingField("item.images")
 	}
 	if len(sl.Listing.Item.Images) > MaxListItems {
-		return ErrTooManyItems{"item.images", strconv.Itoa(MaxListItems)}
+		return coreiface.ErrTooManyItems{"item.images", strconv.Itoa(MaxListItems)}
 	}
 	for _, img := range sl.Listing.Item.Images {
 		_, err := cid.Decode(img.Tiny)
@@ -640,7 +657,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 			return errors.New("image file names must not be nil")
 		}
 		if len(img.Filename) > FilenameMaxCharacters {
-			return ErrTooManyCharacters{"item.images.filename", strconv.Itoa(FilenameMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"item.images.filename", strconv.Itoa(FilenameMaxCharacters)}
 		}
 	}
 	if len(sl.Listing.Item.Categories) > MaxCategories {
@@ -648,10 +665,10 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	}
 	for _, category := range sl.Listing.Item.Categories {
 		if category == "" {
-			return ErrMissingField("item.category")
+			return coreiface.ErrMissingField("item.category")
 		}
 		if len(category) > WordMaxCharacters {
-			return ErrTooManyCharacters{"item.categories", strconv.Itoa(WordMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"item.categories", strconv.Itoa(WordMaxCharacters)}
 		}
 	}
 
@@ -662,19 +679,19 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 			return errors.New("option names must be unique")
 		}
 		if option.Name == "" {
-			return ErrMissingField("item.options.name")
+			return coreiface.ErrMissingField("item.options.name")
 		}
 		if len(option.Variants) < 2 {
 			return errors.New("options must have more than one variants")
 		}
 		if len(option.Name) > WordMaxCharacters {
-			return ErrTooManyCharacters{"item.options.name", strconv.Itoa(WordMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"item.options.name", strconv.Itoa(WordMaxCharacters)}
 		}
 		if len(option.Description) > SentenceMaxCharacters {
-			return ErrTooManyCharacters{"item.options.description", strconv.Itoa(SentenceMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"item.options.description", strconv.Itoa(SentenceMaxCharacters)}
 		}
 		if len(option.Variants) > MaxListItems {
-			return ErrTooManyItems{"item.options.variants", strconv.Itoa(MaxListItems)}
+			return coreiface.ErrTooManyItems{"item.options.variants", strconv.Itoa(MaxListItems)}
 		}
 		varMap := make(map[string]struct{})
 		for _, variant := range option.Variants {
@@ -682,7 +699,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 				return errors.New("variant names must be unique")
 			}
 			if len(variant.Name) > WordMaxCharacters {
-				return ErrTooManyCharacters{"item.options.variants.name", strconv.Itoa(WordMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"item.options.variants.name", strconv.Itoa(WordMaxCharacters)}
 			}
 			if variant.Image != nil && (variant.Image.Filename != "" ||
 				variant.Image.Large != "" || variant.Image.Medium != "" || variant.Image.Small != "" ||
@@ -708,10 +725,10 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 					return errors.New("original image hashes must be properly formatted CID")
 				}
 				if variant.Image.Filename == "" {
-					return ErrMissingField("items.options.variants.image.file")
+					return coreiface.ErrMissingField("items.options.variants.image.file")
 				}
 				if len(variant.Image.Filename) > FilenameMaxCharacters {
-					return ErrTooManyCharacters{"item.options.variants.image.filename", strconv.Itoa(FilenameMaxCharacters)}
+					return coreiface.ErrTooManyCharacters{"item.options.variants.image.filename", strconv.Itoa(FilenameMaxCharacters)}
 				}
 			}
 			varMap[variant.Name] = struct{}{}
@@ -729,7 +746,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 			return errors.New("skus must specify a variant combo when options are used")
 		}
 		if len(sku.ProductID) > WordMaxCharacters {
-			return ErrTooManyCharacters{"item.sku.productID", strconv.Itoa(WordMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"item.sku.productID", strconv.Itoa(WordMaxCharacters)}
 		}
 		formatted, err := json.Marshal(sku.Selections)
 		if err != nil {
@@ -755,7 +772,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 		}
 	}
 	if len(sl.Listing.Item.Price) > SentenceMaxCharacters {
-		return ErrTooManyCharacters{"item.price", strconv.Itoa(SentenceMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"item.price", strconv.Itoa(SentenceMaxCharacters)}
 	}
 	_, ok := new(big.Int).SetString(sl.Listing.Item.Price, 10)
 	if !ok {
@@ -764,14 +781,14 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 
 	// Taxes
 	if len(sl.Listing.Taxes) > MaxListItems {
-		return ErrTooManyItems{"taxes", strconv.Itoa(MaxListItems)}
+		return coreiface.ErrTooManyItems{"taxes", strconv.Itoa(MaxListItems)}
 	}
 	for _, tax := range sl.Listing.Taxes {
 		if tax.TaxType == "" {
-			return ErrMissingField("taxes.taxtype")
+			return coreiface.ErrMissingField("taxes.taxtype")
 		}
 		if len(tax.TaxType) > WordMaxCharacters {
-			return ErrTooManyCharacters{"taxes.taxtype", strconv.Itoa(WordMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"taxes.taxtype", strconv.Itoa(WordMaxCharacters)}
 		}
 		if len(tax.TaxRegions) == 0 {
 			return errors.New("tax must specify at least one region")
@@ -786,14 +803,14 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 
 	// Coupons
 	if len(sl.Listing.Coupons) > MaxListItems {
-		return ErrTooManyItems{"coupons", strconv.Itoa(MaxListItems)}
+		return coreiface.ErrTooManyItems{"coupons", strconv.Itoa(MaxListItems)}
 	}
 	for _, coupon := range sl.Listing.Coupons {
 		if len(coupon.Title) > CouponTitleMaxCharacters {
-			return ErrTooManyCharacters{"coupons.title", strconv.Itoa(SentenceMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"coupons.title", strconv.Itoa(SentenceMaxCharacters)}
 		}
 		if len(coupon.GetDiscountCode()) > CodeMaxCharacters {
-			return ErrTooManyCharacters{"coupons.discountcode", strconv.Itoa(CodeMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"coupons.discountcode", strconv.Itoa(CodeMaxCharacters)}
 		}
 		if coupon.GetPercentDiscount() > 100 {
 			return errors.New("percent discount cannot be over 100 percent")
@@ -803,7 +820,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 		flag := false
 		if discountVal != "" {
 			if len(discountVal) > SentenceMaxCharacters {
-				return ErrTooManyCharacters{"coupons.pricediscount", strconv.Itoa(SentenceMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"coupons.pricediscount", strconv.Itoa(SentenceMaxCharacters)}
 			}
 			discount0, ok := new(big.Int).SetString(discountVal, 10)
 			if !ok {
@@ -823,7 +840,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 
 	// Moderators
 	if len(sl.Listing.Moderators) > MaxListItems {
-		return ErrTooManyItems{"moderators", strconv.Itoa(MaxListItems)}
+		return coreiface.ErrTooManyItems{"moderators", strconv.Itoa(MaxListItems)}
 	}
 	for _, moderator := range sl.Listing.Moderators {
 		_, err := multihash.FromB58String(moderator)
@@ -834,12 +851,12 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 
 	// TermsAndConditions
 	if len(sl.Listing.TermsAndConditions) > PolicyMaxCharacters {
-		return ErrTooManyCharacters{"termsandconditions", strconv.Itoa(PolicyMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"termsandconditions", strconv.Itoa(PolicyMaxCharacters)}
 	}
 
 	// RefundPolicy
 	if len(sl.Listing.RefundPolicy) > PolicyMaxCharacters {
-		return ErrTooManyCharacters{"refundpolicy", strconv.Itoa(PolicyMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"refundpolicy", strconv.Itoa(PolicyMaxCharacters)}
 	}
 
 	// Type-specific validations
@@ -865,21 +882,21 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 
 	// Validate vendor ID
 	if sl.Listing.VendorID == nil {
-		return ErrMissingField("vendorID")
+		return coreiface.ErrMissingField("vendorID")
 	}
 	if len(sl.Listing.VendorID.Handle) > SentenceMaxCharacters {
-		return ErrTooManyCharacters{"vendorID.handle", strconv.Itoa(SentenceMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"vendorID.handle", strconv.Itoa(SentenceMaxCharacters)}
 	}
 	if sl.Listing.VendorID.Pubkeys == nil {
-		return ErrMissingField("vendorID.pubkeys")
+		return coreiface.ErrMissingField("vendorID.pubkeys")
 	}
 	identityPubkey, err := crypto.UnmarshalPublicKey(sl.Listing.VendorID.Pubkeys.Identity)
 	if err != nil {
-		return err
+		return errors.New("invalid vendor identity public key")
 	}
 	peerID, err := peer.IDFromPublicKey(identityPubkey)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", coreiface.ErrInternalServer, err)
 	}
 	if peerID.Pretty() != sl.Listing.VendorID.PeerID {
 		return errors.New("vendor peerID does not match public key")
@@ -889,11 +906,11 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	}
 	ecPubkey, err := btcec.ParsePubKey(sl.Listing.VendorID.Pubkeys.Escrow, btcec.S256())
 	if err != nil {
-		return err
+		return errors.New("invalid vendor escrow public key")
 	}
 	sig, err := btcec.ParseSignature(sl.Listing.VendorID.Sig, btcec.S256())
 	if err != nil {
-		return err
+		return errors.New("invalid vendor identity signature")
 	}
 	idHash := sha256.Sum256([]byte(sl.Listing.VendorID.PeerID))
 	valid := sig.Verify(idHash[:], ecPubkey)
@@ -904,11 +921,11 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	// Validate signature on listing
 	ser, err := proto.Marshal(sl.Listing)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", coreiface.ErrInternalServer, err)
 	}
 	valid, err = identityPubkey.Verify(ser, sl.Signature)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", coreiface.ErrInternalServer, err)
 	}
 	if !valid {
 		return errors.New("invalid signature on listing")
@@ -922,10 +939,10 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte) (*pb.SignedListing, error) {
 	signedListing := new(pb.SignedListing)
 	if err := jsonpb.UnmarshalString(string(listingBytes), signedListing); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 	}
 	if err := n.validateListing(signedListing); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 	}
 	return signedListing, nil
 }
@@ -934,7 +951,7 @@ func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte) (*pb.Signed
 // physical listings.
 func validatePhysicalListing(listing *pb.Listing) error {
 	if len(listing.Item.Condition) > SentenceMaxCharacters {
-		return ErrTooManyCharacters{"item.condition", strconv.Itoa(SentenceMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"item.condition", strconv.Itoa(SentenceMaxCharacters)}
 	}
 	if len(listing.Item.Options) > MaxListItems {
 		return fmt.Errorf("number of options is greater than the max of %d", MaxListItems)
@@ -942,7 +959,7 @@ func validatePhysicalListing(listing *pb.Listing) error {
 
 	// ShippingOptions
 	if len(listing.ShippingOptions) == 0 {
-		return ErrMissingField("shippingoptions")
+		return coreiface.ErrMissingField("shippingoptions")
 	}
 	if len(listing.ShippingOptions) > MaxListItems {
 		return fmt.Errorf("number of shipping options is greater than the max of %d", MaxListItems)
@@ -950,10 +967,10 @@ func validatePhysicalListing(listing *pb.Listing) error {
 	var shippingTitles []string
 	for _, shippingOption := range listing.ShippingOptions {
 		if shippingOption.Name == "" {
-			return ErrMissingField("shippingoptions.name")
+			return coreiface.ErrMissingField("shippingoptions.name")
 		}
 		if len(shippingOption.Name) > WordMaxCharacters {
-			return ErrTooManyCharacters{"shippingoptions.name", strconv.Itoa(WordMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"shippingoptions.name", strconv.Itoa(WordMaxCharacters)}
 		}
 		for _, t := range shippingTitles {
 			if t == shippingOption.Name {
@@ -965,7 +982,7 @@ func validatePhysicalListing(listing *pb.Listing) error {
 			return errors.New("unknown shipping option type")
 		}
 		if len(shippingOption.Regions) == 0 {
-			return ErrMissingField("shippingoptions.regions")
+			return coreiface.ErrMissingField("shippingoptions.regions")
 		}
 		if err := validShippingRegion(shippingOption); err != nil {
 			return fmt.Errorf("invalid shipping option (%s): %s", shippingOption.String(), err.Error())
@@ -982,10 +999,10 @@ func validatePhysicalListing(listing *pb.Listing) error {
 		var serviceTitles []string
 		for _, option := range shippingOption.Services {
 			if option.Name == "" {
-				return ErrMissingField("shippingoptions.services.name")
+				return coreiface.ErrMissingField("shippingoptions.services.name")
 			}
 			if len(option.Name) > WordMaxCharacters {
-				return ErrTooManyCharacters{"shippingoptions.services.name", strconv.Itoa(WordMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"shippingoptions.services.name", strconv.Itoa(WordMaxCharacters)}
 			}
 			for _, t := range serviceTitles {
 				if t == option.Name {
@@ -994,13 +1011,13 @@ func validatePhysicalListing(listing *pb.Listing) error {
 			}
 			serviceTitles = append(serviceTitles, option.Name)
 			if option.EstimatedDelivery == "" {
-				return ErrMissingField("shippingoptions.services.estimateddelivery")
+				return coreiface.ErrMissingField("shippingoptions.services.estimateddelivery")
 			}
 			if len(option.EstimatedDelivery) > SentenceMaxCharacters {
-				return ErrTooManyCharacters{"shippingoptions.services.estimateddelivery", strconv.Itoa(SentenceMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"shippingoptions.services.estimateddelivery", strconv.Itoa(SentenceMaxCharacters)}
 			}
 			if len(option.Price) > WordMaxCharacters {
-				return ErrTooManyCharacters{"shippingoptions.services.price", strconv.Itoa(WordMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"shippingoptions.services.price", strconv.Itoa(WordMaxCharacters)}
 			}
 		}
 	}
@@ -1013,13 +1030,13 @@ func validatePhysicalListing(listing *pb.Listing) error {
 func (n *OpenBazaarNode) validateCryptocurrencyListing(listing *pb.Listing) error {
 	switch {
 	case len(listing.Coupons) > 0:
-		return ErrCryptocurrencyListingIllegalField("coupons")
+		return coreiface.ErrCryptocurrencyListingIllegalField("coupons")
 	case len(listing.Item.Options) > 0:
-		return ErrCryptocurrencyListingIllegalField("item.options")
+		return coreiface.ErrCryptocurrencyListingIllegalField("item.options")
 	case len(listing.ShippingOptions) > 0:
-		return ErrCryptocurrencyListingIllegalField("shippingOptions")
+		return coreiface.ErrCryptocurrencyListingIllegalField("shippingOptions")
 	case len(listing.Item.Condition) > 0:
-		return ErrCryptocurrencyListingIllegalField("item.condition")
+		return coreiface.ErrCryptocurrencyListingIllegalField("item.condition")
 	}
 
 	return nil
@@ -1031,7 +1048,7 @@ func validateMarketPriceListing(listing *pb.Listing) error {
 	if listing.Item.Price != "" {
 		n, _ := new(big.Int).SetString(listing.Item.Price, 10)
 		if n.Cmp(big.NewInt(0)) > 0 {
-			return ErrMarketPriceListingIllegalField("item.price")
+			return coreiface.ErrMarketPriceListingIllegalField("item.price")
 		}
 	}
 
@@ -1041,7 +1058,7 @@ func validateMarketPriceListing(listing *pb.Listing) error {
 
 	if listing.Item.CryptoListingPriceModifier < PriceModifierMin ||
 		listing.Item.CryptoListingPriceModifier > PriceModifierMax {
-		return ErrPriceModifierOutOfRange{
+		return coreiface.ErrPriceModifierOutOfRange{
 			Min: PriceModifierMin,
 			Max: PriceModifierMax,
 		}
@@ -1055,7 +1072,7 @@ func validateMarketPriceListing(listing *pb.Listing) error {
 func validShippingRegion(shippingOption *pb.Listing_ShippingOption) error {
 	for _, region := range shippingOption.Regions {
 		if int32(region) == 0 {
-			return ErrMissingField("shippingoptions.regions")
+			return coreiface.ErrMissingField("shippingoptions.regions")
 		}
 		_, ok := proto.EnumValueMap("CountryCode")[region.String()]
 		if !ok {

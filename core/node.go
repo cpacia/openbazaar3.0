@@ -4,6 +4,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/api"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/notifications"
@@ -118,7 +119,7 @@ func (n *OpenBazaarNode) Start() {
 // listening goroutines that it's time to stop.
 func (n *OpenBazaarNode) Stop(force bool) error {
 	if atomic.LoadInt32(&n.publishActive) > 0 && !force {
-		return ErrPublishingActive
+		return coreiface.ErrPublishingActive
 	}
 
 	close(n.shutdown)
@@ -143,7 +144,7 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 	}()
 	select {
 	case <-time.After(time.Second * 2):
-		return ErrIPFSDelayedShutdown
+		return coreiface.ErrIPFSDelayedShutdown
 	case <-stop:
 
 	}

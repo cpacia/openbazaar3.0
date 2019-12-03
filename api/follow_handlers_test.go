@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cpacia/openbazaar3.0/models"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"net/http"
@@ -58,7 +59,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
 			},
 		},
 		{
@@ -107,7 +108,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
 			},
 		},
 		{
@@ -145,7 +146,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "multihash length inconsistent: expected 13535, got 0"}`)), nil
 			},
 		},
 		{
@@ -159,7 +160,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("not found\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found"}`)), nil
 			},
 		},
 		{
@@ -197,7 +198,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "multihash length inconsistent: expected 13535, got 0"}`)), nil
 			},
 		},
 		{
@@ -211,7 +212,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("not found\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found"}`)), nil
 			},
 		},
 		{
@@ -242,7 +243,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
 			},
 		},
 		{
@@ -256,7 +257,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "multihash length inconsistent: expected 13535, got 0"}`)), nil
 			},
 		},
 		{
@@ -287,7 +288,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
 			},
 		},
 		{
@@ -301,7 +302,7 @@ func TestFollowHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "multihash length inconsistent: expected 13535, got 0"}`)), nil
 			},
 		},
 	})

@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/gogo/protobuf/proto"
@@ -41,7 +43,7 @@ func (n *OpenBazaarNode) cat(ctx context.Context, pth path.Path) ([]byte, error)
 		catDone <- struct{}{}
 	}()
 
-	api, err := coreapi.NewCoreAPI(n.ipfsNode)
+	capi, err := coreapi.NewCoreAPI(n.ipfsNode)
 	if err != nil {
 		return nil, err
 	}
@@ -55,9 +57,9 @@ func (n *OpenBazaarNode) cat(ctx context.Context, pth path.Path) ([]byte, error)
 		}
 	}()
 
-	nd, err := api.Unixfs().Get(ctx, pth)
+	nd, err := capi.Unixfs().Get(ctx, pth)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 	}
 
 	r, ok := nd.(files.File)
@@ -205,7 +207,7 @@ func (n *OpenBazaarNode) resolve(ctx context.Context, p peer.ID, usecache bool) 
 			return err
 		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 		}
 		return pth, nil
 	}

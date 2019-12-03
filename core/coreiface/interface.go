@@ -1,4 +1,4 @@
-package api
+package coreiface
 
 import (
 	"context"
@@ -12,7 +12,9 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
-// CoreIface is used to get around a circular import of the Core package.
+// CoreIface enumerates the interface of the OpenBazaarNode object in the Core package.
+// We primarily use this to get around circular imports though it should server as the API
+// contract for the Core package.
 type CoreIface interface {
 	RequestAddress(ctx context.Context, to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error)
 	SendChatMessage(to peer.ID, message string, orderID models.OrderID, done chan<- struct{}) error

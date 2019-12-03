@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
@@ -61,7 +62,7 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 	}
 
 	if wallet.IsDust(paymentAmount.Amount) {
-		return orderID, paymentAddress, paymentAmount, ErrDustAmount
+		return orderID, paymentAddress, paymentAmount, coreiface.ErrDustAmount
 	}
 
 	// If this is a direct payment we will first request an address from the vendor.
@@ -255,7 +256,7 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 		}
 
 		if listing.Listing.Metadata.Version > ListingVersion {
-			return nil, ErrUnknownListingVersion
+			return nil, coreiface.ErrUnknownListingVersion
 		}
 
 		vendors[listing.Listing.VendorID.PeerID] = true

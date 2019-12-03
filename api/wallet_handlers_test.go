@@ -73,7 +73,7 @@ func TestWalletHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multiwallet does not contain an implementation for the given coin\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "multiwallet does not contain an implementation for the given coin"}`)), nil
 			},
 		},
 		{
@@ -137,7 +137,7 @@ func TestWalletHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multiwallet does not contain an implementation for the given coin\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "multiwallet does not contain an implementation for the given coin"}`)), nil
 			},
 		},
 		{
@@ -253,7 +253,7 @@ func TestWalletHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multiwallet does not contain an implementation for the given coin\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "multiwallet does not contain an implementation for the given coin"}`)), nil
 			},
 		},
 		{
@@ -271,7 +271,7 @@ func TestWalletHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `strconv.Atoi: parsing "a": invalid syntax`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "strconv.Atoi: parsing "a": invalid syntax"}`)), nil
 			},
 		},
 	})

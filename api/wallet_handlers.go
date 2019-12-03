@@ -25,13 +25,13 @@ func (g *Gateway) handleGETBalance(w http.ResponseWriter, r *http.Request) {
 		for ct, wallet := range g.node.Multiwallet() {
 			unconfirmed, confirmed, err := wallet.Balance()
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, wrapError(err), http.StatusInternalServerError)
 				return
 			}
 
 			info, err := wallet.BlockchainInfo()
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, wrapError(err), http.StatusInternalServerError)
 				return
 			}
 
@@ -49,19 +49,19 @@ func (g *Gateway) handleGETBalance(w http.ResponseWriter, r *http.Request) {
 	mw := g.node.Multiwallet()
 	wallet, err := mw.WalletForCurrencyCode(coinType)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
 	}
 
 	unconfirmed, confirmed, err := wallet.Balance()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
 
 	info, err := wallet.BlockchainInfo()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -87,7 +87,7 @@ func (g *Gateway) handleGETAddress(w http.ResponseWriter, r *http.Request) {
 		for ct, wallet := range g.node.Multiwallet() {
 			address, err := wallet.CurrentAddress()
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, wrapError(err), http.StatusInternalServerError)
 				return
 			}
 
@@ -103,13 +103,13 @@ func (g *Gateway) handleGETAddress(w http.ResponseWriter, r *http.Request) {
 	mw := g.node.Multiwallet()
 	wallet, err := mw.WalletForCurrencyCode(coinType)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
 	}
 
 	address, err := wallet.CurrentAddress()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
 
@@ -144,7 +144,7 @@ func (g *Gateway) handleGETTransactions(w http.ResponseWriter, r *http.Request) 
 	if limitStr != "" {
 		limit, err = strconv.Atoi(limitStr)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, wrapError(err), http.StatusBadRequest)
 			return
 		}
 	}
@@ -152,25 +152,25 @@ func (g *Gateway) handleGETTransactions(w http.ResponseWriter, r *http.Request) 
 	mw := g.node.Multiwallet()
 	wallet, err := mw.WalletForCurrencyCode(coinType)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
 	}
 
 	def, err := models.CurrencyDefinitions.Lookup(coinType)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
 
 	chainInfo, err := wallet.BlockchainInfo()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
 
 	txs, err := wallet.Transactions(limit, iwallet.TransactionID(offsetID))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
 	confirmedThreshold := uint64(time.Hour / def.BlockInterval)
@@ -192,7 +192,7 @@ func (g *Gateway) handleGETTransactions(w http.ResponseWriter, r *http.Request) 
 		}
 		metadata, err := g.node.GetTransactionMetadata(tx.ID)
 		if err != nil && !gorm.IsRecordNotFoundError(err) {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
 			return
 		}
 

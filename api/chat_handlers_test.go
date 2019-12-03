@@ -38,7 +38,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`"peerID": "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "message": "", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("json: cannot unmarshal string into Go value of type api.message\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "json: cannot unmarshal string into Go value of type api.message"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -53,7 +53,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "xxx", "message": "", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -68,7 +68,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "message": "", "orderID": ""}`),
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -98,7 +98,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`"peerID": "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "message": "", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("json: cannot unmarshal string into Go value of type api.message\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "json: cannot unmarshal string into Go value of type api.message"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -113,7 +113,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerIDs": ["xxx"], "message": "", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -128,7 +128,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerIDs": ["12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN"], "message": "", "orderID": ""}`),
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -158,7 +158,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`"peerID": "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("json: cannot unmarshal string into Go value of type api.message\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "json: cannot unmarshal string into Go value of type api.message"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -173,7 +173,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "xxx", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -188,7 +188,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "orderID": ""}`),
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -218,7 +218,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`"peerIDs": ["12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN"], "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("json: cannot unmarshal string into Go value of type api.message\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "json: cannot unmarshal string into Go value of type api.message"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -233,7 +233,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerIDs": ["xxx"], "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -248,7 +248,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerIDs": ["12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN"], "orderID": ""}`),
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -278,7 +278,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`"peerID": "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("json: cannot unmarshal string into Go value of type api.message\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "json: cannot unmarshal string into Go value of type api.message"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -293,7 +293,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "xxx", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -308,7 +308,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN", "orderID": ""}`),
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -359,7 +359,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -443,7 +443,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `strconv.Atoi: parsing "a": invalid syntax`)), nil
+				return []byte(fmt.Sprintf(`{"error": "strconv.Atoi: parsing "a": invalid syntax"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -457,7 +457,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 35, got 1\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 35, got 1"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -471,7 +471,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -539,7 +539,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `strconv.Atoi: parsing "a": invalid syntax`)), nil
+				return []byte(fmt.Sprintf(`{"error": "strconv.Atoi: parsing "a": invalid syntax"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -553,7 +553,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -584,7 +584,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -615,7 +615,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -649,7 +649,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("multihash length inconsistent: expected 13535, got 0\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -663,7 +663,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("error\n"), nil
+				return []byte(fmt.Sprintf(`{"error": "error"}%s`, "\n")), nil
 			},
 		},
 	})

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -133,69 +134,69 @@ func (n *OpenBazaarNode) updateProfileStats(tx database.Tx, profile *models.Prof
 // within the desired limits.
 func validateProfile(profile *models.Profile) error {
 	if len(profile.Name) == 0 {
-		return ErrMissingField("name")
+		return coreiface.ErrMissingField("name")
 	}
 	if len(profile.Name) > WordMaxCharacters {
-		return ErrTooManyCharacters{"name", strconv.Itoa(WordMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"name", strconv.Itoa(WordMaxCharacters)}
 	}
 	if len(profile.Location) > WordMaxCharacters {
-		return ErrTooManyCharacters{"location", strconv.Itoa(WordMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"location", strconv.Itoa(WordMaxCharacters)}
 	}
 	if len(profile.About) > AboutMaxCharacters {
-		return ErrTooManyCharacters{"about", strconv.Itoa(AboutMaxCharacters)}
+		return coreiface.ErrTooManyCharacters{"about", strconv.Itoa(AboutMaxCharacters)}
 	}
 	if len(profile.ShortDescription) > models.ShortDescriptionLength {
-		return ErrTooManyCharacters{"shortdescription", strconv.Itoa(models.ShortDescriptionLength)}
+		return coreiface.ErrTooManyCharacters{"shortdescription", strconv.Itoa(models.ShortDescriptionLength)}
 	}
 	if profile.ContactInfo != nil {
 		if len(profile.ContactInfo.Website) > URLMaxCharacters {
-			return ErrTooManyCharacters{"contactinfo.website", strconv.Itoa(URLMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"contactinfo.website", strconv.Itoa(URLMaxCharacters)}
 		}
 		if len(profile.ContactInfo.Email) > SentenceMaxCharacters {
-			return ErrTooManyCharacters{"contactinfo.email", strconv.Itoa(SentenceMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"contactinfo.email", strconv.Itoa(SentenceMaxCharacters)}
 		}
 		if len(profile.ContactInfo.PhoneNumber) > WordMaxCharacters {
-			return ErrTooManyCharacters{"contactinfo.phonenumber", strconv.Itoa(SentenceMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"contactinfo.phonenumber", strconv.Itoa(SentenceMaxCharacters)}
 		}
 		if len(profile.ContactInfo.Social) > MaxListItems {
-			return ErrTooManyItems{"contactinfo.social", strconv.Itoa(MaxListItems)}
+			return coreiface.ErrTooManyItems{"contactinfo.social", strconv.Itoa(MaxListItems)}
 		}
 		for _, s := range profile.ContactInfo.Social {
 			if len(s.Username) > WordMaxCharacters {
-				return ErrTooManyCharacters{"contactinfo.social.username", strconv.Itoa(WordMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"contactinfo.social.username", strconv.Itoa(WordMaxCharacters)}
 			}
 			if len(s.Type) > WordMaxCharacters {
-				return ErrTooManyCharacters{"contactinfo.social.type", strconv.Itoa(WordMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"contactinfo.social.type", strconv.Itoa(WordMaxCharacters)}
 			}
 			if len(s.Proof) > URLMaxCharacters {
-				return ErrTooManyCharacters{"contactinfo.social.proof", strconv.Itoa(URLMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"contactinfo.social.proof", strconv.Itoa(URLMaxCharacters)}
 			}
 		}
 	}
 	if profile.ModeratorInfo != nil {
 		if len(profile.ModeratorInfo.Description) > AboutMaxCharacters {
-			return ErrTooManyCharacters{"moderatorinfo.description", strconv.Itoa(AboutMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"moderatorinfo.description", strconv.Itoa(AboutMaxCharacters)}
 		}
 		if len(profile.ModeratorInfo.TermsAndConditions) > PolicyMaxCharacters {
-			return ErrTooManyCharacters{"moderatorinfo.termsandconditions", strconv.Itoa(PolicyMaxCharacters)}
+			return coreiface.ErrTooManyCharacters{"moderatorinfo.termsandconditions", strconv.Itoa(PolicyMaxCharacters)}
 		}
 		if len(profile.ModeratorInfo.Languages) > MaxListItems {
-			return ErrTooManyItems{"moderatorinfo.languages", strconv.Itoa(MaxListItems)}
+			return coreiface.ErrTooManyItems{"moderatorinfo.languages", strconv.Itoa(MaxListItems)}
 		}
 		for _, l := range profile.ModeratorInfo.Languages {
 			if len(l) > WordMaxCharacters {
-				return ErrTooManyCharacters{"moderatorinfo.languages", strconv.Itoa(WordMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"moderatorinfo.languages", strconv.Itoa(WordMaxCharacters)}
 			}
 		}
 		if profile.ModeratorInfo.Fee.FixedFee != nil {
 			if len(profile.ModeratorInfo.Fee.FixedFee.Currency.Name) > WordMaxCharacters {
-				return ErrTooManyCharacters{"moderatorinfo.fee.fixedfee.currency.name", strconv.Itoa(WordMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"moderatorinfo.fee.fixedfee.currency.name", strconv.Itoa(WordMaxCharacters)}
 			}
 			if len(string(profile.ModeratorInfo.Fee.FixedFee.Currency.CurrencyType)) > WordMaxCharacters {
-				return ErrTooManyCharacters{"moderatorinfo.fee.fixedfee.currency.currencytype", strconv.Itoa(WordMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"moderatorinfo.fee.fixedfee.currency.currencytype", strconv.Itoa(WordMaxCharacters)}
 			}
 			if len(profile.ModeratorInfo.Fee.FixedFee.Currency.Code.String()) > WordMaxCharacters {
-				return ErrTooManyCharacters{"moderatorinfo.fee.fixedfee.currency.code", strconv.Itoa(WordMaxCharacters)}
+				return coreiface.ErrTooManyCharacters{"moderatorinfo.fee.fixedfee.currency.code", strconv.Itoa(WordMaxCharacters)}
 			}
 		}
 	}

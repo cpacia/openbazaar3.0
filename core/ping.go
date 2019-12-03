@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -32,7 +33,7 @@ func (n *OpenBazaarNode) PingNode(ctx context.Context, peer peer.ID) error {
 	case <-ctx.Done():
 	case <-time.After(maxPongDelay):
 	}
-	return ErrPeerUnreachable
+	return coreiface.ErrPeerUnreachable
 }
 
 func (n *OpenBazaarNode) handlePingMessage(from peer.ID, message *pb.Message) error {

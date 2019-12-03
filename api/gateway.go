@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-ipfs/core/corehttp"
 	"github.com/op/go-logging"
@@ -27,7 +29,7 @@ type GatewayConfig struct {
 // Gateway represents an HTTP API gateway
 type Gateway struct {
 	listener net.Listener
-	node     CoreIface
+	node     coreiface.CoreIface
 	handler  http.Handler
 	config   *GatewayConfig
 	hub      *hub
@@ -36,7 +38,7 @@ type Gateway struct {
 
 // NewGateway instantiates a new gateway. We multiplex the ob API along with the
 // IPFS gateway API.
-func NewGateway(node CoreIface, config *GatewayConfig, options ...corehttp.ServeOption) (*Gateway, error) {
+func NewGateway(node coreiface.CoreIface, config *GatewayConfig, options ...corehttp.ServeOption) (*Gateway, error) {
 	var (
 		g = &Gateway{
 			node:     node,
@@ -137,4 +139,8 @@ func (g *Gateway) newV1Router() *mux.Router {
 	r.HandleFunc("/v1/ob/following/{peerID}", g.handleGETFollowing).Methods("GET")
 	r.HandleFunc("/v1/ob/following", g.handleGETFollowing).Methods("GET")
 	return r
+}
+
+func wrapError(err error) string {
+	return fmt.Sprintf(`{"error": "%s"}`, err.Error())
 }
