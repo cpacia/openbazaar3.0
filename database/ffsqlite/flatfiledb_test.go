@@ -26,7 +26,6 @@ func TestNewFlatFIleDB(t *testing.T) {
 		path.Join(dir, "images", "large"),
 		path.Join(dir, "images", "original"),
 		path.Join(dir, "posts"),
-		path.Join(dir, "channel"),
 		path.Join(dir, "files"),
 	}
 

@@ -365,7 +365,6 @@ func (n *OpenBazaarNode) publishHandler() {
 	go func() {
 		tick := time.After(republishInterval - time.Since(lastPublish))
 		publishCtx, publishCancel := context.WithCancel(context.Background())
-		defer publishCancel()
 		for {
 			select {
 			case <-tick:
@@ -385,6 +384,7 @@ func (n *OpenBazaarNode) publishHandler() {
 				tick = time.After(republishInterval - time.Since(lastPublish))
 				go n.publish(publishCtx, p.done)
 			case <-n.shutdown:
+				publishCancel()
 				return
 			}
 		}

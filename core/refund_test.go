@@ -30,16 +30,6 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		go node.orderProcessor.Start()
 	}
 
-	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	orderAckSub0, err := network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	listing := factory.NewPhysicalListing("tshirt")
 
 	done := make(chan struct{})
@@ -86,6 +76,16 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 
 	purchase := factory.NewPurchase()
 	purchase.Items[0].ListingHash = index[0].Hash
+
+	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orderAckSub0, err := network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Address request direct order
 	orderID, paymentAddress, paymentAmount, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
@@ -185,7 +185,12 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
-	fundingSub, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFunded{})
+	fundingSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.OrderFunded{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fundingSub1, err := network.Nodes()[1].eventBus.Subscribe(&events.OrderPaymentReceived{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,8 +208,15 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 	}
 
 	select {
-	case <-fundingSub.Out():
-		fundingSub.Close()
+	case <-fundingSub0.Out():
+		fundingSub0.Close()
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-fundingSub1.Out():
+		fundingSub1.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}

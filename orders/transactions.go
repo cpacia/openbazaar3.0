@@ -138,7 +138,9 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 				FundingTotal: fundingTotal.String(),
 				CoinType:     orderOpen.Payment.Coin,
 			}
-			op.bus.Emit(&notif)
+			dbtx.RegisterCommitHook(func() {
+				op.bus.Emit(&notif)
+			})
 			log.Infof("Payment detected: Order %s fully funded", order.ID)
 		} else {
 			log.Infof("Payment detected: Order %s partially funded", order.ID)
@@ -146,22 +148,24 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 
 	case models.RoleVendor:
 		if funded {
-			op.bus.Emit(&events.OrderFunded{
-				BuyerHandle: orderOpen.BuyerID.Handle,
-				BuyerID:     orderOpen.BuyerID.PeerID,
-				ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),
-				OrderID:     order.ID.String(),
-				Price: events.ListingPrice{
-					Amount:        orderOpen.Payment.Amount,
-					CurrencyCode:  orderOpen.Payment.Coin,
-					PriceModifier: orderOpen.Listings[0].Listing.Item.CryptoListingPriceModifier,
-				},
-				Slug: orderOpen.Listings[0].Listing.Slug,
-				Thumbnail: events.Thumbnail{
-					Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
-					Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
-				},
-				Title: orderOpen.Listings[0].Listing.Item.Title,
+			dbtx.RegisterCommitHook(func() {
+				op.bus.Emit(&events.OrderFunded{
+					BuyerHandle: orderOpen.BuyerID.Handle,
+					BuyerID:     orderOpen.BuyerID.PeerID,
+					ListingType: orderOpen.Listings[0].Listing.Metadata.ContractType.String(),
+					OrderID:     order.ID.String(),
+					Price: events.ListingPrice{
+						Amount:        orderOpen.Payment.Amount,
+						CurrencyCode:  orderOpen.Payment.Coin,
+						PriceModifier: orderOpen.Listings[0].Listing.Item.CryptoListingPriceModifier,
+					},
+					Slug: orderOpen.Listings[0].Listing.Slug,
+					Thumbnail: events.Thumbnail{
+						Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
+						Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
+					},
+					Title: orderOpen.Listings[0].Listing.Item.Title,
+				})
 			})
 			log.Infof("Payment detected: Order %s fully funded", order.ID)
 		} else {
@@ -178,7 +182,9 @@ func (op *OrderProcessor) processOutgoingPayment(dbtx database.Tx, order *models
 		log.Debugf("Received duplicate transaction %s", tx.ID.String())
 		return nil
 	}
-	op.bus.Emit(&events.SpendFromPaymentAddress{Transaction: tx})
+	dbtx.RegisterCommitHook(func() {
+		op.bus.Emit(&events.SpendFromPaymentAddress{Transaction: tx})
+	})
 	return err
 }
 

@@ -16,9 +16,11 @@ import (
 	"github.com/ipfs/go-ipfs/core/bootstrap"
 	coremock "github.com/ipfs/go-ipfs/core/mock"
 	"github.com/ipfs/go-ipfs/namesys"
+	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	"path"
 )
 
 // MockNode builds a mock node with a temp data directory,
@@ -30,7 +32,37 @@ func MockNode() (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
-	ipfsNode, err := coremock.NewMockNode()
+	ipfsRepo, err := fsrepo.Open(path.Join(r.DataDir(), "ipfs"))
+	if err != nil {
+		return nil, err
+	}
+
+	ipfsConfig, err := ipfsRepo.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	ipfsConfig.Bootstrap = nil
+
+	var dbIdentityKey models.Key
+	err = r.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("name = ?", "identity").First(&dbIdentityKey).Error
+	})
+
+	ipfsConfig.Identity, err = repo.IdentityFromKey(dbIdentityKey.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+
+	mn := mocknet.New(ctx)
+
+	ipfsNode, err := core.NewNode(ctx, &core.BuildCfg{
+		Online: true,
+		Repo:   ipfsRepo,
+		Host:   coremock.MockHostOption(mn),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +152,8 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 
 	wn := wallet.NewMockWalletNetwork(numNodes)
 
+	//bootstrap.DefaultBootstrapConfig.MinPeerThreshold = 1
+
 	var nodes []*OpenBazaarNode
 	for i := 0; i < numNodes; i++ {
 		r, err := repo.MockRepo()
@@ -127,8 +161,31 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			return nil, err
 		}
 
+		ipfsRepo, err := fsrepo.Open(path.Join(r.DataDir(), "ipfs"))
+		if err != nil {
+			return nil, err
+		}
+
+		ipfsConfig, err := ipfsRepo.Config()
+		if err != nil {
+			return nil, err
+		}
+
+		ipfsConfig.Bootstrap = nil
+
+		var dbIdentityKey models.Key
+		err = r.DB().View(func(tx database.Tx) error {
+			return tx.Read().Where("name = ?", "identity").First(&dbIdentityKey).Error
+		})
+
+		ipfsConfig.Identity, err = repo.IdentityFromKey(dbIdentityKey.Value)
+		if err != nil {
+			return nil, err
+		}
+
 		ipfsNode, err := core.NewNode(ctx, &core.BuildCfg{
 			Online: true,
+			Repo:   ipfsRepo,
 			Host:   coremock.MockHostOption(mn),
 		})
 		if err != nil {
