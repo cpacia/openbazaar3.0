@@ -12,6 +12,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
 	"strconv"
@@ -32,12 +33,23 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 		if done != nil {
 			close(done)
 		}
-		return err
+		return fmt.Errorf("%w: %w", coreiface.ErrBadRequest, err)
 	}
 
-	// TODO: add accepted currencies if moderator
-
 	err := n.repo.DB().Update(func(tx database.Tx) error {
+		var prefs models.UserPreferences
+		if err := tx.Read().First(&prefs).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			return err
+		}
+
+		if profile.Moderator && len(profile.ModeratorInfo.AcceptedCurrencies) == 0 {
+			currencies, err := prefs.PreferredCurrencies()
+			if err != nil {
+				return err
+			}
+			profile.ModeratorInfo.AcceptedCurrencies = currencies
+		}
+
 		if err := n.updateProfileStats(tx, profile); err != nil {
 			return err
 		}
@@ -61,7 +73,10 @@ func (n *OpenBazaarNode) GetMyProfile() (*models.Profile, error) {
 	)
 	err = n.repo.DB().View(func(tx database.Tx) error {
 		profile, err = tx.GetProfile()
-		return err
+		if err != nil {
+			return fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+		}
+		return nil
 	})
 	return profile, err
 }
@@ -83,7 +98,7 @@ func (n *OpenBazaarNode) GetProfile(ctx context.Context, peerID peer.ID, useCach
 		return nil, err
 	}
 	if err := validateProfile(profile); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 	}
 	return profile, nil
 }
@@ -173,7 +188,13 @@ func validateProfile(profile *models.Profile) error {
 			}
 		}
 	}
+	if profile.Moderator && profile.ModeratorInfo == nil {
+		return errors.New("moderatorinfo must be included if moderator boolean is set")
+	}
 	if profile.ModeratorInfo != nil {
+		if (profile.ModeratorInfo.Fee.FeeType == models.FixedFee || profile.ModeratorInfo.Fee.FeeType == models.FixedPlusPercentageFee) && profile.ModeratorInfo.Fee.FixedFee == nil {
+			return errors.New("moderator fee type must be set if using fixed fee or fixed plus percentage")
+		}
 		if len(profile.ModeratorInfo.Description) > AboutMaxCharacters {
 			return coreiface.ErrTooManyCharacters{"moderatorinfo.description", strconv.Itoa(AboutMaxCharacters)}
 		}
@@ -187,6 +208,14 @@ func validateProfile(profile *models.Profile) error {
 			if len(l) > WordMaxCharacters {
 				return coreiface.ErrTooManyCharacters{"moderatorinfo.languages", strconv.Itoa(WordMaxCharacters)}
 			}
+		}
+		for _, l := range profile.ModeratorInfo.AcceptedCurrencies {
+			if len(l) > WordMaxCharacters {
+				return coreiface.ErrTooManyCharacters{"moderatorinfo.acceptedCurrencies", strconv.Itoa(WordMaxCharacters)}
+			}
+		}
+		if len(profile.ModeratorInfo.AcceptedCurrencies) > MaxListItems {
+			return coreiface.ErrTooManyItems{"moderatorinfo.acceptedCurrencies"}
 		}
 		if profile.ModeratorInfo.Fee.FixedFee != nil {
 			if len(profile.ModeratorInfo.Fee.FixedFee.Currency.Name) > WordMaxCharacters {

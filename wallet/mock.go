@@ -345,11 +345,11 @@ func (w *MockWallet) Start() {
 						tx.Timestamp = time.Now()
 					}
 					w.transactions[tx.ID] = tx
-					if w.bus != nil {
-						w.bus.Emit(&events.TransactionReceived{Transaction: tx})
-					}
 					for _, sub := range w.txSubs {
 						sub <- tx
+					}
+					if w.bus != nil {
+						w.bus.Emit(&events.TransactionReceived{Transaction: tx})
 					}
 				}
 				w.mtx.Unlock()

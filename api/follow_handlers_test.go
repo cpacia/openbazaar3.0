@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"net/http"
@@ -54,12 +55,12 @@ func TestFollowHandlers(t *testing.T) {
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
 				n.getMyFollowersFunc = func() (models.Followers, error) {
-					return nil, errors.New("error")
+					return nil, fmt.Errorf("%w: error", coreiface.ErrNotFound)
 				}
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found: error"}`)), nil
 			},
 		},
 		{
@@ -103,12 +104,12 @@ func TestFollowHandlers(t *testing.T) {
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
 				n.getMyFollowingFunc = func() (models.Following, error) {
-					return nil, errors.New("error")
+					return nil, fmt.Errorf("%w: error", coreiface.ErrNotFound)
 				}
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found: error"}`)), nil
 			},
 		},
 		{
@@ -155,12 +156,12 @@ func TestFollowHandlers(t *testing.T) {
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
 				n.getFollowersFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (models.Followers, error) {
-					return nil, errors.New("not found")
+					return nil, fmt.Errorf("%w: error", coreiface.ErrNotFound)
 				}
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "not found"}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found: error"}`)), nil
 			},
 		},
 		{
@@ -207,12 +208,12 @@ func TestFollowHandlers(t *testing.T) {
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
 				n.getFollowingFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (models.Following, error) {
-					return nil, errors.New("not found")
+					return nil, fmt.Errorf("%w: error", coreiface.ErrNotFound)
 				}
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "not found"}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found: error"}`)), nil
 			},
 		},
 		{

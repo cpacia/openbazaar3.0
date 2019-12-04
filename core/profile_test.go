@@ -483,6 +483,9 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Description: strings.Repeat("s", AboutMaxCharacters),
+					Fee: models.ModeratorFee{
+						FeeType: models.PercentageFee,
+					},
 				},
 			},
 			valid: true,
@@ -505,6 +508,9 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					TermsAndConditions: strings.Repeat("s", PolicyMaxCharacters),
+					Fee: models.ModeratorFee{
+						FeeType: models.PercentageFee,
+					},
 				},
 			},
 			valid: true,
@@ -527,6 +533,9 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 				EscrowPublicKey: strings.Repeat("r", 66),
 				ModeratorInfo: &models.ModeratorInfo{
 					Languages: make([]string, MaxListItems),
+					Fee: models.ModeratorFee{
+						FeeType: models.PercentageFee,
+					},
 				},
 			},
 			valid: true,
@@ -550,6 +559,9 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 				ModeratorInfo: &models.ModeratorInfo{
 					Languages: []string{
 						strings.Repeat("s", WordMaxCharacters),
+					},
+					Fee: models.ModeratorFee{
+						FeeType: models.PercentageFee,
 					},
 				},
 			},

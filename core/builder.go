@@ -59,6 +59,10 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
+	if err := obRepo.WriteUserAgent(cfg.UserAgentComment); err != nil {
+		return nil, err
+	}
+
 	// Load the IPFS Repo
 	ipfsRepo, err := fsrepo.Open(path.Join(cfg.DataDir, "ipfs"))
 	if err != nil {

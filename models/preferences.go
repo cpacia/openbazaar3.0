@@ -7,20 +7,20 @@ import (
 
 // UserPreferences are set by the client and persisted in the database.
 type UserPreferences struct {
-	PaymentDataInQR     bool            `json:"paymentDataInQR"`
-	ShowNotifications   bool            `json:"showNotifications"`
-	ShowNsfw            bool            `json:"showNsfw"`
-	ShippingAddresses   json.RawMessage `json:"shippingAddresses"`
-	LocalCurrency       string          `json:"localCurrency"`
-	Country             string          `json:"country"`
-	TermsAndConditions  string          `json:"termsAndConditions"`
-	RefundPolicy        string          `json:"refundPolicy"`
-	Blocked             json.RawMessage `json:"blockedNodes"`
-	StoreModerators     json.RawMessage `json:"storeModerators"`
-	MisPaymentBuffer    float32         `json:"mispaymentBuffer"`
-	AutoConfirm         bool            `json:"autoConfirm"`
-	EmailNotifications  string          `json:"emailNotifications"`
-	PreferredCurrencies json.RawMessage `json:"preferredCurrencies"`
+	PaymentDataInQR    bool            `json:"paymentDataInQR"`
+	ShowNotifications  bool            `json:"showNotifications"`
+	ShowNsfw           bool            `json:"showNsfw"`
+	ShippingAddresses  json.RawMessage `json:"shippingAddresses"`
+	LocalCurrency      string          `json:"localCurrency"`
+	Country            string          `json:"country"`
+	TermsAndConditions string          `json:"termsAndConditions"`
+	RefundPolicy       string          `json:"refundPolicy"`
+	Blocked            json.RawMessage `json:"blockedNodes"`
+	StoreModerators    json.RawMessage `json:"storeModerators"`
+	MisPaymentBuffer   float32         `json:"mispaymentBuffer"`
+	AutoConfirm        bool            `json:"autoConfirm"`
+	EmailNotifications string          `json:"emailNotifications"`
+	PrefCurrencies     json.RawMessage `json:"preferredCurrencies"`
 }
 
 type shippingAddress struct {
@@ -71,6 +71,17 @@ func (prefs *UserPreferences) BlockedNodes() ([]peer.ID, error) {
 	return ret, nil
 }
 
+// PreferredCurrencies returns the preferred currencies for the node.
+func (prefs *UserPreferences) PreferredCurrencies() ([]string, error) {
+	var prefCurrencies []string
+	if prefs.Blocked != nil {
+		if err := json.Unmarshal(prefs.Blocked, &prefCurrencies); err != nil {
+			return nil, err
+		}
+	}
+	return prefCurrencies, nil
+}
+
 // UnmarshalJSON unmarshals the JSON object into a UserPreferences object.
 func (prefs *UserPreferences) UnmarshalJSON(b []byte) error {
 	var c0 prefsJSON
@@ -107,7 +118,7 @@ func (prefs *UserPreferences) UnmarshalJSON(b []byte) error {
 		prefs.MisPaymentBuffer = c0.MisPaymentBuffer
 		prefs.AutoConfirm = c0.AutoConfirm
 		prefs.EmailNotifications = c0.EmailNotifications
-		prefs.PreferredCurrencies = preferredCurrencies
+		prefs.PrefCurrencies = preferredCurrencies
 	}
 
 	return err

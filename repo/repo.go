@@ -11,6 +11,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/cpacia/openbazaar3.0/version"
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/namesys"
@@ -243,6 +244,10 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 		}
 	}
 	return r, nil
+}
+
+func (r *Repo) WriteUserAgent(comment string) error {
+	return ioutil.WriteFile(path.Join(r.db.PublicDataPath(), "user_agent"), []byte(fmt.Sprintf("%s%s", version.UserAgent(), comment)), os.ModePerm)
 }
 
 func checkWriteable(dir string) error {

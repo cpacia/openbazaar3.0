@@ -62,6 +62,10 @@ func Numeric() int32 {
 	return int32(2 ^ AppMajor*3 ^ AppMinor*5 ^ AppPatch)
 }
 
+func UserAgent() string {
+	return fmt.Sprintf("/openbazaar-go:%s/", String())
+}
+
 // normalizeVerString returns the passed string stripped of all characters which
 // are not valid according to the semantic versioning guidelines for pre-release
 // version and build metadata strings.  In particular they MUST only contain

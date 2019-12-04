@@ -77,6 +77,7 @@ type Config struct {
 	CPUProfile            string   `long:"cpuprofile" description:"Write CPU profile to the specified file"`
 	IPFSOnly              bool     `long:"ipfsonly" description:"Disable all OpenBazaar functionality except the IPFS networking."`
 	EnabledWallets        []string `long:"enabledwallet" description:"Only enable wallets in this list. Available wallets: [BTC, BCH, LTC, ZEC, ETH]"`
+	UserAgentComment      string   `long:"uacomment" description:"Comment to add to the user agent."`
 }
 
 // LoadConfig initializes and parses the config using a config file and command

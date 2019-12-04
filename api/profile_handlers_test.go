@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"net/http"
@@ -33,12 +34,12 @@ func TestProfileHandlers(t *testing.T) {
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
 				n.getMyProfileFunc = func() (*models.Profile, error) {
-					return nil, errors.New("error")
+					return nil, fmt.Errorf("%w: error", coreiface.ErrNotFound)
 				}
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found: error"}`)), nil
 			},
 		},
 		{
@@ -67,12 +68,12 @@ func TestProfileHandlers(t *testing.T) {
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
 				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
-					return nil, errors.New("error")
+					return nil, fmt.Errorf("%w: error", coreiface.ErrNotFound)
 				}
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "error"}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found: error"}`)), nil
 			},
 		},
 		{
@@ -116,14 +117,14 @@ func TestProfileHandlers(t *testing.T) {
 			setNodeMethods: func(n *mockNode) {
 				n.getProfileFunc = func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
 					if peerID.Pretty() != "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi" {
-						return nil, errors.New("not found")
+						return nil, fmt.Errorf("%w: error", coreiface.ErrNotFound)
 					}
 					return &models.Profile{Name: "Ron Paul"}, nil
 				}
 			},
 			statusCode: http.StatusNotFound,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "not found"}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found: error"}`)), nil
 			},
 		},
 		{

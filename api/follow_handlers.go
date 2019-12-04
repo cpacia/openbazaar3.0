@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/gorilla/mux"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -19,8 +21,11 @@ func (g *Gateway) handleGETFollowers(w http.ResponseWriter, r *http.Request) {
 	)
 	if peerIDStr == "" || peerIDStr == g.node.Identity().Pretty() {
 		followers, err = g.node.GetMyFollowers()
-		if err != nil {
+		if errors.Is(err, coreiface.ErrNotFound) {
 			http.Error(w, wrapError(err), http.StatusNotFound)
+			return
+		} else if err != nil {
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -30,8 +35,11 @@ func (g *Gateway) handleGETFollowers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		followers, err = g.node.GetFollowers(r.Context(), pid, useCache)
-		if err != nil {
+		if errors.Is(err, coreiface.ErrNotFound) {
 			http.Error(w, wrapError(err), http.StatusNotFound)
+			return
+		} else if err != nil {
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -52,8 +60,11 @@ func (g *Gateway) handleGETFollowing(w http.ResponseWriter, r *http.Request) {
 	)
 	if peerIDStr == "" || peerIDStr == g.node.Identity().Pretty() {
 		following, err = g.node.GetMyFollowing()
-		if err != nil {
+		if errors.Is(err, coreiface.ErrNotFound) {
 			http.Error(w, wrapError(err), http.StatusNotFound)
+			return
+		} else if err != nil {
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -63,8 +74,11 @@ func (g *Gateway) handleGETFollowing(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		following, err = g.node.GetFollowing(r.Context(), pid, useCache)
-		if err != nil {
+		if errors.Is(err, coreiface.ErrNotFound) {
 			http.Error(w, wrapError(err), http.StatusNotFound)
+			return
+		} else if err != nil {
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -81,7 +95,11 @@ func (g *Gateway) handlePOSTFollow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
 	}
-	if err := g.node.FollowNode(pid, nil); err != nil {
+	err = g.node.FollowNode(pid, nil)
+	if errors.Is(err, coreiface.ErrBadRequest) {
+		http.Error(w, wrapError(err), http.StatusBadRequest)
+		return
+	} else if err != nil {
 		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
@@ -94,7 +112,11 @@ func (g *Gateway) handlePOSTUnFollow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
 	}
-	if err := g.node.UnfollowNode(pid, nil); err != nil {
+	err = g.node.UnfollowNode(pid, nil)
+	if errors.Is(err, coreiface.ErrBadRequest) {
+		http.Error(w, wrapError(err), http.StatusBadRequest)
+		return
+	} else if err != nil {
 		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/database/ffsqlite"
 	"github.com/cpacia/openbazaar3.0/events"
@@ -28,7 +30,7 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 
 		for _, peer := range following {
 			if peer == peerID.Pretty() {
-				return errors.New("already following peer")
+				return fmt.Errorf("%w: already following peer", coreiface.ErrBadRequest)
 			}
 		}
 
@@ -89,7 +91,7 @@ func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) erro
 			}
 		}
 		if !exists {
-			return errors.New("not following peer")
+			return fmt.Errorf("%w: not following peer", coreiface.ErrBadRequest)
 		}
 
 		var seq models.FollowSequence
@@ -136,7 +138,7 @@ func (n *OpenBazaarNode) GetMyFollowers() (models.Followers, error) {
 		followers, err = tx.GetFollowers()
 		return err
 	})
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 	return followers, nil
@@ -152,7 +154,7 @@ func (n *OpenBazaarNode) GetMyFollowing() (models.Following, error) {
 		following, err = tx.GetFollowing()
 		return err
 	})
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 	return following, nil
@@ -172,11 +174,11 @@ func (n *OpenBazaarNode) GetFollowers(ctx context.Context, peerID peer.ID, useCa
 	}
 	var followers models.Followers
 	if err := json.Unmarshal(followersBytes, &followers); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 	}
 	for _, f := range followers {
 		if _, err := peer.IDB58Decode(f); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 		}
 	}
 	return followers, nil
@@ -196,11 +198,11 @@ func (n *OpenBazaarNode) GetFollowing(ctx context.Context, peerID peer.ID, useCa
 	}
 	var following models.Following
 	if err := json.Unmarshal(followersBytes, &following); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 	}
 	for _, f := range following {
 		if _, err := peer.IDB58Decode(f); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 		}
 	}
 	return following, nil

@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/gorilla/mux"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -22,8 +24,11 @@ func (g *Gateway) handleGETProfile(w http.ResponseWriter, r *http.Request) {
 	)
 	if peerIDStr == "" || peerIDStr == g.node.Identity().Pretty() {
 		profile, err = g.node.GetMyProfile()
-		if err != nil {
+		if errors.Is(err, coreiface.ErrNotFound) {
 			http.Error(w, wrapError(err), http.StatusNotFound)
+			return
+		} else if err != nil {
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -33,8 +38,11 @@ func (g *Gateway) handleGETProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		profile, err = g.node.GetProfile(r.Context(), pid, useCache)
-		if err != nil {
+		if errors.Is(err, coreiface.ErrNotFound) {
 			http.Error(w, wrapError(err), http.StatusNotFound)
+			return
+		} else if err != nil {
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -54,8 +62,13 @@ func (g *Gateway) handlePOSTProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := g.node.SetProfile(&profile, nil); err != nil {
-		http.Error(w, wrapError(err), http.StatusInternalServerError)
-		return
+		if errors.Is(err, coreiface.ErrBadRequest) {
+			http.Error(w, wrapError(err), http.StatusBadRequest)
+			return
+		} else if err != nil {
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -72,8 +85,13 @@ func (g *Gateway) handlePUTProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := g.node.SetProfile(&profile, nil); err != nil {
-		http.Error(w, wrapError(err), http.StatusInternalServerError)
-		return
+		if errors.Is(err, coreiface.ErrBadRequest) {
+			http.Error(w, wrapError(err), http.StatusBadRequest)
+			return
+		} else if err != nil {
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -102,7 +120,7 @@ func (g *Gateway) handlePOSTFetchProfiles(w http.ResponseWriter, r *http.Request
 			go func(p peer.ID) {
 				defer wg.Done()
 				profile, err := g.node.GetProfile(r.Context(), p, useCache)
-				if err != nil {
+				if err != nil || profile == nil {
 					return
 				}
 				responseChan <- *profile

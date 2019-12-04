@@ -15,15 +15,15 @@ type Profile struct {
 	Vendor    bool `json:"vendor"`
 	Moderator bool `json:"moderator"`
 
-	ModeratorInfo *ModeratorInfo      `json:"moderatorInfo"`
-	ContactInfo   *ProfileContactInfo `json:"contactInfo"`
+	ModeratorInfo *ModeratorInfo      `json:"moderatorInfo,omitempty"`
+	ContactInfo   *ProfileContactInfo `json:"contactInfo,omitempty"`
 
 	Colors ProfileColors `json:"colors"`
 
 	AvatarHashes ProfileImage `json:"avatarHashes"`
 	HeaderHashes ProfileImage `json:"headerHashes"`
 
-	Stats *ProfileStats `json:"stats"`
+	Stats *ProfileStats `json:"stats,omitempty"`
 
 	EscrowPublicKey string `json:"publicKey"`
 
