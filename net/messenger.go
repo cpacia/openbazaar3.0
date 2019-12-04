@@ -9,6 +9,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"sync"
 	"time"
@@ -148,7 +149,7 @@ func (m *Messenger) Start() {
 // trySendMessage tries to send the message directly to the peer using a
 // network connection. If that fails, it sends the message over the offline
 // messaging system.
-func (m *Messenger) trySendMessage(peer peer.ID, message *pb.Message, done chan<- struct{}) {
+func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done chan<- struct{}) {
 	defer func() {
 		if done != nil {
 			close(done)
@@ -159,12 +160,29 @@ func (m *Messenger) trySendMessage(peer peer.ID, message *pb.Message, done chan<
 	ctx, cancel := context.WithTimeout(context.Background(), SendTimeout)
 	defer cancel()
 
-	if err := m.ns.SendMessage(ctx, peer, message); err != nil {
-		log.Debugf("Failed to connect to peer %s. Sending offline message.", peer)
+	if err := m.ns.SendMessage(ctx, peerID, message); err != nil {
+		log.Debugf("Failed to connect to peer %s. Sending offline message.", peerID.Pretty())
 		// We failed to deliver directly to the peer. Let's send
 		// using the offline system.
-
-		// TODO:
+		var inboxPeers []peer.ID
+		err := m.db.View(func(tx database.Tx) error {
+			var record models.PeerInboxes
+			if err := tx.Read().Where("peer_id=?", peerID.Pretty()).Find(&record).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+				return err
+			}
+			inboxPeers, err = record.Inboxes()
+			return err
+		})
+		if err != nil {
+			log.Errorf("Error loading peers inbox addresses %s", err)
+			return
+		}
+		if len(inboxPeers) > 100 {
+			log.Info("asdfadsf") // Fixme: this is just to avoid a compilation error for now
+		}
+		/*for _, pid := range inboxPeers {
+			// TODO: send encrypted message to peer
+		}*/
 		return
 	}
 	log.Debugf("Message %s direct send successful", message.MessageID)

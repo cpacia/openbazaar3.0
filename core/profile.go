@@ -100,6 +100,20 @@ func (n *OpenBazaarNode) GetProfile(ctx context.Context, peerID peer.ID, useCach
 	if err := validateProfile(profile); err != nil {
 		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
 	}
+	if len(profile.OfflineInboxes) > 0 {
+		err := n.repo.DB().Update(func(tx database.Tx) error {
+			pi := &models.PeerInboxes{
+				PeerID: peerID.Pretty(),
+			}
+			if err := pi.PutInboxes(profile.OfflineInboxes); err != nil {
+				return err
+			}
+			return tx.Save(&pi)
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 	return profile, nil
 }
 
@@ -273,6 +287,15 @@ func validateProfile(profile *models.Profile) error {
 		_, err = cid.Decode(profile.HeaderHashes.Original)
 		if err != nil {
 			return errors.New("original image hashes must be properly formatted CID")
+		}
+	}
+	if len(profile.OfflineInboxes) > MaxListItems {
+		return coreiface.ErrTooManyItems{"offlineInboxes"}
+	}
+	for _, pid := range profile.OfflineInboxes {
+		_, err := peer.IDB58Decode(pid)
+		if err != nil {
+			return errors.New("invalid offline inbox peerID")
 		}
 	}
 	if len(profile.EscrowPublicKey) != 66 {

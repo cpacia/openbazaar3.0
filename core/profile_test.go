@@ -43,11 +43,15 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 	}
 	defer mocknet.TearDown()
 
-	name := "Ron Swanson"
+	var (
+		name      = "Ron Swanson"
+		inboxPeer = "12D3KooWBiB44mFtWYTGstSiDKMsA89ztk9bPTjh57uW74U4XDpa"
+	)
 	done := make(chan struct{})
 	err = mocknet.Nodes()[0].SetProfile(&models.Profile{
 		Name:            name,
 		EscrowPublicKey: strings.Repeat("s", 66),
+		OfflineInboxes:  []string{inboxPeer},
 	}, done)
 	if err != nil {
 		t.Fatal(err)
@@ -91,6 +95,26 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 
 	if pro.Name != name {
 		t.Errorf("Returned profile with incorrect name. Expected %s, got %s", name, pro.Name)
+	}
+
+	var record models.PeerInboxes
+	err = mocknet.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
+		return tx.Read().Where("peer_id=?", mocknet.Nodes()[0].Identity().Pretty()).Find(&record).Error
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	peerIDs, err := record.Inboxes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(peerIDs) != 1 {
+		t.Errorf("Incorrect peerIDs returned. Expected 1 got %d", len(peerIDs))
+	}
+
+	if peerIDs[0].Pretty() != inboxPeer {
+		t.Errorf("Incorrect inbox peer. Expected %s, got %s", inboxPeer, peerIDs[0].Pretty())
 	}
 }
 
@@ -696,6 +720,28 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 				EscrowPublicKey: strings.Repeat("r", 66),
 				Stats: &models.ProfileStats{
 					AverageRating: 6,
+				},
+			},
+			valid: false,
+		},
+		{
+			name: "Valid offline inboxes",
+			profile: &models.Profile{
+				Name:            "Ron Swanson",
+				EscrowPublicKey: strings.Repeat("r", 66),
+				OfflineInboxes: []string{
+					"12D3KooWBiB44mFtWYTGstSiDKMsA89ztk9bPTjh57uW74U4XDpa",
+				},
+			},
+			valid: true,
+		},
+		{
+			name: "Invalid offline inbox",
+			profile: &models.Profile{
+				Name:            "Ron Swanson",
+				EscrowPublicKey: strings.Repeat("r", 66),
+				OfflineInboxes: []string{
+					"asdfaf",
 				},
 			},
 			valid: false,
