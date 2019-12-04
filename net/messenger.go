@@ -26,16 +26,18 @@ const (
 // New messages are saved to the database and continually retried
 // until the recipient receives it.
 type Messenger struct {
-	ns   *NetworkService
-	db   database.Database
-	done chan struct{}
-	mtx  sync.RWMutex
-	wg   sync.WaitGroup
+	ns             *NetworkService
+	db             database.Database
+	getProfileFunc func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)
+	done           chan struct{}
+	mtx            sync.RWMutex
+	wg             sync.WaitGroup
 }
 
 // NewMessenger returns a Messenger and starts the retry service.
-func NewMessenger(ns *NetworkService, db database.Database) *Messenger {
-	m := &Messenger{ns, db, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
+func NewMessenger(ns *NetworkService, db database.Database,
+	getProfileFunc func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)) *Messenger {
+	m := &Messenger{ns, db, getProfileFunc, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
 	return m
 }
 
@@ -177,8 +179,22 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 			log.Errorf("Error loading peers inbox addresses %s", err)
 			return
 		}
-		if len(inboxPeers) > 100 {
-			log.Info("asdfadsf") // Fixme: this is just to avoid a compilation error for now
+		if len(inboxPeers) == 0 && m.getProfileFunc != nil {
+			profile, err := m.getProfileFunc(context.Background(), peerID, true)
+			if err != nil {
+				log.Errorf("Error sending offline message: Can't load profile for peer %s", peerID.Pretty())
+				return
+			}
+			if len(profile.OfflineInboxes) == 0 {
+				log.Errorf("Error sending offline message: No inbox peers for peer %s", peerID.Pretty())
+				return
+			}
+			for _, peerStr := range profile.OfflineInboxes {
+				pid, err := peer.IDB58Decode(peerStr)
+				if err == nil {
+					inboxPeers = append(inboxPeers, pid)
+				}
+			}
 		}
 		/*for _, pid := range inboxPeers {
 			// TODO: send encrypted message to peer

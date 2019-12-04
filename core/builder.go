@@ -191,7 +191,6 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	}
 	bm := obnet.NewBanManager(blocked)
 	service := obnet.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
-	messenger := obnet.NewMessenger(service, obRepo.DB())
 	tracker := NewFollowerTracker(obRepo, bus, ipfsNode.PeerHost.Network())
 
 	enabledWallets := make([]iwallet.CoinType, len(cfg.EnabledWallets))
@@ -252,16 +251,6 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	erp := wallet.NewExchangeRateProvider(nil, cfg.ExchangeRateProviders) // TODO: wire up proxy
 
-	op := orders.NewOrderProcessor(&orders.Config{
-		Identity:             ipfsNode.Identity,
-		Db:                   obRepo.DB(),
-		Messenger:            messenger,
-		Multiwallet:          mw,
-		EscrowPrivateKey:     escrowKey,
-		ExchangeRateProvider: erp,
-		EventBus:             bus,
-	})
-
 	// Construct our OpenBazaar node.repo object
 	obNode := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
@@ -269,14 +258,12 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		escrowMasterKey: escrowKey,
 		ratingMasterKey: ratingKey,
 		ipnsQuorum:      cfg.IPNSQuorum,
-		messenger:       messenger,
 		networkService:  service,
 		banManager:      bm,
 		eventBus:        bus,
 		followerTracker: tracker,
 		multiwallet:     mw,
 		exchangeRates:   erp,
-		orderProcessor:  op,
 		testnet:         cfg.Testnet,
 		shutdown:        make(chan struct{}),
 	}
@@ -287,6 +274,16 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	}
 
 	obNode.notifier = notifications.NewNotifier(bus, obRepo.DB(), obNode.gateway.NotifyWebsockets)
+	obNode.messenger = obnet.NewMessenger(service, obRepo.DB(), obNode.GetProfile)
+	obNode.orderProcessor = orders.NewOrderProcessor(&orders.Config{
+		Identity:             ipfsNode.Identity,
+		Db:                   obRepo.DB(),
+		Multiwallet:          mw,
+		Messenger:            obNode.messenger,
+		EscrowPrivateKey:     escrowKey,
+		ExchangeRateProvider: erp,
+		EventBus:             bus,
+	})
 
 	obNode.registerHandlers()
 	obNode.listenNetworkEvents()

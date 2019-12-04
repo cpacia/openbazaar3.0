@@ -70,8 +70,6 @@ func MockNode() (*OpenBazaarNode, error) {
 	banManager := net.NewBanManager(nil)
 	service := net.NewNetworkService(ipfsNode.PeerHost, banManager, true)
 
-	messenger := net.NewMessenger(service, r.DB())
-
 	// Load the keys from the db
 	var (
 		dbEscrowKey models.Key
@@ -102,21 +100,10 @@ func MockNode() (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
-	op := orders.NewOrderProcessor(&orders.Config{
-		Identity:             ipfsNode.Identity,
-		Db:                   r.DB(),
-		Messenger:            messenger,
-		Multiwallet:          mw,
-		EscrowPrivateKey:     escrowKey,
-		ExchangeRateProvider: erp,
-		EventBus:             bus,
-	})
-
 	node := &OpenBazaarNode{
 		ipfsNode:        ipfsNode,
 		repo:            r,
 		networkService:  service,
-		messenger:       messenger,
 		eventBus:        bus,
 		banManager:      banManager,
 		ipnsQuorum:      1,
@@ -125,9 +112,19 @@ func MockNode() (*OpenBazaarNode, error) {
 		ratingMasterKey: ratingKey,
 		multiwallet:     mw,
 		followerTracker: tracker,
-		orderProcessor:  op,
 		exchangeRates:   erp,
 	}
+
+	node.messenger = net.NewMessenger(service, r.DB(), node.GetProfile)
+	node.orderProcessor = orders.NewOrderProcessor(&orders.Config{
+		Identity:             ipfsNode.Identity,
+		Db:                   r.DB(),
+		Multiwallet:          mw,
+		Messenger:            node.messenger,
+		EscrowPrivateKey:     escrowKey,
+		ExchangeRateProvider: erp,
+		EventBus:             bus,
+	})
 
 	node.registerHandlers()
 	node.listenNetworkEvents()
@@ -197,8 +194,6 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		banManager := net.NewBanManager(nil)
 		service := net.NewNetworkService(ipfsNode.PeerHost, banManager, true)
 
-		messenger := net.NewMessenger(service, r.DB())
-
 		// Load the keys from the db
 		var (
 			dbEscrowKey models.Key
@@ -229,21 +224,10 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			return nil, err
 		}
 
-		op := orders.NewOrderProcessor(&orders.Config{
-			Identity:             ipfsNode.Identity,
-			Db:                   r.DB(),
-			Messenger:            messenger,
-			Multiwallet:          mw,
-			EscrowPrivateKey:     escrowKey,
-			ExchangeRateProvider: erp,
-			EventBus:             bus,
-		})
-
 		node := &OpenBazaarNode{
 			ipfsNode:        ipfsNode,
 			repo:            r,
 			networkService:  service,
-			messenger:       messenger,
 			eventBus:        bus,
 			banManager:      banManager,
 			ipnsQuorum:      1,
@@ -252,9 +236,19 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			ratingMasterKey: ratingKey,
 			multiwallet:     mw,
 			followerTracker: tracker,
-			orderProcessor:  op,
 			exchangeRates:   erp,
 		}
+
+		node.messenger = net.NewMessenger(service, r.DB(), node.GetProfile)
+		node.orderProcessor = orders.NewOrderProcessor(&orders.Config{
+			Identity:             ipfsNode.Identity,
+			Db:                   r.DB(),
+			Messenger:            node.messenger,
+			Multiwallet:          mw,
+			EscrowPrivateKey:     escrowKey,
+			ExchangeRateProvider: erp,
+			EventBus:             bus,
+		})
 
 		node.registerHandlers()
 		node.publishHandler()

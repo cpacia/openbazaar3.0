@@ -61,7 +61,7 @@ func newMockOrderProcessor() (*OrderProcessor, func(), error) {
 	banManager := net.NewBanManager(nil)
 	service := net.NewNetworkService(ipfsNode.PeerHost, banManager, true)
 
-	messenger := net.NewMessenger(service, r.DB())
+	messenger := net.NewMessenger(service, r.DB(), nil)
 
 	mw := multiwallet.Multiwallet{
 		iwallet.CtMock: wallet.NewMockWallet(),
