@@ -87,6 +87,8 @@ type Config struct {
 	IPFSOnly               bool     `long:"ipfsonly" description:"Disable all OpenBazaar functionality except the IPFS networking."`
 	EnabledWallets         []string `long:"enabledwallet" description:"Only enable wallets in this list. Available wallets: [BTC, BCH, LTC, ZEC, ETH]"`
 	UserAgentComment       string   `long:"uacomment" description:"Comment to add to the user agent."`
+	EnableSNFServer        bool     `long:"enablesnfserver" description:"Enable this node to operate as a store-and-forward server."`
+	SNFServerPeers         []string `long:"snfpeer" description:"A list of other store-and-forward servers to replicate snf data to. This is only used when the snf server is enabled."`
 }
 
 // LoadConfig initializes and parses the config using a config file and command

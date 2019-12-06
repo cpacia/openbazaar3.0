@@ -300,12 +300,31 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	if cfg.Testnet {
 		snfProtocol = obnet.ProtocolStoreAndForwardTestnet
 	}
-	opts := []storeandforward.Option{
+	clientOpts := []storeandforward.Option{
 		storeandforward.Protocols(protocol.ID(snfProtocol)),
 	}
-	snfClient, err := storeandforward.NewClient(ipfsNode.Context(), ipfsNode.PrivateKey, snfServers, ipfsNode.PeerHost, opts...)
+	snfClient, err := storeandforward.NewClient(ipfsNode.Context(), ipfsNode.PrivateKey, snfServers, ipfsNode.PeerHost, clientOpts...)
 	if err != nil {
 		return nil, err
+	}
+
+	if cfg.EnableSNFServer {
+		snfReplicationPeers := make([]peer.ID, 0, len(cfg.SNFServerPeers))
+		for _, serverStr := range cfg.SNFServerPeers {
+			server, err := peer.IDB58Decode(serverStr)
+			if err != nil {
+				return nil, err
+			}
+			snfReplicationPeers = append(snfReplicationPeers, server)
+		}
+		serverOpts := []storeandforward.Option{
+			storeandforward.Protocols(protocol.ID(snfProtocol)),
+			storeandforward.ReplicationPeers(snfReplicationPeers...),
+		}
+		_, err := storeandforward.NewServer(ipfsNode.Context(),ipfsNode.PeerHost, serverOpts...)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	obNode.notifier = notifications.NewNotifier(bus, obRepo.DB(), obNode.gateway.NotifyWebsockets)
