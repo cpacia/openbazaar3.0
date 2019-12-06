@@ -452,7 +452,7 @@ func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) 
 		if errors.Is(err, coreiface.ErrInternalServer) {
 			return cid.Cid{}, err
 		} else {
-			return cid.Cid{}, fmt.Errorf("%w: %w", coreiface.ErrBadRequest, err)
+			return cid.Cid{}, fmt.Errorf("%w: %s", coreiface.ErrBadRequest, err)
 		}
 	}
 
@@ -896,7 +896,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	}
 	peerID, err := peer.IDFromPublicKey(identityPubkey)
 	if err != nil {
-		return fmt.Errorf("%w: %w", coreiface.ErrInternalServer, err)
+		return fmt.Errorf("%w: %s", coreiface.ErrInternalServer, err)
 	}
 	if peerID.Pretty() != sl.Listing.VendorID.PeerID {
 		return errors.New("vendor peerID does not match public key")
@@ -921,11 +921,11 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	// Validate signature on listing
 	ser, err := proto.Marshal(sl.Listing)
 	if err != nil {
-		return fmt.Errorf("%w: %w", coreiface.ErrInternalServer, err)
+		return fmt.Errorf("%w: %s", coreiface.ErrInternalServer, err)
 	}
 	valid, err = identityPubkey.Verify(ser, sl.Signature)
 	if err != nil {
-		return fmt.Errorf("%w: %w", coreiface.ErrInternalServer, err)
+		return fmt.Errorf("%w: %s", coreiface.ErrInternalServer, err)
 	}
 	if !valid {
 		return errors.New("invalid signature on listing")
@@ -939,10 +939,10 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte) (*pb.SignedListing, error) {
 	signedListing := new(pb.SignedListing)
 	if err := jsonpb.UnmarshalString(string(listingBytes), signedListing); err != nil {
-		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 	}
 	if err := n.validateListing(signedListing); err != nil {
-		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 	}
 	return signedListing, nil
 }

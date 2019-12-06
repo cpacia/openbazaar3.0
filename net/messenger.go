@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
+	inet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"sync"
 	"time"
@@ -60,6 +62,10 @@ func (m *Messenger) ReliablySendMessage(tx database.Tx, peer peer.ID, message *p
 	if err != nil {
 		m.wg.Done()
 		return err
+	}
+
+	if len(ser) > inet.MessageSizeMax {
+		return errors.New("message exceeds max message size")
 	}
 
 	// Before we do anything save the message to the database. This way
@@ -166,37 +172,37 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 		log.Debugf("Failed to connect to peer %s. Sending offline message.", peerID.Pretty())
 		// We failed to deliver directly to the peer. Let's send
 		// using the offline system.
-		var inboxPeers []peer.ID
-		err := m.db.View(func(tx database.Tx) error {
-			var record models.PeerInboxes
+		var record models.StoreAndForwardServers
+		dberr := m.db.View(func(tx database.Tx) error {
 			if err := tx.Read().Where("peer_id=?", peerID.Pretty()).Find(&record).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 				return err
 			}
-			inboxPeers, err = record.Inboxes()
-			return err
+			return nil
 		})
-		if err != nil {
-			log.Errorf("Error loading peers inbox addresses %s", err)
+		servers, iberr := record.Servers()
+		if dberr != nil || iberr != nil {
+			log.Errorf("Error loading peers snf server addresses %s", err)
 			return
 		}
-		if len(inboxPeers) == 0 && m.getProfileFunc != nil {
+
+		if (len(servers) == 0 || record.LastUpdated.Add(time.Hour*48).After(time.Now())) && m.getProfileFunc != nil {
 			profile, err := m.getProfileFunc(context.Background(), peerID, true)
 			if err != nil {
 				log.Errorf("Error sending offline message: Can't load profile for peer %s", peerID.Pretty())
 				return
 			}
-			if len(profile.OfflineInboxes) == 0 {
+			if len(profile.StoreAndForwardServers) == 0 {
 				log.Errorf("Error sending offline message: No inbox peers for peer %s", peerID.Pretty())
 				return
 			}
-			for _, peerStr := range profile.OfflineInboxes {
+			for _, peerStr := range profile.StoreAndForwardServers {
 				pid, err := peer.IDB58Decode(peerStr)
 				if err == nil {
-					inboxPeers = append(inboxPeers, pid)
+					servers = append(servers, pid)
 				}
 			}
 		}
-		/*for _, pid := range inboxPeers {
+		/*for _, pid := range servers {
 			// TODO: send encrypted message to peer
 		}*/
 		return

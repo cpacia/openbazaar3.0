@@ -133,7 +133,7 @@ func TestProfileHandlers(t *testing.T) {
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
 				n.getMyProfileFunc = func() (*models.Profile, error) {
-					return nil, os.ErrNotExist
+					return nil, coreiface.ErrNotFound
 				}
 				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
 					return nil
@@ -151,7 +151,7 @@ func TestProfileHandlers(t *testing.T) {
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
 				n.getMyProfileFunc = func() (*models.Profile, error) {
-					return nil, os.ErrNotExist
+					return nil, coreiface.ErrNotFound
 				}
 				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
 					return errors.New("error")
@@ -187,7 +187,7 @@ func TestProfileHandlers(t *testing.T) {
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
 				n.getMyProfileFunc = func() (*models.Profile, error) {
-					return nil, os.ErrNotExist
+					return nil, coreiface.ErrNotFound
 				}
 				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
 					return nil
@@ -241,7 +241,7 @@ func TestProfileHandlers(t *testing.T) {
 			method: http.MethodPut,
 			setNodeMethods: func(n *mockNode) {
 				n.getMyProfileFunc = func() (*models.Profile, error) {
-					return nil, os.ErrNotExist
+					return nil, coreiface.ErrNotFound
 				}
 				n.setProfileFunc = func(profile *models.Profile, done chan<- struct{}) error {
 					return nil

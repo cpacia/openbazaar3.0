@@ -27,7 +27,7 @@ type Profile struct {
 
 	EscrowPublicKey string `json:"publicKey"`
 
-	OfflineInboxes []string `json:"offlineInboxes"`
+	StoreAndForwardServers []string `json:"storeAndForwardServers"`
 
 	LastModified time.Time `json:"lastModified"`
 }

@@ -28,12 +28,13 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 	profile.EscrowPublicKey = hex.EncodeToString(n.escrowMasterKey.PubKey().SerializeCompressed())
 	profile.PeerID = n.Identity().Pretty()
 	profile.LastModified = time.Now()
+	profile.StoreAndForwardServers = n.storeAndForwardServers
 
 	if err := validateProfile(profile); err != nil {
 		if done != nil {
 			close(done)
 		}
-		return fmt.Errorf("%w: %w", coreiface.ErrBadRequest, err)
+		return fmt.Errorf("%w: %s", coreiface.ErrBadRequest, err)
 	}
 
 	err := n.repo.DB().Update(func(tx database.Tx) error {
@@ -74,7 +75,7 @@ func (n *OpenBazaarNode) GetMyProfile() (*models.Profile, error) {
 	err = n.repo.DB().View(func(tx database.Tx) error {
 		profile, err = tx.GetProfile()
 		if err != nil {
-			return fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+			return fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 		}
 		return nil
 	})
@@ -98,14 +99,15 @@ func (n *OpenBazaarNode) GetProfile(ctx context.Context, peerID peer.ID, useCach
 		return nil, err
 	}
 	if err := validateProfile(profile); err != nil {
-		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 	}
-	if len(profile.OfflineInboxes) > 0 {
+	if len(profile.StoreAndForwardServers) > 0 {
 		err := n.repo.DB().Update(func(tx database.Tx) error {
-			pi := &models.PeerInboxes{
-				PeerID: peerID.Pretty(),
+			pi := &models.StoreAndForwardServers{
+				PeerID:      peerID.Pretty(),
+				LastUpdated: time.Now(),
 			}
-			if err := pi.PutInboxes(profile.OfflineInboxes); err != nil {
+			if err := pi.PutServers(profile.StoreAndForwardServers); err != nil {
 				return err
 			}
 			return tx.Save(&pi)
@@ -156,6 +158,49 @@ func (n *OpenBazaarNode) updateProfileStats(tx database.Tx, profile *models.Prof
 		ListingCount:   uint32(listings.Count()),
 	}
 
+	return nil
+}
+
+// updateSNFServers will update the profile's store and forward servers
+// if they have changed.
+func (n *OpenBazaarNode) updateSNFServers() error {
+	equal := func(a, b []string) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		for i, v := range a {
+			if v != b[i] {
+				return false
+			}
+		}
+		return true
+	}
+	updated := false
+	err := n.repo.DB().Update(func(tx database.Tx) error {
+		profile, err := tx.GetProfile()
+		if err != nil {
+			return err
+		}
+		if !equal(profile.StoreAndForwardServers, n.storeAndForwardServers) {
+			profile.StoreAndForwardServers = n.storeAndForwardServers
+
+			if err := n.updateProfileStats(tx, profile); err != nil {
+				return err
+			}
+			if err := tx.SetProfile(profile); err != nil {
+				return err
+			}
+
+			updated = true
+		}
+		return nil
+	})
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err == nil {
+		n.Publish(nil)
+	}
 	return nil
 }
 
@@ -289,13 +334,13 @@ func validateProfile(profile *models.Profile) error {
 			return errors.New("original image hashes must be properly formatted CID")
 		}
 	}
-	if len(profile.OfflineInboxes) > MaxListItems {
-		return coreiface.ErrTooManyItems{"offlineInboxes"}
+	if len(profile.StoreAndForwardServers) > MaxListItems {
+		return coreiface.ErrTooManyItems{"storeAndForwardServers"}
 	}
-	for _, pid := range profile.OfflineInboxes {
+	for _, pid := range profile.StoreAndForwardServers {
 		_, err := peer.IDB58Decode(pid)
 		if err != nil {
-			return errors.New("invalid offline inbox peerID")
+			return errors.New("invalid snf server peerID")
 		}
 	}
 	if len(profile.EscrowPublicKey) != 66 {

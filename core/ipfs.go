@@ -59,7 +59,7 @@ func (n *OpenBazaarNode) cat(ctx context.Context, pth path.Path) ([]byte, error)
 
 	nd, err := capi.Unixfs().Get(ctx, pth)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 	}
 
 	r, ok := nd.(files.File)
@@ -207,7 +207,7 @@ func (n *OpenBazaarNode) resolve(ctx context.Context, p peer.ID, usecache bool) 
 			return err
 		})
 		if err != nil {
-			return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+			return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 		}
 		return pth, nil
 	}

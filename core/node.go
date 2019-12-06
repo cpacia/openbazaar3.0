@@ -93,6 +93,10 @@ type OpenBazaarNode struct {
 	// ipfsOnlyMode signals that the node is running in IPFS only mode.
 	ipfsOnlyMode bool
 
+	// storeAndForwardServers is a list of string peerIDs of servers we use
+	// as our store and forward nodes.
+	storeAndForwardServers []string
+
 	// shutdown is closed when the node is stopped. Any listening
 	// goroutines can use this to terminate.
 	shutdown chan struct{}
@@ -111,6 +115,9 @@ func (n *OpenBazaarNode) Start() {
 		go n.notifier.Start()
 		if err := n.removeDisabledCoinsFromListings(); err != nil && !os.IsNotExist(err) {
 			log.Errorf("Error removing disabled coins from listings: %s", err)
+		}
+		if err := n.updateSNFServers(); err != nil {
+			log.Errorf("Error updating store and forward servers in profile: %s", err)
 		}
 	}
 }

@@ -74,8 +74,8 @@ func (prefs *UserPreferences) BlockedNodes() ([]peer.ID, error) {
 // PreferredCurrencies returns the preferred currencies for the node.
 func (prefs *UserPreferences) PreferredCurrencies() ([]string, error) {
 	var prefCurrencies []string
-	if prefs.Blocked != nil {
-		if err := json.Unmarshal(prefs.Blocked, &prefCurrencies); err != nil {
+	if prefs.PrefCurrencies != nil {
+		if err := json.Unmarshal(prefs.PrefCurrencies, &prefCurrencies); err != nil {
 			return nil, err
 		}
 	}

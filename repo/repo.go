@@ -457,7 +457,7 @@ func autoMigrateDatabase(db database.Database) error {
 		&models.Order{},
 		&models.TransactionMetadata{},
 		&models.UserPreferences{},
-		&models.PeerInboxes{},
+		&models.StoreAndForwardServers{},
 	}
 
 	return db.Update(func(tx database.Tx) error {

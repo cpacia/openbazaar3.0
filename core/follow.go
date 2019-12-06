@@ -174,11 +174,11 @@ func (n *OpenBazaarNode) GetFollowers(ctx context.Context, peerID peer.ID, useCa
 	}
 	var followers models.Followers
 	if err := json.Unmarshal(followersBytes, &followers); err != nil {
-		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 	}
 	for _, f := range followers {
 		if _, err := peer.IDB58Decode(f); err != nil {
-			return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+			return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 		}
 	}
 	return followers, nil
@@ -198,11 +198,11 @@ func (n *OpenBazaarNode) GetFollowing(ctx context.Context, peerID peer.ID, useCa
 	}
 	var following models.Following
 	if err := json.Unmarshal(followersBytes, &following); err != nil {
-		return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 	}
 	for _, f := range following {
 		if _, err := peer.IDB58Decode(f); err != nil {
-			return nil, fmt.Errorf("%w: %w", coreiface.ErrNotFound, err)
+			return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 		}
 	}
 	return following, nil

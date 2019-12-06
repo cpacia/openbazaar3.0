@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -30,6 +31,7 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
 	inet "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/libp2p/go-libp2p-protocol"
 	"github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p-routing"
@@ -251,21 +253,29 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	erp := wallet.NewExchangeRateProvider(nil, cfg.ExchangeRateProviders) // TODO: wire up proxy
 
+	for _, server := range cfg.StoreAndForwardServers {
+		_, err := peer.IDB58Decode(server)
+		if err != nil {
+			return nil, errors.New("invalid store and forward peer ID in config")
+		}
+	}
+
 	// Construct our OpenBazaar node.repo object
 	obNode := &OpenBazaarNode{
-		ipfsNode:        ipfsNode,
-		repo:            obRepo,
-		escrowMasterKey: escrowKey,
-		ratingMasterKey: ratingKey,
-		ipnsQuorum:      cfg.IPNSQuorum,
-		networkService:  service,
-		banManager:      bm,
-		eventBus:        bus,
-		followerTracker: tracker,
-		multiwallet:     mw,
-		exchangeRates:   erp,
-		testnet:         cfg.Testnet,
-		shutdown:        make(chan struct{}),
+		ipfsNode:               ipfsNode,
+		repo:                   obRepo,
+		escrowMasterKey:        escrowKey,
+		ratingMasterKey:        ratingKey,
+		ipnsQuorum:             cfg.IPNSQuorum,
+		networkService:         service,
+		banManager:             bm,
+		eventBus:               bus,
+		followerTracker:        tracker,
+		multiwallet:            mw,
+		exchangeRates:          erp,
+		testnet:                cfg.Testnet,
+		storeAndForwardServers: cfg.StoreAndForwardServers,
+		shutdown:               make(chan struct{}),
 	}
 
 	obNode.gateway, err = obNode.newHTTPGateway(cfg)
