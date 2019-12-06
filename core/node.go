@@ -136,17 +136,20 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 		return coreiface.ErrPublishingActive
 	}
 
-	close(n.shutdown)
 	if !n.ipfsOnlyMode {
-		n.networkService.Close()
 		n.messenger.Stop()
+		n.networkService.Close()
 		n.orderProcessor.Stop()
 		n.followerTracker.Close()
+		n.multiwallet.Close()
 		if n.gateway != nil {
 			n.gateway.Close()
 		}
-		n.multiwallet.Close()
+		if n.notifier != nil {
+			n.notifier.Stop()
+		}
 	}
+	close(n.shutdown)
 	n.repo.Close()
 
 	stop := make(chan struct{})
