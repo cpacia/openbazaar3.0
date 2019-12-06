@@ -275,6 +275,8 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		exchangeRates:          erp,
 		testnet:                cfg.Testnet,
 		storeAndForwardServers: cfg.StoreAndForwardServers,
+		publishChan:            make(chan pubCloser),
+		initialBootstrapChan:   make(chan struct{}),
 		shutdown:               make(chan struct{}),
 	}
 

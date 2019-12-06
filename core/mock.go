@@ -101,18 +101,20 @@ func MockNode() (*OpenBazaarNode, error) {
 	}
 
 	node := &OpenBazaarNode{
-		ipfsNode:        ipfsNode,
-		repo:            r,
-		networkService:  service,
-		eventBus:        bus,
-		banManager:      banManager,
-		ipnsQuorum:      1,
-		shutdown:        make(chan struct{}),
-		escrowMasterKey: escrowKey,
-		ratingMasterKey: ratingKey,
-		multiwallet:     mw,
-		followerTracker: tracker,
-		exchangeRates:   erp,
+		ipfsNode:             ipfsNode,
+		repo:                 r,
+		networkService:       service,
+		eventBus:             bus,
+		banManager:           banManager,
+		ipnsQuorum:           1,
+		shutdown:             make(chan struct{}),
+		escrowMasterKey:      escrowKey,
+		ratingMasterKey:      ratingKey,
+		multiwallet:          mw,
+		followerTracker:      tracker,
+		exchangeRates:        erp,
+		initialBootstrapChan: make(chan struct{}),
+		publishChan:          make(chan pubCloser),
 	}
 
 	node.messenger = net.NewMessenger(service, r.DB(), node.GetProfile)
@@ -129,6 +131,7 @@ func MockNode() (*OpenBazaarNode, error) {
 	node.registerHandlers()
 	node.listenNetworkEvents()
 	node.publishHandler()
+	close(node.initialBootstrapChan)
 	return node, nil
 }
 
@@ -225,18 +228,20 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		}
 
 		node := &OpenBazaarNode{
-			ipfsNode:        ipfsNode,
-			repo:            r,
-			networkService:  service,
-			eventBus:        bus,
-			banManager:      banManager,
-			ipnsQuorum:      1,
-			shutdown:        make(chan struct{}),
-			escrowMasterKey: escrowKey,
-			ratingMasterKey: ratingKey,
-			multiwallet:     mw,
-			followerTracker: tracker,
-			exchangeRates:   erp,
+			ipfsNode:             ipfsNode,
+			repo:                 r,
+			networkService:       service,
+			eventBus:             bus,
+			banManager:           banManager,
+			ipnsQuorum:           1,
+			shutdown:             make(chan struct{}),
+			escrowMasterKey:      escrowKey,
+			ratingMasterKey:      ratingKey,
+			multiwallet:          mw,
+			followerTracker:      tracker,
+			exchangeRates:        erp,
+			initialBootstrapChan: make(chan struct{}),
+			publishChan:          make(chan pubCloser),
 		}
 
 		node.messenger = net.NewMessenger(service, r.DB(), node.GetProfile)
@@ -251,8 +256,9 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		})
 
 		node.registerHandlers()
-		node.publishHandler()
 		node.listenNetworkEvents()
+		node.publishHandler()
+		close(node.initialBootstrapChan)
 
 		nodes = append(nodes, node)
 	}

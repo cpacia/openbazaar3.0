@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
+	"github.com/ipfs/go-ipfs/core/bootstrap"
 	"github.com/ipfs/go-ipfs/core/coreapi"
 	fpath "github.com/ipfs/go-path"
 	"github.com/ipfs/interface-go-ipfs-core/options"
@@ -39,7 +40,10 @@ const (
 //
 // This cannot be called with the database lock held.
 func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
-	n.publishChan <- pubCloser{done}
+	go func() {
+		<-n.initialBootstrapChan
+		n.publishChan <- pubCloser{done}
+	}()
 }
 
 func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
@@ -339,6 +343,15 @@ func (n *OpenBazaarNode) syncMessages() {
 	}
 }
 
+// bootstrapIPFS bootstraps the IPFS node.
+func (n *OpenBazaarNode) bootstrapIPFS() error {
+	if err := n.ipfsNode.Bootstrap(bootstrap.DefaultBootstrapConfig); err != nil {
+		return err
+	}
+	close(n.initialBootstrapChan)
+	return nil
+}
+
 type pubCloser struct {
 	done chan<- struct{}
 }
@@ -346,6 +359,8 @@ type pubCloser struct {
 // publishHandler is a loop that runs and handles IPNS record publishes and republishes. It shoots to
 // republish 36 hours from the last publish so as to not slam the network on startup every time.
 // If a current publish is active it will be canceled and the new publish will supersede it.
+//
+// The done chan is closed once the handler is fully initialized.
 func (n *OpenBazaarNode) publishHandler() {
 	var lastPublish time.Time
 	err := n.repo.DB().View(func(tx database.Tx) error {
@@ -360,11 +375,10 @@ func (n *OpenBazaarNode) publishHandler() {
 		log.Error("Error loading last republish time: %s", err.Error())
 	}
 
-	n.publishChan = make(chan pubCloser)
+	tick := time.After(republishInterval - time.Since(lastPublish))
+	publishCtx, publishCancel := context.WithCancel(context.Background())
 
 	go func() {
-		tick := time.After(republishInterval - time.Since(lastPublish))
-		publishCtx, publishCancel := context.WithCancel(context.Background())
 		for {
 			select {
 			case <-tick:

@@ -45,13 +45,13 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 
 	var (
 		name      = "Ron Swanson"
-		inboxPeer = "12D3KooWBiB44mFtWYTGstSiDKMsA89ztk9bPTjh57uW74U4XDpa"
+		snfServer = "12D3KooWBiB44mFtWYTGstSiDKMsA89ztk9bPTjh57uW74U4XDpa"
 	)
 	done := make(chan struct{})
+	mocknet.Nodes()[0].storeAndForwardServers = []string{snfServer}
 	err = mocknet.Nodes()[0].SetProfile(&models.Profile{
 		Name:            name,
 		EscrowPublicKey: strings.Repeat("s", 66),
-		OfflineInboxes:  []string{inboxPeer},
 	}, done)
 	if err != nil {
 		t.Fatal(err)
@@ -97,15 +97,15 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 		t.Errorf("Returned profile with incorrect name. Expected %s, got %s", name, pro.Name)
 	}
 
-	var record models.PeerInboxes
+	var record models.StoreAndForwardServers
 	err = mocknet.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("peer_id=?", mocknet.Nodes()[0].Identity().Pretty()).Find(&record).Error
+		return tx.Read().Where("peer_id=?", mocknet.Nodes()[0].Identity().Pretty()).First(&record).Error
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	peerIDs, err := record.Inboxes()
+	peerIDs, err := record.Servers()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,8 +113,8 @@ func TestOpenBazaarNode_GetProfile(t *testing.T) {
 		t.Errorf("Incorrect peerIDs returned. Expected 1 got %d", len(peerIDs))
 	}
 
-	if peerIDs[0].Pretty() != inboxPeer {
-		t.Errorf("Incorrect inbox peer. Expected %s, got %s", inboxPeer, peerIDs[0].Pretty())
+	if peerIDs[0].Pretty() != snfServer {
+		t.Errorf("Incorrect snf server. Expected %s, got %s", snfServer, peerIDs[0].Pretty())
 	}
 }
 
@@ -211,6 +211,41 @@ func Test_updateAndSaveProfile(t *testing.T) {
 
 	if ret.Stats.FollowingCount != 1 {
 		t.Errorf("Incorrect following count. Expected 1 got %d", ret.Stats.FollowingCount)
+	}
+}
+
+func Test_updateSNFServers(t *testing.T) {
+	node, err := MockNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer node.DestroyNode()
+
+	var (
+		name    = "Ron Paul"
+		profile = &models.Profile{Name: name}
+	)
+
+	if err := node.SetProfile(profile, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	server := "adsf"
+	node.storeAndForwardServers = []string{server}
+
+	err = node.updateSNFServers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pro, err := node.GetMyProfile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pro.StoreAndForwardServers[0] != server {
+		t.Errorf("Expected server %s, got %s", server, pro.StoreAndForwardServers[0])
 	}
 }
 
@@ -729,7 +764,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:            "Ron Swanson",
 				EscrowPublicKey: strings.Repeat("r", 66),
-				OfflineInboxes: []string{
+				StoreAndForwardServers: []string{
 					"12D3KooWBiB44mFtWYTGstSiDKMsA89ztk9bPTjh57uW74U4XDpa",
 				},
 			},
@@ -740,7 +775,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:            "Ron Swanson",
 				EscrowPublicKey: strings.Repeat("r", 66),
-				OfflineInboxes: []string{
+				StoreAndForwardServers: []string{
 					"asdfaf",
 				},
 			},

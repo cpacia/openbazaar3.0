@@ -103,7 +103,7 @@ func (n *OpenBazaarNode) GetProfile(ctx context.Context, peerID peer.ID, useCach
 	}
 	if len(profile.StoreAndForwardServers) > 0 {
 		err := n.repo.DB().Update(func(tx database.Tx) error {
-			pi := &models.StoreAndForwardServers{
+			pi := models.StoreAndForwardServers{
 				PeerID:      peerID.Pretty(),
 				LastUpdated: time.Now(),
 			}
@@ -198,7 +198,7 @@ func (n *OpenBazaarNode) updateSNFServers() error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if err == nil {
+	if err == nil && updated {
 		n.Publish(nil)
 	}
 	return nil

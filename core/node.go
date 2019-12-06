@@ -97,6 +97,12 @@ type OpenBazaarNode struct {
 	// as our store and forward nodes.
 	storeAndForwardServers []string
 
+	// boostrapPeers holds the peers we use to bootstrap the node.
+	boostrapPeers []peer.ID
+
+	// initialBootstrapChan is closed after the initial IPFS bootstrap completes.
+	initialBootstrapChan chan struct{}
+
 	// shutdown is closed when the node is stopped. Any listening
 	// goroutines can use this to terminate.
 	shutdown chan struct{}
@@ -105,11 +111,12 @@ type OpenBazaarNode struct {
 // Start gets the node up and running and listens for a signal interrupt.
 func (n *OpenBazaarNode) Start() {
 	if !n.ipfsOnlyMode {
+		n.publishHandler()
+		go n.bootstrapIPFS()
 		go n.messenger.Start()
 		go n.followerTracker.Start()
 		go n.orderProcessor.Start()
 		go n.syncMessages()
-		go n.publishHandler()
 		go n.multiwallet.Start()
 		go n.gateway.Serve()
 		go n.notifier.Start()
