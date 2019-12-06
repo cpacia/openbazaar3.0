@@ -82,3 +82,9 @@ message AddressResponseMessage {
     string address = 1;
     string coin    = 2;
 }
+
+message Envelope {
+    bytes senderPubkey = 1;
+    Message message    = 2;
+    bytes signature    = 3;
+}

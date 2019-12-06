@@ -13,4 +13,7 @@ const (
 
 	ProtocolKademliaMainnetTwo = "/openbazaar/kad/2.0.0"
 	ProtocolKademliaTestnetTwo = "/openbazaar/kad/testnet/2.0.0"
+
+	ProtocolStoreAndForwardMainnet = "/openbazaar/store-and-forward/0.1.0"
+	ProtocolStoreAndForwardTestnet = "/openbazaar/store-and-forward/testnet/0.1.0"
 )

@@ -5,15 +5,18 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	storeandforward "github.com/cpacia/go-store-and-forward"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
+	"github.com/libp2p/go-libp2p-crypto"
 	inet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -30,6 +33,8 @@ const (
 type Messenger struct {
 	ns             *NetworkService
 	db             database.Database
+	sk             crypto.PrivKey
+	snfClient      *storeandforward.Client
 	getProfileFunc func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)
 	done           chan struct{}
 	mtx            sync.RWMutex
@@ -37,9 +42,18 @@ type Messenger struct {
 }
 
 // NewMessenger returns a Messenger and starts the retry service.
-func NewMessenger(ns *NetworkService, db database.Database,
+func NewMessenger(ns *NetworkService, db database.Database, sk crypto.PrivKey, snfClient *storeandforward.Client,
 	getProfileFunc func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)) *Messenger {
-	m := &Messenger{ns, db, getProfileFunc, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
+	m := &Messenger{
+		ns:             ns,
+		db:             db,
+		sk:             sk,
+		snfClient:      snfClient,
+		getProfileFunc: getProfileFunc,
+		done:           make(chan struct{}),
+		mtx:            sync.RWMutex{},
+		wg:             sync.WaitGroup{},
+	}
 	return m
 }
 
@@ -168,7 +182,7 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 	ctx, cancel := context.WithTimeout(context.Background(), SendTimeout)
 	defer cancel()
 
-	if err := m.ns.SendMessage(ctx, peerID, message); err != nil {
+	if err := m.ns.SendMessage(ctx, peerID, message); err != nil && m.snfClient != nil {
 		log.Debugf("Failed to connect to peer %s. Sending offline message.", peerID.Pretty())
 		// We failed to deliver directly to the peer. Let's send
 		// using the offline system.
@@ -202,9 +216,29 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 				}
 			}
 		}
-		/*for _, pid := range servers {
-			// TODO: send encrypted message to peer
-		}*/
+
+		cipherText, err := m.prepEncryptedMessage(peerID, message)
+		if err != nil {
+			log.Errorf("Error prepping offline message to %s: %s", peerID.Pretty(), err)
+			return
+		}
+
+		successes := uint32(0)
+		var wg sync.WaitGroup
+		wg.Add(len(servers))
+		for _, server := range servers {
+			go func() {
+				defer wg.Done()
+				err := m.snfClient.SendMessage(context.Background(), peerID, server, nil, cipherText)
+				if err != nil {
+					log.Warningf("Error pushing offline message %s to server %s: %s", message.MessageID, server.Pretty(), err)
+					return
+				}
+				atomic.AddUint32(&successes, 1)
+			}()
+		}
+		wg.Wait()
+		log.Debugf("Message %s sent to %d of %d servers", message.MessageID, successes, len(servers))
 		return
 	}
 	log.Debugf("Message %s direct send successful", message.MessageID)
@@ -253,6 +287,38 @@ func (m *Messenger) retryAllMessages() {
 			}
 		}
 	}
+}
+
+// prepEncryptedMessage signs the message, wraps it in an envelop, and encrypts it.
+func (m *Messenger) prepEncryptedMessage(to peer.ID, message *pb.Message) ([]byte, error) {
+	theirPubkey, err := to.ExtractPublicKey()
+	if err != nil {
+		return nil, err
+	}
+
+	ourPubkeyBytes, err := m.sk.GetPublic().Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	env := pb.Envelope{
+		Message:      message,
+		SenderPubkey: ourPubkeyBytes,
+	}
+
+	ser, err := proto.Marshal(&env)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := m.sk.Sign(ser)
+	if err != nil {
+		return nil, err
+	}
+
+	env.Signature = sig
+
+	return Encrypt(theirPubkey, &env)
 }
 
 // shouldWeRetry calculates an exponential backoff for message retries based

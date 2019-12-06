@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	storeandforward "github.com/cpacia/go-store-and-forward"
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/api"
 	"github.com/cpacia/openbazaar3.0/database"
@@ -285,8 +286,30 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
+	snfServers := make([]peer.ID, 0, len(cfg.StoreAndForwardServers))
+	for _, serverStr := range cfg.StoreAndForwardServers {
+		server, err := peer.IDB58Decode(serverStr)
+		if err != nil {
+			return nil, err
+		}
+		snfServers = append(snfServers, server)
+	}
+
+	// Store and forward client
+	snfProtocol := obnet.ProtocolStoreAndForwardMainnet
+	if cfg.Testnet {
+		snfProtocol = obnet.ProtocolStoreAndForwardTestnet
+	}
+	opts := []storeandforward.Option{
+		storeandforward.Protocols(protocol.ID(snfProtocol)),
+	}
+	snfClient, err := storeandforward.NewClient(ipfsNode.Context(), ipfsNode.PrivateKey, snfServers, ipfsNode.PeerHost, opts...)
+	if err != nil {
+		return nil, err
+	}
+
 	obNode.notifier = notifications.NewNotifier(bus, obRepo.DB(), obNode.gateway.NotifyWebsockets)
-	obNode.messenger = obnet.NewMessenger(service, obRepo.DB(), obNode.GetProfile)
+	obNode.messenger = obnet.NewMessenger(service, obRepo.DB(), ipfsNode.PrivateKey, snfClient, obNode.GetProfile)
 	obNode.orderProcessor = orders.NewOrderProcessor(&orders.Config{
 		Identity:             ipfsNode.Identity,
 		Db:                   obRepo.DB(),

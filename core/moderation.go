@@ -32,16 +32,31 @@ func (n *OpenBazaarNode) SetSelfAsModerator(ctx context.Context, modInfo *models
 		return errors.New("fixed fee must be set when using a fixed fee type")
 	}
 
-	var currencies []string
-	// TODO: check preferred currencies in settings and use them here if they exist.
-	for ct := range n.multiwallet {
-		currencies = append(currencies, ct.CurrencyCode())
-	}
-	for _, cc := range currencies {
-		modInfo.AcceptedCurrencies = append(modInfo.AcceptedCurrencies, normalizeCurrencyCode(cc))
-	}
-
 	err := n.repo.DB().Update(func(tx database.Tx) error {
+		var (
+			prefs      models.UserPreferences
+			currencies []string
+		)
+		err := tx.Read().First(&prefs).Error
+		if err == nil {
+			currencies, err = prefs.PreferredCurrencies()
+			if err != nil {
+				return err
+			}
+			for _, cc := range currencies {
+				modInfo.AcceptedCurrencies = append(modInfo.AcceptedCurrencies, normalizeCurrencyCode(cc))
+			}
+		}
+
+		if len(currencies) == 0 {
+			for ct := range n.multiwallet {
+				currencies = append(currencies, ct.CurrencyCode())
+			}
+			for _, cc := range currencies {
+				modInfo.AcceptedCurrencies = append(modInfo.AcceptedCurrencies, normalizeCurrencyCode(cc))
+			}
+		}
+
 		profile, err := tx.GetProfile()
 		if err != nil {
 			return err
