@@ -172,13 +172,6 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	if cfg.Testnet {
 		snfProtocol = obnet.ProtocolStoreAndForwardTestnet
 	}
-	clientOpts := []storeandforward.Option{
-		storeandforward.Protocols(protocol.ID(snfProtocol)),
-	}
-	snfClient, err := storeandforward.NewClient(ipfsNode.Context(), ipfsNode.PrivateKey, snfServers, ipfsNode.PeerHost, clientOpts...)
-	if err != nil {
-		return nil, err
-	}
 
 	if cfg.EnableSNFServer {
 		snfReplicationPeers := make([]peer.ID, 0, len(cfg.SNFServerPeers))
@@ -330,7 +323,19 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	}
 
 	obNode.notifier = notifications.NewNotifier(bus, obRepo.DB(), obNode.gateway.NotifyWebsockets)
-	obNode.messenger = obnet.NewMessenger(service, obRepo.DB(), ipfsNode.PrivateKey, snfClient, obNode.GetProfile)
+	obNode.messenger, err = obnet.NewMessenger(&obnet.MessengerConfig{
+		Service:        service,
+		SNFServers:     snfServers,
+		Privkey:        ipfsNode.PrivateKey,
+		Context:        ipfsNode.Context(),
+		DB:             obRepo.DB(),
+		Testnet:        cfg.Testnet,
+		GetProfileFunc: obNode.GetProfile,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	obNode.orderProcessor = orders.NewOrderProcessor(&orders.Config{
 		Identity:             ipfsNode.Identity,
 		Db:                   obRepo.DB(),

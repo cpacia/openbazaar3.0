@@ -17,19 +17,39 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	ma "github.com/multiformats/go-multiaddr"
 	"net"
-	"sync"
 	"testing"
 	"time"
 )
 
 func TestMessenger(t *testing.T) {
-	mocknet, err := mocknet.FullMeshLinked(context.Background(), 2)
+	mocknet := mocknet.New(context.Background())
+
+	priv1, addr1, err := newPeer()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	service1 := NewNetworkService(mocknet.Hosts()[0], NewBanManager(nil), true)
-	service2 := NewNetworkService(mocknet.Hosts()[1], NewBanManager(nil), true)
+	h1, err := mocknet.AddPeer(priv1, addr1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	priv2, addr2, err := newPeer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h2, err := mocknet.AddPeer(priv2, addr2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mocknet.LinkAll(); err != nil {
+		t.Fatal(err)
+	}
+
+	service1 := NewNetworkService(h1, NewBanManager(nil), true)
+	service2 := NewNetworkService(h2, NewBanManager(nil), true)
 
 	db1, err := repo.MockDB()
 	if err != nil {
@@ -43,8 +63,26 @@ func TestMessenger(t *testing.T) {
 	}
 	defer db2.Close()
 
-	messenger1 := &Messenger{service1, db1, nil, nil, nil, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
-	messenger2 := &Messenger{service2, db2, nil, nil, nil, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
+	messenger1, err := NewMessenger(&MessengerConfig{
+		Service: service1,
+		DB:      db1,
+		Privkey: priv1,
+		Testnet: true,
+		Context: context.Background(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	messenger2, err := NewMessenger(&MessengerConfig{
+		Service: service2,
+		DB:      db2,
+		Testnet: true,
+		Privkey: priv2,
+		Context: context.Background(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ch := make(chan struct{})
 	service2.RegisterHandler(pb.Message_PING, func(p peer.ID, msg *pb.Message) error {
@@ -119,13 +157,34 @@ func TestMessenger(t *testing.T) {
 }
 
 func TestMessenger_retryAllMessages(t *testing.T) {
-	mocknet, err := mocknet.FullMeshLinked(context.Background(), 2)
+	mocknet := mocknet.New(context.Background())
+
+	priv1, addr1, err := newPeer()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	service1 := NewNetworkService(mocknet.Hosts()[0], NewBanManager(nil), true)
-	service2 := NewNetworkService(mocknet.Hosts()[1], NewBanManager(nil), true)
+	h1, err := mocknet.AddPeer(priv1, addr1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	priv2, addr2, err := newPeer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h2, err := mocknet.AddPeer(priv2, addr2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mocknet.LinkAll(); err != nil {
+		t.Fatal(err)
+	}
+
+	service1 := NewNetworkService(h1, NewBanManager(nil), true)
+	service2 := NewNetworkService(h2, NewBanManager(nil), true)
 
 	db1, err := repo.MockDB()
 	if err != nil {
@@ -133,7 +192,16 @@ func TestMessenger_retryAllMessages(t *testing.T) {
 	}
 	defer db1.Close()
 
-	messenger := &Messenger{service1, db1, nil, nil, nil, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
+	messenger, err := NewMessenger(&MessengerConfig{
+		Service: service1,
+		DB:      db1,
+		Privkey: priv1,
+		Testnet: true,
+		Context: context.Background(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = db1.Update(func(tx database.Tx) error {
 		ping := &pb.Message{
@@ -169,16 +237,34 @@ func TestMessenger_retryAllMessages(t *testing.T) {
 }
 
 func TestMessenger_encryptDecrypt(t *testing.T) {
-	priv, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pid, err := peer.IDFromPrivateKey(priv)
+	mocknet := mocknet.New(context.Background())
+
+	priv1, addr1, err := newPeer()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	messenger := &Messenger{nil, nil, priv, nil, nil, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
+	h1, err := mocknet.AddPeer(priv1, addr1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pid, err := peer.IDFromPrivateKey(priv1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	service1 := NewNetworkService(h1, NewBanManager(nil), true)
+
+	messenger, err := NewMessenger(&MessengerConfig{
+		Service: service1,
+		Privkey: priv1,
+		Testnet: true,
+		Context: context.Background(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	cipherText, err := messenger.prepEncryptedMessage(pid, &pb.Message{
 		MessageType: pb.Message_CHAT,
@@ -205,7 +291,7 @@ func TestMessenger_DownloadMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = storeandforward.NewServer(context.Background(), mocknet.Hosts()[0])
+	_, err = storeandforward.NewServer(context.Background(), mocknet.Hosts()[0], storeandforward.Protocols(ProtocolStoreAndForwardTestnet))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,18 +346,29 @@ func TestMessenger_DownloadMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client1, err := storeandforward.NewClient(context.Background(), priv1, []peer.ID{mocknet.Hosts()[0].ID()}, service1.host)
+	messenger1, err := NewMessenger(&MessengerConfig{
+		Service:    service1,
+		DB:         db1,
+		Privkey:    priv1,
+		SNFServers: []peer.ID{mocknet.Hosts()[0].ID()},
+		Testnet:    true,
+		Context:    context.Background(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	client2, err := storeandforward.NewClient(context.Background(), priv2, []peer.ID{mocknet.Hosts()[0].ID()}, service2.host)
+	messenger2, err := NewMessenger(&MessengerConfig{
+		Service:    service2,
+		DB:         db2,
+		Privkey:    priv2,
+		SNFServers: []peer.ID{mocknet.Hosts()[0].ID()},
+		Testnet:    true,
+		Context:    context.Background(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	messenger1 := &Messenger{service1, db1, priv1, client1, nil, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
-	messenger2 := &Messenger{service2, db2, priv2, client2, nil, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
 
 	// It sucks to need to use a timeout here but we don't currently
 	// have a better way to allow both Clients to authenticate and
@@ -316,7 +413,7 @@ func TestMessenger_DownloadMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	go messenger1.DownloadMessages()
+	go messenger1.downloadMessages()
 
 	select {
 	case <-ch:

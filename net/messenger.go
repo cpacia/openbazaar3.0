@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-crypto"
 	inet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -47,24 +48,49 @@ type Messenger struct {
 	snfClient      *storeandforward.Client
 	getProfileFunc func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)
 	done           chan struct{}
+	bootstrapDone  chan struct{}
 	mtx            sync.RWMutex
 	wg             sync.WaitGroup
 }
 
+// MessengerConfig holds the data needed to construct a new Messenger.
+type MessengerConfig struct {
+	Context        context.Context
+	Service        *NetworkService
+	DB             database.Database
+	Privkey        crypto.PrivKey
+	SNFServers     []peer.ID
+	Testnet        bool
+	GetProfileFunc func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)
+}
+
 // NewMessenger returns a Messenger and starts the retry service.
-func NewMessenger(ns *NetworkService, db database.Database, sk crypto.PrivKey, snfClient *storeandforward.Client,
-	getProfileFunc func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)) *Messenger {
+func NewMessenger(cfg *MessengerConfig) (*Messenger, error) {
+	snfProtocol := ProtocolStoreAndForwardMainnet
+	if cfg.Testnet {
+		snfProtocol = ProtocolStoreAndForwardTestnet
+	}
+	bootstrapDone := make(chan struct{})
+	clientOpts := []storeandforward.Option{
+		storeandforward.Protocols(protocol.ID(snfProtocol)),
+		storeandforward.BootstrapDone(bootstrapDone),
+	}
+	client, err := storeandforward.NewClient(cfg.Context, cfg.Privkey, cfg.SNFServers, cfg.Service.host, clientOpts...)
+	if err != nil {
+		return nil, err
+	}
 	m := &Messenger{
-		ns:             ns,
-		db:             db,
-		sk:             sk,
-		snfClient:      snfClient,
-		getProfileFunc: getProfileFunc,
+		ns:             cfg.Service,
+		db:             cfg.DB,
+		sk:             cfg.Privkey,
+		snfClient:      client,
+		getProfileFunc: cfg.GetProfileFunc,
 		done:           make(chan struct{}),
+		bootstrapDone:  bootstrapDone,
 		mtx:            sync.RWMutex{},
 		wg:             sync.WaitGroup{},
 	}
-	return m
+	return m, nil
 }
 
 // Stop shuts down the Messenger and blocks until all message
@@ -165,6 +191,11 @@ func (m *Messenger) Start() {
 	// Run once at startup
 	go m.retryAllMessages()
 
+	go func() {
+		<-m.bootstrapDone
+		m.downloadMessages()
+	}()
+
 	sub := m.snfClient.SubscribeMessages()
 
 	// Then every RetryInterval
@@ -179,7 +210,7 @@ func (m *Messenger) Start() {
 		case <-retryTicker.C:
 			go m.retryAllMessages()
 		case <-requeryTicker.C:
-			go m.DownloadMessages()
+			go m.downloadMessages()
 		case msg := <-sub.Out:
 			p, pmes, err := m.decryptMessage(msg.EncryptedMessage)
 			if err != nil {
@@ -325,9 +356,9 @@ func (m *Messenger) retryAllMessages() {
 	}
 }
 
-// DownloadMessages will attempt to download messages from the snf client and
+// downloadMessages will attempt to download messages from the snf client and
 // decrypt and process them.
-func (m *Messenger) DownloadMessages() {
+func (m *Messenger) downloadMessages() {
 	if m.snfClient != nil {
 		encryptedMessages, err := m.snfClient.GetMessages(context.Background())
 		if err != nil {

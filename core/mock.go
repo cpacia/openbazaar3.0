@@ -117,7 +117,15 @@ func MockNode() (*OpenBazaarNode, error) {
 		publishChan:          make(chan pubCloser),
 	}
 
-	node.messenger = net.NewMessenger(service, r.DB(), ipfsNode.PrivateKey, nil, node.GetProfile)
+	node.messenger, err = net.NewMessenger(&net.MessengerConfig{
+		Privkey: ipfsNode.PrivateKey,
+		Service: service,
+		DB:      r.DB(),
+		Context: ipfsNode.Context(),
+	})
+	if err != nil {
+		return nil, err
+	}
 	node.orderProcessor = orders.NewOrderProcessor(&orders.Config{
 		Identity:             ipfsNode.Identity,
 		Db:                   r.DB(),
@@ -244,7 +252,15 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			publishChan:          make(chan pubCloser),
 		}
 
-		node.messenger = net.NewMessenger(service, r.DB(), ipfsNode.PrivateKey, nil, node.GetProfile)
+		node.messenger, err = net.NewMessenger(&net.MessengerConfig{
+			Privkey: ipfsNode.PrivateKey,
+			Service: service,
+			DB:      r.DB(),
+			Context: ipfsNode.Context(),
+		})
+		if err != nil {
+			return nil, err
+		}
 		node.orderProcessor = orders.NewOrderProcessor(&orders.Config{
 			Identity:             ipfsNode.Identity,
 			Db:                   r.DB(),
