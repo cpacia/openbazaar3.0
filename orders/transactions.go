@@ -215,10 +215,6 @@ func (op *OrderProcessor) checkForMorePayments() {
 				continue
 			}
 
-			if !shouldWeQuery(timestamp, order.LastCheckForPayments) {
-				continue
-			}
-
 			orderOpen, err := order.OrderOpenMessage()
 			if err != nil {
 				log.Errorf("Error loading orderOpen message %s", err)
@@ -228,6 +224,24 @@ func (op *OrderProcessor) checkForMorePayments() {
 			wallet, err := op.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
 			if err != nil {
 				log.Errorf("Error loading wallet for order %s: %s", order.ID, err)
+				continue
+			}
+			wtx, err := wallet.Begin()
+			if err != nil {
+				log.Errorf("Error saving watch address for order %s: %s", order.ID, err)
+				continue
+			}
+			err = wallet.WatchAddress(wtx, iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CoinType(orderOpen.Payment.Coin)))
+			if err != nil {
+				log.Errorf("Error saving watch address for order %s: %s", order.ID, err)
+				continue
+			}
+			if err := wtx.Commit(); err != nil {
+				log.Errorf("Error saving watch address for order %s: %s", order.ID, err)
+				continue
+			}
+
+			if !shouldWeQuery(timestamp, order.LastCheckForPayments) {
 				continue
 			}
 

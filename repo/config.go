@@ -40,7 +40,7 @@ var (
 	}
 
 	defaultMainnetBootstrapAddrs = []string{
-		"/ip4/138.197.64.140/tcp/4001/p2p/12D3KooWGe3dbYcSrwq759sipd5ymhKffD54pEuk95u98swp9jdX",
+		"/ip4/167.172.126.176/tcp/4001/p2p/12D3KooW9qYCthfQAwxnuW62ZTN8uoKBfRkt5a2bcKJWR5aDwta6",
 	}
 
 	defaultTestnetBootstrapAddrs = []string{
@@ -48,7 +48,7 @@ var (
 	}
 
 	defaultMainnetSNFServers = []string{
-		"12D3KooWGe3dbYcSrwq759sipd5ymhKffD54pEuk95u98swp9jdX",
+		"12D3KooW9qYCthfQAwxnuW62ZTN8uoKBfRkt5a2bcKJWR5aDwta6",
 	}
 
 	defaultTestnetSNFServers = []string{
@@ -175,8 +175,7 @@ func LoadConfig() (*Config, []string, error) {
 	// done.  This prevents the warning on help messages and invalid
 	// options.  Note this should go directly before the return.
 	if configFileError != nil {
-		// TODO: switch to log once log is wired up
-		fmt.Printf("%v", configFileError)
+		log.Errorf("%v", configFileError)
 	}
 	return &cfg, nil, nil
 }
@@ -233,7 +232,7 @@ func createDefaultConfigFile(destinationPath string, testnet bool) error {
 			continue
 		}
 
-		if strings.Contains(line, "snfserver=") {
+		if strings.Contains(line, "snfserver=") && !strings.Contains(line, "enablesnfserver="){
 			if _, err := dest.WriteString(""); err != nil {
 				return err
 			}

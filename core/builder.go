@@ -158,11 +158,54 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
+	// Store and forward client and server
+	snfServers := make([]peer.ID, 0, len(cfg.StoreAndForwardServers))
+	for _, serverStr := range cfg.StoreAndForwardServers {
+		server, err := peer.IDB58Decode(serverStr)
+		if err != nil {
+			return nil, err
+		}
+		snfServers = append(snfServers, server)
+	}
+
+	snfProtocol := obnet.ProtocolStoreAndForwardMainnet
+	if cfg.Testnet {
+		snfProtocol = obnet.ProtocolStoreAndForwardTestnet
+	}
+	clientOpts := []storeandforward.Option{
+		storeandforward.Protocols(protocol.ID(snfProtocol)),
+	}
+	snfClient, err := storeandforward.NewClient(ipfsNode.Context(), ipfsNode.PrivateKey, snfServers, ipfsNode.PeerHost, clientOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.EnableSNFServer {
+		snfReplicationPeers := make([]peer.ID, 0, len(cfg.SNFServerPeers))
+		for _, serverStr := range cfg.SNFServerPeers {
+			server, err := peer.IDB58Decode(serverStr)
+			if err != nil {
+				return nil, err
+			}
+			snfReplicationPeers = append(snfReplicationPeers, server)
+		}
+		serverOpts := []storeandforward.Option{
+			storeandforward.Protocols(protocol.ID(snfProtocol)),
+			storeandforward.ReplicationPeers(snfReplicationPeers...),
+			storeandforward.Datastore(ipfsNode.Repo.Datastore()),
+		}
+		_, err := storeandforward.NewServer(ipfsNode.Context(),ipfsNode.PeerHost, serverOpts...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if cfg.IPFSOnly {
 		return &OpenBazaarNode{
 			repo:         obRepo,
 			ipfsNode:     ipfsNode,
 			ipfsOnlyMode: true,
+			eventBus:     events.NewBus(),
 			shutdown:     make(chan struct{}),
 		}, nil
 	}
@@ -284,47 +327,6 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	obNode.gateway, err = obNode.newHTTPGateway(cfg)
 	if err != nil {
 		return nil, err
-	}
-
-	snfServers := make([]peer.ID, 0, len(cfg.StoreAndForwardServers))
-	for _, serverStr := range cfg.StoreAndForwardServers {
-		server, err := peer.IDB58Decode(serverStr)
-		if err != nil {
-			return nil, err
-		}
-		snfServers = append(snfServers, server)
-	}
-
-	// Store and forward client
-	snfProtocol := obnet.ProtocolStoreAndForwardMainnet
-	if cfg.Testnet {
-		snfProtocol = obnet.ProtocolStoreAndForwardTestnet
-	}
-	clientOpts := []storeandforward.Option{
-		storeandforward.Protocols(protocol.ID(snfProtocol)),
-	}
-	snfClient, err := storeandforward.NewClient(ipfsNode.Context(), ipfsNode.PrivateKey, snfServers, ipfsNode.PeerHost, clientOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	if cfg.EnableSNFServer {
-		snfReplicationPeers := make([]peer.ID, 0, len(cfg.SNFServerPeers))
-		for _, serverStr := range cfg.SNFServerPeers {
-			server, err := peer.IDB58Decode(serverStr)
-			if err != nil {
-				return nil, err
-			}
-			snfReplicationPeers = append(snfReplicationPeers, server)
-		}
-		serverOpts := []storeandforward.Option{
-			storeandforward.Protocols(protocol.ID(snfProtocol)),
-			storeandforward.ReplicationPeers(snfReplicationPeers...),
-		}
-		_, err := storeandforward.NewServer(ipfsNode.Context(),ipfsNode.PeerHost, serverOpts...)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	obNode.notifier = notifications.NewNotifier(bus, obRepo.DB(), obNode.gateway.NotifyWebsockets)
@@ -465,10 +467,21 @@ func (n *OpenBazaarNode) registerHandlers() {
 }
 
 func (n *OpenBazaarNode) listenNetworkEvents() {
+	serverMap := make(map[string]bool)
+	for _, server := range n.storeAndForwardServers {
+		serverMap[server] = true
+	}
+
 	connected := func(_ inet.Network, conn inet.Conn) {
+		if serverMap[conn.RemotePeer().Pretty()] {
+			log.Debugf("Established connection to store and forward server %s", conn.RemotePeer().Pretty())
+		}
 		n.eventBus.Emit(&events.PeerConnected{Peer: conn.RemotePeer()})
 	}
 	disConnected := func(_ inet.Network, conn inet.Conn) {
+		if serverMap[conn.RemotePeer().Pretty()] {
+			log.Debugf("Disconnected from store and forward server %s", conn.RemotePeer().Pretty())
+		}
 		n.eventBus.Emit(&events.PeerDisconnected{Peer: conn.RemotePeer()})
 	}
 
