@@ -200,7 +200,7 @@ func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) err
 		}
 		return nil
 	})
-	if err != nil {
+	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		return err
 	}
 

@@ -266,7 +266,7 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 			return
 		}
 
-		if (len(servers) == 0 || record.LastUpdated.Add(time.Hour*48).After(time.Now())) && m.getProfileFunc != nil {
+		if (len(servers) == 0 || record.LastUpdated.Add(time.Hour*48).Before(time.Now())) && m.getProfileFunc != nil {
 			profile, err := m.getProfileFunc(context.Background(), peerID, true)
 			if err != nil {
 				log.Errorf("Error sending offline message: Can't load profile for peer %s", peerID.Pretty())
@@ -276,6 +276,7 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 				log.Errorf("Error sending offline message: No inbox peers for peer %s", peerID.Pretty())
 				return
 			}
+			servers = []peer.ID{}
 			for _, peerStr := range profile.StoreAndForwardServers {
 				pid, err := peer.IDB58Decode(peerStr)
 				if err == nil {
@@ -365,6 +366,7 @@ func (m *Messenger) downloadMessages() {
 			log.Error("Error downloading messages from snf client: %s", err)
 			return
 		}
+		log.Debugf("Downloaded %d encrypted messages from store-and-forward servers", len(encryptedMessages))
 		type messageWithPeer struct {
 			m *pb.Message
 			p peer.ID

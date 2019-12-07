@@ -51,6 +51,16 @@ func NewNetworkService(host host.Host, banManager *BanManager, useTestnet bool) 
 		banManager:     banManager,
 		protocolID:     protocol.ID(protocolID),
 	}
+
+	disConnected := func(_ inet.Network, conn inet.Conn) {
+		ns.msMtx.Lock()
+		defer ns.msMtx.Unlock()
+		delete(ns.messageSenders, conn.RemotePeer())
+	}
+	notifier := &inet.NotifyBundle{
+		DisconnectedF: disConnected,
+	}
+	host.Network().Notify(notifier)
 	host.SetStreamHandler(ns.protocolID, ns.HandleNewStream)
 	return ns
 }
