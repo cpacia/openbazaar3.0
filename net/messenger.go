@@ -15,16 +15,26 @@ import (
 	"github.com/libp2p/go-libp2p-crypto"
 	inet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// RetryInterval is the interval at which retry sending messages
-// that haven't yet been ACKed.
 const (
+	// RetryInterval is the interval at which retry sending messages
+	// that haven't yet been ACKed.
 	RetryInterval = time.Minute * 1
-	SendTimeout   = time.Second * 5
+
+	// RequeryInterval is the interval at which re-query the store
+	// and forward servers. We don't want to poll to frequently as
+	// we are also subscribed to push messages from them.
+	RequeryInterval = time.Minute * 30
+
+	// SendTimeout is how long to wait while trying to send an online
+	// message before giving up and sending it to the store and forward
+	// servers.
+	SendTimeout = time.Second * 5
 )
 
 // Messenger manages the reliable sending of outgoing messages.
@@ -155,15 +165,41 @@ func (m *Messenger) Start() {
 	// Run once at startup
 	go m.retryAllMessages()
 
+	sub := m.snfClient.SubscribeMessages()
+
 	// Then every RetryInterval
-	ticker := time.NewTicker(RetryInterval)
+	retryTicker := time.NewTicker(RetryInterval)
+	requeryTicker := time.NewTicker(RequeryInterval)
 	for {
 		select {
 		case <-m.done:
-			ticker.Stop()
+			retryTicker.Stop()
+			requeryTicker.Stop()
 			return
-		case <-ticker.C:
+		case <-retryTicker.C:
 			go m.retryAllMessages()
+		case <-requeryTicker.C:
+			go m.DownloadMessages()
+		case msg := <-sub.Out:
+			p, pmes, err := m.decryptMessage(msg.EncryptedMessage)
+			if err != nil {
+				log.Warningf("Decryption failed for message %x", msg.MessageID)
+			}
+			m.ns.handlerMtx.RLock()
+			handler, ok := m.ns.handlers[pmes.MessageType]
+			m.ns.handlerMtx.RUnlock()
+			if ok {
+				if err := handler(p, pmes); err != nil {
+					log.Errorf("Error processing %s message from %s: %s", pmes.MessageType.String(), p, err)
+				}
+			} else {
+				log.Warningf("No handler for decrypted message %s", pmes.MessageID)
+				continue
+			}
+
+			if err := m.snfClient.AckMessage(context.Background(), msg.MessageID); err != nil {
+				log.Errorf("Error acking message with snf servers: %s", err)
+			}
 		}
 	}
 }
@@ -289,6 +325,53 @@ func (m *Messenger) retryAllMessages() {
 	}
 }
 
+// DownloadMessages will attempt to download messages from the snf client and
+// decrypt and process them.
+func (m *Messenger) DownloadMessages() {
+	if m.snfClient != nil {
+		encryptedMessages, err := m.snfClient.GetMessages(context.Background())
+		if err != nil {
+			log.Error("Error downloading messages from snf client: %s", err)
+			return
+		}
+		type messageWithPeer struct {
+			m *pb.Message
+			p peer.ID
+		}
+		messages := make([]messageWithPeer, 0, len(encryptedMessages))
+		for _, enc := range encryptedMessages {
+			p, m, err := m.decryptMessage(enc.EncryptedMessage)
+			if err != nil {
+				log.Warningf("Decryption failed for message %x", enc.MessageID)
+				continue
+			}
+			messages = append(messages, messageWithPeer{m: m, p: p})
+		}
+		// Sort the messages by sequence so we process the lowest sequences
+		// first.
+		sort.SliceStable(messages, func(i, j int) bool {
+			return messages[i].m.Sequence < messages[j].m.Sequence
+		})
+		for _, mwp := range messages {
+			m.ns.handlerMtx.RLock()
+			handler, ok := m.ns.handlers[mwp.m.MessageType]
+			m.ns.handlerMtx.RUnlock()
+			if ok {
+				if err := handler(mwp.p, mwp.m); err != nil {
+					log.Errorf("Error processing %s message from %s: %s", mwp.m.MessageType.String(), mwp.p, err)
+				}
+			} else {
+				log.Warningf("No handler for decrypted message %s", mwp.m.MessageID)
+			}
+		}
+		for _, enc := range encryptedMessages {
+			if err := m.snfClient.AckMessage(context.Background(), enc.MessageID); err != nil {
+				log.Errorf("Error acking message with snf servers: %s", err)
+			}
+		}
+	}
+}
+
 // prepEncryptedMessage signs the message, wraps it in an envelop, and encrypts it.
 func (m *Messenger) prepEncryptedMessage(to peer.ID, message *pb.Message) ([]byte, error) {
 	theirPubkey, err := to.ExtractPublicKey()
@@ -319,6 +402,37 @@ func (m *Messenger) prepEncryptedMessage(to peer.ID, message *pb.Message) ([]byt
 	env.Signature = sig
 
 	return Encrypt(theirPubkey, &env)
+}
+
+// decryptMessage will attempt to decrypt, validate, and unmarshal the message.
+func (m *Messenger) decryptMessage(cipherText []byte) (peer.ID, *pb.Message, error) {
+	env := new(pb.Envelope)
+	if err := Decrypt(m.sk, cipherText, env); err != nil {
+		return peer.ID(""), nil, err
+	}
+
+	senderPubkey, err := crypto.UnmarshalPublicKey(env.SenderPubkey)
+	if err != nil {
+		return peer.ID(""), nil, err
+	}
+
+	sig := env.Signature
+	env.Signature = nil
+	ser, err := proto.Marshal(env)
+	if err != nil {
+		return peer.ID(""), nil, err
+	}
+
+	valid, err := senderPubkey.Verify(ser, sig)
+	if err != nil {
+		return peer.ID(""), nil, err
+	}
+	if !valid {
+		return peer.ID(""), nil, errors.New("invalid signature")
+	}
+
+	pid, err := peer.IDFromPublicKey(senderPubkey)
+	return pid, env.Message, err
 }
 
 // shouldWeRetry calculates an exponential backoff for message retries based

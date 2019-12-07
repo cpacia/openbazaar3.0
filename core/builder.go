@@ -194,7 +194,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 			storeandforward.ReplicationPeers(snfReplicationPeers...),
 			storeandforward.Datastore(ipfsNode.Repo.Datastore()),
 		}
-		_, err := storeandforward.NewServer(ipfsNode.Context(),ipfsNode.PeerHost, serverOpts...)
+		_, err := storeandforward.NewServer(ipfsNode.Context(), ipfsNode.PeerHost, serverOpts...)
 		if err != nil {
 			return nil, err
 		}

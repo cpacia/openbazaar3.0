@@ -232,7 +232,7 @@ func createDefaultConfigFile(destinationPath string, testnet bool) error {
 			continue
 		}
 
-		if strings.Contains(line, "snfserver=") && !strings.Contains(line, "enablesnfserver="){
+		if strings.Contains(line, "snfserver=") && !strings.Contains(line, "enablesnfserver=") {
 			if _, err := dest.WriteString(""); err != nil {
 				return err
 			}

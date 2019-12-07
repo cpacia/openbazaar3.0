@@ -349,6 +349,7 @@ func (n *OpenBazaarNode) bootstrapIPFS() error {
 		return err
 	}
 	close(n.initialBootstrapChan)
+	go n.messenger.DownloadMessages()
 	return nil
 }
 
