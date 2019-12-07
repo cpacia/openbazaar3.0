@@ -2,6 +2,9 @@ package net
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
+	storeandforward "github.com/cpacia/go-store-and-forward"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
@@ -9,10 +12,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	ma "github.com/multiformats/go-multiaddr"
+	"net"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestMessenger(t *testing.T) {
@@ -80,11 +87,23 @@ func TestMessenger(t *testing.T) {
 		t.Error("Failed to delete ACKed message from the db")
 	}
 
-	<-done
-	<-ch
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timed out")
+	}
+	select {
+	case <-ch:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timed out")
+	}
 
 	messenger2.SendACK("abc", service1.host.ID())
-	<-ch2
+	select {
+	case <-ch2:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timed out")
+	}
 
 	var messages2 []models.OutgoingMessage
 	err = messenger1.db.View(func(tx database.Tx) error {
@@ -142,5 +161,191 @@ func TestMessenger_retryAllMessages(t *testing.T) {
 		return nil
 	})
 
-	<-ch
+	select {
+	case <-ch:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timed out waiting for ping")
+	}
+}
+
+func TestMessenger_encryptDecrypt(t *testing.T) {
+	priv, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid, err := peer.IDFromPrivateKey(priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	messenger := &Messenger{nil, nil, priv, nil, nil, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
+
+	cipherText, err := messenger.prepEncryptedMessage(pid, &pb.Message{
+		MessageType: pb.Message_CHAT,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	retPeer, pmes, err := messenger.decryptMessage(cipherText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retPeer != pid {
+		t.Errorf("Expected peer ID %s, got %s", pid, retPeer)
+	}
+
+	if pmes.MessageType != pb.Message_CHAT {
+		t.Errorf("Expected message type %s, got %s", pb.Message_CHAT, pmes.MessageType)
+	}
+}
+
+func TestMessenger_DownloadMessages(t *testing.T) {
+	mocknet, err := mocknet.FullMeshLinked(context.Background(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = storeandforward.NewServer(context.Background(), mocknet.Hosts()[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	priv1, addr1, err := newPeer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	peer1ID, err := peer.IDFromPrivateKey(priv1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h1, err := mocknet.AddPeer(priv1, addr1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	priv2, addr2, err := newPeer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h2, err := mocknet.AddPeer(priv2, addr2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	service1 := NewNetworkService(h1, NewBanManager(nil), true)
+	ch := make(chan struct{})
+	service1.RegisterHandler(pb.Message_CHAT, func(p peer.ID, msg *pb.Message) error {
+		ch <- struct{}{}
+		return nil
+	})
+
+	service2 := NewNetworkService(h2, NewBanManager(nil), true)
+
+	db1, err := repo.MockDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db1.Close()
+
+	db2, err := repo.MockDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db2.Close()
+
+	if err := mocknet.LinkAll(); err != nil {
+		t.Fatal(err)
+	}
+
+	client1, err := storeandforward.NewClient(context.Background(), priv1, []peer.ID{mocknet.Hosts()[0].ID()}, service1.host)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client2, err := storeandforward.NewClient(context.Background(), priv2, []peer.ID{mocknet.Hosts()[0].ID()}, service2.host)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	messenger1 := &Messenger{service1, db1, priv1, client1, nil, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
+	messenger2 := &Messenger{service2, db2, priv2, client2, nil, make(chan struct{}), sync.RWMutex{}, sync.WaitGroup{}}
+
+	// It sucks to need to use a timeout here but we don't currently
+	// have a better way to allow both Clients to authenticate and
+	// register with the server.
+	time.Sleep(time.Second)
+
+	if err := mocknet.UnlinkPeers(h1.ID(), h2.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mocknet.UnlinkPeers(h1.ID(), mocknet.Hosts()[0].ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan struct{})
+	err = db2.Update(func(tx database.Tx) error {
+		rec := models.StoreAndForwardServers{
+			PeerID:      peer1ID.Pretty(),
+			LastUpdated: time.Now(),
+		}
+		if err := rec.PutServers([]string{mocknet.Hosts()[0].ID().Pretty()}); err != nil {
+			return err
+		}
+		err := tx.Save(&rec)
+		if err != nil {
+			return err
+		}
+
+		return messenger2.ReliablySendMessage(tx, peer1ID, &pb.Message{MessageType: pb.Message_CHAT}, done)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timed out")
+	}
+
+	if err := mocknet.LinkAll(); err != nil {
+		t.Fatal(err)
+	}
+
+	go messenger1.DownloadMessages()
+
+	select {
+	case <-ch:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timed out waiting for message")
+	}
+}
+
+var blackholeIP6 = net.ParseIP("100::")
+
+func newPeer() (crypto.PrivKey, ma.Multiaddr, error) {
+	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		return nil, nil, err
+	}
+	id, err := peer.IDFromPrivateKey(sk)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	suffix := id
+	if len(id) > 8 {
+		suffix = id[len(id)-8:]
+	}
+	ip := append(net.IP{}, blackholeIP6...)
+	copy(ip[net.IPv6len-len(suffix):], suffix)
+	a, err := ma.NewMultiaddr(fmt.Sprintf("/ip6/%s/tcp/4242", ip))
+	if err != nil {
+		return nil, nil, err
+	}
+	return sk, a, nil
 }
