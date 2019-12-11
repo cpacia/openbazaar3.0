@@ -856,13 +856,17 @@ func (w *MockWallet) SubscribeBlocks() <-chan iwallet.BlockInfo {
 //
 // Note a database transaction is used here. Same rules of Commit() and
 // Rollback() apply.
-func (w *MockWallet) WatchAddress(tx iwallet.Tx, addr iwallet.Address) error {
+func (w *MockWallet) WatchAddress(tx iwallet.Tx, addrs ...iwallet.Address) error {
 	dbtx := tx.(*dbTx)
 	dbtx.onCommit = func() error {
 		w.mtx.Lock()
 		defer w.mtx.Unlock()
-
-		w.watchedAddrs[addr] = struct{}{}
+		for _, addr := range addrs {
+			_, ok := w.addrs[addr]
+			if !ok {
+				w.watchedAddrs[addr] = struct{}{}
+			}
+		}
 		return nil
 	}
 	return nil

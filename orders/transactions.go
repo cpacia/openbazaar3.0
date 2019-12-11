@@ -208,6 +208,8 @@ func (op *OrderProcessor) checkForMorePayments() {
 			return err
 		}
 
+		addressesToWatch := make(map[iwallet.CoinType][]iwallet.Address)
+
 		for _, order := range orders {
 			timestamp, err := order.Timestamp()
 			if err != nil {
@@ -221,31 +223,25 @@ func (op *OrderProcessor) checkForMorePayments() {
 				continue
 			}
 
-			wallet, err := op.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
-			if err != nil {
-				log.Errorf("Error loading wallet for order %s: %s", order.ID, err)
-				continue
-			}
-			wtx, err := wallet.Begin()
-			if err != nil {
-				log.Errorf("Error saving watch address for order %s: %s", order.ID, err)
-				continue
-			}
-			err = wallet.WatchAddress(wtx, iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CoinType(orderOpen.Payment.Coin)))
-			if err != nil {
-				log.Errorf("Error saving watch address for order %s: %s", order.ID, err)
-				continue
-			}
-			if err := wtx.Commit(); err != nil {
-				log.Errorf("Error saving watch address for order %s: %s", order.ID, err)
-				continue
+			addrs, ok := addressesToWatch[iwallet.CoinType(orderOpen.Payment.Coin)]
+			if ok {
+				addrs = append(addrs, iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CoinType(orderOpen.Payment.Coin)))
+				addressesToWatch[iwallet.CoinType(orderOpen.Payment.Coin)] = addrs
+			} else {
+				addressesToWatch[iwallet.CoinType(orderOpen.Payment.Coin)] = []iwallet.Address{iwallet.NewAddress(orderOpen.Payment.Address, iwallet.CoinType(orderOpen.Payment.Coin))}
 			}
 
 			if !shouldWeQuery(timestamp, order.LastCheckForPayments) {
 				continue
 			}
 
-			_, ok := wallet.(iwallet.WalletScanner)
+			wallet, err := op.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+			if err != nil {
+				log.Errorf("Error loading wallet for order %s: %s", order.ID, err)
+				continue
+			}
+
+			_, ok = wallet.(iwallet.WalletScanner)
 			if ok && !order.RescanPerformed {
 				earliest, ok := rescanMap[iwallet.CoinType(orderOpen.Payment.Coin)]
 				if !ok || timestamp.Before(earliest) {
@@ -351,6 +347,27 @@ func (op *OrderProcessor) checkForMorePayments() {
 			order.LastCheckForPayments = time.Now()
 			if err := dbtx.Save(&order); err != nil {
 				log.Errorf("Error updating LastCheckForPayments: %s", err)
+			}
+		}
+
+		for ct, addrs := range addressesToWatch {
+			wallet, err := op.multiwallet.WalletForCurrencyCode(ct.CurrencyCode())
+			if err != nil {
+				return err
+			}
+			wtx, err := wallet.Begin()
+			if err != nil {
+				log.Errorf("Error saving watch address for coin %s: %s", ct.CurrencyCode(), err)
+				continue
+			}
+			err = wallet.WatchAddress(wtx, addrs...)
+			if err != nil {
+				log.Errorf("Error saving watch address for coin %s: %s", ct.CurrencyCode(), err)
+				continue
+			}
+			if err := wtx.Commit(); err != nil {
+				log.Errorf("Error saving watch address for coin %s: %s", ct.CurrencyCode(), err)
+				continue
 			}
 		}
 

@@ -65,7 +65,7 @@ func TestOpenBazaarNode_CancelOrder(t *testing.T) {
 	// to resend the order upon reconnection.
 	network.Nodes()[0].networkService.Close()
 	go network.Nodes()[1].syncMessages()
-	if err := network.ipfsNet.DisconnectPeers(network.Nodes()[0].Identity(), network.Nodes()[1].Identity()); err != nil {
+	if err := network.ipfsNet.UnlinkPeers(network.Nodes()[0].Identity(), network.Nodes()[1].Identity()); err != nil {
 		t.Fatal(err)
 	}
 	orderID2, paymentAddress, paymentAmount, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
@@ -108,7 +108,7 @@ func TestOpenBazaarNode_CancelOrder(t *testing.T) {
 	network.Nodes()[0].networkService = net.NewNetworkService(network.Nodes()[0].ipfsNode.PeerHost, net.NewBanManager(nil), true)
 	network.Nodes()[0].registerHandlers()
 
-	if _, err := network.ipfsNet.ConnectPeers(network.Nodes()[0].Identity(), network.Nodes()[1].Identity()); err != nil {
+	if _, err := network.ipfsNet.LinkPeers(network.Nodes()[0].Identity(), network.Nodes()[1].Identity()); err != nil {
 		t.Fatal(err)
 	}
 
