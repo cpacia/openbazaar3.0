@@ -20,13 +20,8 @@ const (
 	EphemeralPublicKeyBytes = 32
 )
 
-var (
-	// Nacl box decryption failed
-	BoxDecryptionError = errors.New("failed to decrypt curve25519")
-
-	// Satic salt used in the hdkf
-	Salt = []byte("OpenBazaar Encryption Algorithm")
-)
+// Nacl box decryption failed
+var BoxDecryptionError = errors.New("failed to decrypt curve25519")
 
 // Encrypt encrypt a message with the public key. Currently only ed25519
 // is supported.

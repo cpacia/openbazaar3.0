@@ -90,12 +90,14 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	select {
 	case <-orderSub0.Out():
+		orderSub0.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 
 	select {
 	case <-orderAckSub0.Out():
+		orderAckSub0.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -149,11 +151,13 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	select {
 	case <-rejectSub.Out():
+		rejectSub.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 	select {
 	case <-rejectAck.Out():
+		rejectAck.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -184,6 +188,16 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	}
 
 	// Address request direct order that is funded.
+	orderSub0, err = network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orderAckSub0, err = network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	orderID, paymentAddress, paymentAmount, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
 	if err != nil {
 		t.Fatal(err)
@@ -191,12 +205,14 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	select {
 	case <-orderSub0.Out():
+		orderSub0.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 
 	select {
 	case <-orderAckSub0.Out():
+		orderAckSub0.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -288,6 +304,11 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
+	txSub1, err = network.Nodes()[1].eventBus.Subscribe(&events.TransactionReceived{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	rejectSub, err = network.Nodes()[1].eventBus.Subscribe(&events.OrderDeclined{})
 	if err != nil {
 		t.Fatal(err)
@@ -315,23 +336,27 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	select {
 	case <-rejectSub.Out():
+		rejectSub.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 	select {
 	case <-rejectAck.Out():
+		rejectAck.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 
 	select {
 	case <-refundSub.Out():
+		refundSub.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 
 	select {
 	case <-txSub1.Out():
+		txSub1.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -358,6 +383,16 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 	}
 
 	// Moderated order that is funded.
+	orderSub0, err = network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orderAckSub0, err = network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	purchase.Moderator = network.Nodes()[2].Identity().Pretty()
 	orderID, paymentAddress, paymentAmount, err = network.Nodes()[1].PurchaseListing(context.Background(), purchase)
 	if err != nil {
@@ -366,12 +401,14 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	select {
 	case <-orderSub0.Out():
+		orderSub0.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 
 	select {
 	case <-orderAckSub0.Out():
+		orderAckSub0.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -399,16 +436,33 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	select {
 	case <-fundingSub2.Out():
+		fundingSub2.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 	select {
 	case <-fundingSub3.Out():
+		fundingSub3.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 
 	txSub3, err := network.Nodes()[1].eventBus.Subscribe(&events.TransactionReceived{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rejectSub, err = network.Nodes()[1].eventBus.Subscribe(&events.OrderDeclined{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rejectAck, err = network.Nodes()[0].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	refundSub, err = network.Nodes()[1].eventBus.Subscribe(&events.Refund{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -425,17 +479,20 @@ func TestOpenBazaarNode_RejectOrder(t *testing.T) {
 
 	select {
 	case <-rejectSub.Out():
+		rejectSub.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 	select {
 	case <-rejectAck.Out():
+		rejectAck.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
 
 	select {
 	case <-refundSub.Out():
+		refundSub.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
