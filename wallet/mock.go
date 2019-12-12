@@ -1106,7 +1106,7 @@ func NewMockExchangeRates() (*ExchangeRateProvider, error) {
 		},
 	)
 
-	provider := NewExchangeRateProvider(nil, []string{"https://testrates.com/api"})
+	provider := NewExchangeRateProvider([]string{"https://testrates.com/api"})
 	obAPI, ok := provider.providers[0].(*openBazaarAPI)
 	if !ok {
 		return nil, errors.New("type assertion failure provider 0 is not openBazaarAPI")

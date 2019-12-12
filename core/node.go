@@ -156,7 +156,9 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 	go func() {
 		n.ipfsNode.Context().Done()
 		n.ipfsNode.Close()
-		n.eventBus.Emit(&events.IPFSShutdown{})
+		time.AfterFunc(time.Second, func() {
+			n.eventBus.Emit(&events.IPFSShutdown{})
+		})
 		close(stop)
 	}()
 	select {

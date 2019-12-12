@@ -20,6 +20,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
+	"github.com/cpacia/proxyclient"
 	iwallet "github.com/cpacia/wallet-interface"
 	bitswap "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-datastore"
@@ -57,6 +58,17 @@ var (
 
 // NewNode constructs and returns an OpenBazaarNode using the given cfg.
 func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
+	if cfg.Tor {
+		socks5Addr, err := obnet.Socks5ProxyAddress(cfg.Proxy)
+		if err != nil {
+			return nil, err
+		}
+		if err := proxyclient.SetProxy(socks5Addr); err != nil {
+			return nil, err
+		}
+		log.Notice("Outgoing connections using Tor exclusively")
+	}
+
 	obRepo, err := repo.NewRepo(cfg.DataDir)
 	if err != nil {
 		return nil, err
@@ -88,6 +100,11 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	// If swarm addresses were provided in the config, override the IPFS defaults.
 	if len(cfg.SwarmAddrs) > 0 {
 		ipfsConfig.Addresses.Swarm = cfg.SwarmAddrs
+	}
+
+	if cfg.Tor && !cfg.Onion {
+		log.Notice("Incoming connections disabled for Tor mode")
+		ipfsConfig.Addresses.Swarm = []string{}
 	}
 
 	// If a gateway address was provided in the config, override the IPFS default.
@@ -236,6 +253,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	for i, ew := range cfg.EnabledWallets {
 		enabledWallets[i] = iwallet.CoinType(strings.ToUpper(ew))
 	}
+
 	mw, err := multiwallet.NewMultiwallet(&multiwallet.Config{
 		DataDir:    cfg.DataDir,
 		UseTestnet: cfg.Testnet,
@@ -288,7 +306,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		}
 	}
 
-	erp := wallet.NewExchangeRateProvider(nil, cfg.ExchangeRateProviders) // TODO: wire up proxy
+	erp := wallet.NewExchangeRateProvider(cfg.ExchangeRateProviders)
 
 	for _, server := range cfg.StoreAndForwardServers {
 		_, err := peer.IDB58Decode(server)

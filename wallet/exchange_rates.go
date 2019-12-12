@@ -5,11 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/cpacia/proxyclient"
 	iwallet "github.com/cpacia/wallet-interface"
-	"golang.org/x/net/proxy"
 	"math"
 	"math/big"
-	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -35,18 +34,15 @@ type ExchangeRateProvider struct {
 // NewExchangeRateProvider returns a new ExchangeRateProvider. If proxy is
 // not nil the http connection to the API server will use the proxy. The
 // provided sources must conform to the BitcoinAverage API specification.
-func NewExchangeRateProvider(dialer proxy.Dialer, sources []string) *ExchangeRateProvider {
+func NewExchangeRateProvider(sources []string) *ExchangeRateProvider {
 	e := ExchangeRateProvider{
 		cache:       make(map[models.CurrencyCode]map[models.CurrencyCode]iwallet.Amount),
 		lastQueried: make(map[models.CurrencyCode]time.Time),
 		mtx:         sync.Mutex{},
 	}
-	dial := net.Dial
-	if dialer != nil {
-		dial = dialer.Dial
-	}
-	tbTransport := &http.Transport{Dial: dial}
-	client := &http.Client{Transport: tbTransport, Timeout: time.Minute}
+
+	client := proxyclient.NewHttpClient()
+	client.Timeout = time.Minute
 
 	for _, src := range sources {
 		e.providers = append(e.providers, &openBazaarAPI{src, client})

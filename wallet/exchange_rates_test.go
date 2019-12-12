@@ -47,7 +47,7 @@ func TestExchangeRateProvider_GetRate(t *testing.T) {
 		},
 	)
 
-	provider := NewExchangeRateProvider(nil, []string{"https://ticker.openbazaar.org/api"})
+	provider := NewExchangeRateProvider([]string{"https://ticker.openbazaar.org/api"})
 	obAPI, ok := provider.providers[0].(*openBazaarAPI)
 	if !ok {
 		t.Fatal("Type assertion failure provider 0 is not openBazaarAPI")
@@ -88,7 +88,7 @@ func TestExchangeRateProvider_GetAllRates(t *testing.T) {
 		},
 	)
 
-	provider := NewExchangeRateProvider(nil, []string{"https://ticker.openbazaar.org/api"})
+	provider := NewExchangeRateProvider([]string{"https://ticker.openbazaar.org/api"})
 	obAPI, ok := provider.providers[0].(*openBazaarAPI)
 	if !ok {
 		t.Fatal("Type assertion failure provider 0 is not openBazaarAPI")
