@@ -11,6 +11,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
+	"github.com/cretz/bine/tor"
 	"github.com/ipfs/go-ipfs/core"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
@@ -100,6 +101,9 @@ type OpenBazaarNode struct {
 	// boostrapPeers holds the peers we use to bootstrap the node.
 	boostrapPeers []peer.ID
 
+	// embeddedTorClient is used when running in Tor or DualStack mode.
+	embeddedTorClient *tor.Tor
+
 	// initialBootstrapChan is closed after the initial IPFS bootstrap completes.
 	initialBootstrapChan chan struct{}
 
@@ -148,6 +152,9 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 		if n.notifier != nil {
 			n.notifier.Stop()
 		}
+	}
+	if n.embeddedTorClient != nil {
+		n.embeddedTorClient.Close()
 	}
 	close(n.shutdown)
 	n.repo.Close()

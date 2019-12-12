@@ -18,7 +18,7 @@ import (
 const DefaultCurrencyDivisibility uint32 = 1e8
 
 var (
-	log = logging.MustGetLogger("MODELS")
+	log = logging.MustGetLogger("MDLS")
 
 	ErrCurrencyValueInsufficientPrecision = errors.New("unable to accurately represent value as int64")
 	ErrCurrencyValueNegativeRate          = errors.New("conversion rate must be greater than zero")

@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-var log = logging.MustGetLogger("api")
+var log = logging.MustGetLogger("API")
 
 type GatewayConfig struct {
 	Listener   net.Listener

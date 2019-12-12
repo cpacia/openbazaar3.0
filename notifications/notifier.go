@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var log = logging.MustGetLogger("notif")
+var log = logging.MustGetLogger("NOTF")
 
 type notificationWrapper struct {
 	Notification interface{} `json:"notification"`

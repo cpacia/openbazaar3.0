@@ -65,29 +65,30 @@ var (
 // NewNode constructs and returns an OpenBazaarNode using the given cfg.
 func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	var (
-		transportOpt libp2p.Option
-		onionID      string
+		embeddedTorClient *tor.Tor
+		transportOpt      libp2p.Option
+		onionID           string
+		err               error
 	)
 	if cfg.Tor || cfg.DualStack {
-		libp2p.DefaultTransports = nil
-		embeddedTor, err := tor.Start(nil, &tor.StartConf{ProcessCreator: libtor.Creator, DataDir: path.Join(cfg.DataDir, "tor")})
+		log.Notice("Starting embedded Tor client")
+		embeddedTorClient, err = tor.Start(nil, &tor.StartConf{ProcessCreator: libtor.Creator, DataDir: path.Join(cfg.DataDir, "tor")})
 		if err != nil {
 			return nil, fmt.Errorf("failed to start tor: %v", err)
 		}
-		dialer, err := embeddedTor.Dialer(context.Background(), nil)
+		dialer, err := embeddedTorClient.Dialer(context.Background(), nil)
 		if err != nil {
 			return nil, err
 		}
-		onion, err := embeddedTor.Listen(ctx, &tor.ListenConf{RemotePorts: []int{4003}})
+		onion, err := embeddedTorClient.Listen(ctx, &tor.ListenConf{RemotePorts: []int{9003}})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create onion service: %v", err)
 		}
 		onionID = onion.ID
-		proxyclient.SetProxy(dialer)
-
+		if cfg.Tor {
+			proxyclient.SetProxy(dialer)
+		}
 		transportOpt = libp2p.Transport(oniontransport.NewOnionTransportC(dialer, onion, cfg.DualStack))
-
-		log.Notice("Using embedded Tor client")
 	}
 
 	obRepo, err := repo.NewRepo(cfg.DataDir)
@@ -123,9 +124,9 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		ipfsConfig.Addresses.Swarm = cfg.SwarmAddrs
 	}
 	if cfg.Tor {
-		ipfsConfig.Addresses.Swarm = []string{fmt.Sprintf("/onion/%s:4003", onionID)}
+		ipfsConfig.Addresses.Swarm = []string{fmt.Sprintf("/onion/%s:9003", onionID)}
 	} else if cfg.DualStack {
-		ipfsConfig.Addresses.Swarm = append(ipfsConfig.Addresses.Swarm, fmt.Sprintf("/onion/%s:4003", onionID))
+		ipfsConfig.Addresses.Swarm = append(ipfsConfig.Addresses.Swarm, fmt.Sprintf("/onion/%s:9003", onionID))
 	}
 
 	// If a gateway address was provided in the config, override the IPFS default.
@@ -263,11 +264,12 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	if cfg.IPFSOnly {
 		return &OpenBazaarNode{
-			repo:         obRepo,
-			ipfsNode:     ipfsNode,
-			ipfsOnlyMode: true,
-			eventBus:     events.NewBus(),
-			shutdown:     make(chan struct{}),
+			repo:              obRepo,
+			ipfsNode:          ipfsNode,
+			ipfsOnlyMode:      true,
+			embeddedTorClient: embeddedTorClient,
+			eventBus:          events.NewBus(),
+			shutdown:          make(chan struct{}),
 		}, nil
 	}
 
@@ -381,6 +383,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		exchangeRates:          erp,
 		testnet:                cfg.Testnet,
 		storeAndForwardServers: cfg.StoreAndForwardServers,
+		embeddedTorClient:      embeddedTorClient,
 		publishChan:            make(chan pubCloser),
 		initialBootstrapChan:   make(chan struct{}),
 		shutdown:               make(chan struct{}),
