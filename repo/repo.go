@@ -383,6 +383,7 @@ func mustDefaultConfig() *config.Config {
 		Gateway: []string{"/ip4/127.0.0.1/tcp/4002"},
 	}
 	conf.Bootstrap = config.BootstrapPeerStrings(bootstrapPeers)
+	conf.Swarm.EnableAutoRelay = true
 
 	return conf
 }

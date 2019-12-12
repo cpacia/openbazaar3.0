@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/cpacia/go-libtor"
+	oniontransport "github.com/cpacia/go-onion-transport"
 	storeandforward "github.com/cpacia/go-store-and-forward"
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/api"
@@ -22,6 +24,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/wallet"
 	"github.com/cpacia/proxyclient"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/cretz/bine/tor"
 	bitswap "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-datastore"
 	config "github.com/ipfs/go-ipfs-config"
@@ -29,14 +32,17 @@ import (
 	"github.com/ipfs/go-ipfs/core/corehttp"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	"github.com/jinzhu/gorm"
+	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
 	inet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-protocol"
 	"github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p-routing"
+	lcfg "github.com/libp2p/go-libp2p/config"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/op/go-logging"
@@ -58,15 +64,30 @@ var (
 
 // NewNode constructs and returns an OpenBazaarNode using the given cfg.
 func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
-	if cfg.Tor {
-		socks5Addr, err := obnet.Socks5ProxyAddress(cfg.Proxy)
+	var (
+		transportOpt libp2p.Option
+		onionID      string
+	)
+	if cfg.Tor || cfg.DualStack {
+		libp2p.DefaultTransports = nil
+		embeddedTor, err := tor.Start(nil, &tor.StartConf{ProcessCreator: libtor.Creator, DataDir: path.Join(cfg.DataDir, "tor")})
+		if err != nil {
+			return nil, fmt.Errorf("failed to start tor: %v", err)
+		}
+		dialer, err := embeddedTor.Dialer(context.Background(), nil)
 		if err != nil {
 			return nil, err
 		}
-		if err := proxyclient.SetProxy(socks5Addr); err != nil {
-			return nil, err
+		onion, err := embeddedTor.Listen(ctx, &tor.ListenConf{RemotePorts: []int{4003}})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create onion service: %v", err)
 		}
-		log.Notice("Outgoing connections using Tor exclusively")
+		onionID = onion.ID
+		proxyclient.SetProxy(dialer)
+
+		transportOpt = libp2p.Transport(oniontransport.NewOnionTransportC(dialer, onion, cfg.DualStack))
+
+		log.Notice("Using embedded Tor client")
 	}
 
 	obRepo, err := repo.NewRepo(cfg.DataDir)
@@ -101,15 +122,19 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	if len(cfg.SwarmAddrs) > 0 {
 		ipfsConfig.Addresses.Swarm = cfg.SwarmAddrs
 	}
-
-	if cfg.Tor && !cfg.Onion {
-		log.Notice("Incoming connections disabled for Tor mode")
-		ipfsConfig.Addresses.Swarm = []string{}
+	if cfg.Tor {
+		ipfsConfig.Addresses.Swarm = []string{fmt.Sprintf("/onion/%s:4003", onionID)}
+	} else if cfg.DualStack {
+		ipfsConfig.Addresses.Swarm = append(ipfsConfig.Addresses.Swarm, fmt.Sprintf("/onion/%s:4003", onionID))
 	}
 
 	// If a gateway address was provided in the config, override the IPFS default.
 	if cfg.GatewayAddr != "" {
 		ipfsConfig.Addresses.Gateway = config.Strings{cfg.GatewayAddr}
+	}
+
+	if cfg.Tor {
+		ipfsConfig.Swarm.DisableNatPortMap = true
 	}
 
 	// Profiling
@@ -156,6 +181,31 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		ProtocolDHT = obnet.ProtocolKademliaTestnetTwo
 	}
 
+	constructPeerHost := func(ctx context.Context, id peer.ID, ps peerstore.Peerstore, options ...libp2p.Option) (host.Host, error) {
+		pkey := ps.PrivKey(id)
+		if pkey == nil {
+			return nil, fmt.Errorf("missing private key for node ID: %s", id.Pretty())
+		}
+		options = append([]libp2p.Option{libp2p.Identity(pkey), libp2p.Peerstore(ps)}, options...)
+
+		config := &lcfg.Config{}
+		if err := config.Apply(options...); err != nil {
+			return nil, err
+		}
+
+		if cfg.Tor {
+			config.Transports = []lcfg.TptC{}
+			if err := transportOpt(config); err != nil {
+				return nil, err
+			}
+		} else if cfg.DualStack {
+			if err := transportOpt(config); err != nil {
+				return nil, err
+			}
+		}
+		return config.NewNode(ctx)
+	}
+
 	// New IPFS build config
 	ncfg := &core.BuildCfg{
 		Repo:      ipfsRepo,
@@ -167,6 +217,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 			"pubsub": true,
 		},
 		Routing: constructRouting,
+		Host:    constructPeerHost,
 	}
 
 	// Construct IPFS node.

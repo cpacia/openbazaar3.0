@@ -90,12 +90,7 @@ type Config struct {
 	UserAgentComment       string   `long:"uacomment" description:"Comment to add to the user agent."`
 	EnableSNFServer        bool     `long:"enablesnfserver" description:"Enable this node to operate as a store-and-forward server."`
 	SNFServerPeers         []string `long:"snfpeer" description:"A list of other store-and-forward servers to replicate snf data to. This is only used when the snf server is enabled."`
-	Proxy                  string   `long:"proxy" description:"Connect via SOCKS5 proxy (eg. 127.0.0.1:9050)"`
 	Tor                    bool     `long:"tor" description:"Proxy all incoming and outgoing connections over the Tor network exclusively."`
-	Onion                  bool     `long:"onion" description:"Attempt to listen for incoming connections exclusively over the Tor network."`
-	OnionUser              string   `long:"onionuser" description:"The Tor control port username if required."`
-	OnionPass              string   `long:"onionpass" description:"The Tor control port password if required."`
-	TorControl             string   `long:"torcontrol" description:"Connect to the Tor control on this address (eg. 127.0.0.1:9051)"`
 	DualStack              bool     `long:"dualstack" description:"Listen for incoming connections via Tor in addition to via the clearnet. This mode is not private."`
 }
 
@@ -168,9 +163,6 @@ func LoadConfig() (*Config, []string, error) {
 
 	if cfg.Tor && cfg.DualStack {
 		return nil, nil, errors.New("tor and dualstack options cannot be used together")
-	}
-	if cfg.Onion && cfg.DualStack {
-		return nil, nil, errors.New("onion and dualstack options cannot be used together")
 	}
 
 	cfg.DataDir = cleanAndExpandPath(cfg.DataDir)
