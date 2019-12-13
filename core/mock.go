@@ -86,7 +86,7 @@ func MockNode() (*OpenBazaarNode, error) {
 	ratingKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbRatingKey.Value)
 
 	bus := events.NewBus()
-	tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost.Network())
+	tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost)
 
 	w := wallet.NewMockWallet()
 	w.SetEventBus(bus)
@@ -221,7 +221,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		ratingKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), dbRatingKey.Value)
 
 		bus := events.NewBus()
-		tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost.Network())
+		tracker := NewFollowerTracker(r, bus, ipfsNode.PeerHost)
 
 		w := wn.Wallets()[i]
 		w.SetEventBus(bus)

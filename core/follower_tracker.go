@@ -7,7 +7,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/jinzhu/gorm"
-	inet "github.com/libp2p/go-libp2p-net"
+	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"os"
 	"sync"
@@ -40,13 +40,13 @@ type FollowerTracker struct {
 	mtx        sync.RWMutex
 	repo       *repo.Repo
 	bus        events.Bus
-	net        inet.Network
+	host       host.Host
 	shutdown   chan struct{}
 }
 
 // NewFollowerTracker returns a new FollowerTracker which has
 // not yet been started.
-func NewFollowerTracker(repo *repo.Repo, bus events.Bus, net inet.Network) *FollowerTracker {
+func NewFollowerTracker(repo *repo.Repo, bus events.Bus, host host.Host) *FollowerTracker {
 	return &FollowerTracker{
 		connected:  make(map[peer.ID]time.Time),
 		triedPeers: make(map[peer.ID]time.Time),
@@ -56,7 +56,7 @@ func NewFollowerTracker(repo *repo.Repo, bus events.Bus, net inet.Network) *Foll
 		mtx:        sync.RWMutex{},
 		repo:       repo,
 		bus:        bus,
-		net:        net,
+		host:        host,
 	}
 }
 
@@ -89,7 +89,7 @@ func (t *FollowerTracker) Start() {
 		t.followers[pid] = true
 	}
 
-	for _, peer := range t.net.Peers() {
+	for _, peer := range t.host.Network().Peers() {
 		if _, ok := t.followers[peer]; ok {
 			t.connected[peer] = time.Now()
 			log.Debugf("Connected to follower %s", peer.Pretty())
@@ -171,6 +171,7 @@ func (t *FollowerTracker) listenEvents() {
 			t.mtx.Lock()
 			if _, ok := t.followers[notif.Peer]; ok {
 				t.connected[notif.Peer] = time.Now()
+				t.host.ConnManager().Protect(notif.Peer, "follower")
 				log.Debugf("Connected to follower %s", notif.Peer.Pretty())
 			}
 			t.mtx.Unlock()
@@ -245,7 +246,7 @@ func (t *FollowerTracker) listenEvents() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 			go func() {
 				defer cancel()
-				t.net.DialPeer(ctx, pid)
+				t.host.Network().DialPeer(ctx, pid)
 			}()
 
 		case <-t.shutdown:
@@ -259,10 +260,11 @@ func (t *FollowerTracker) tryConnectFollowers() {
 	// Loop through the network peers to see if we don't have
 	// any marked as connected.
 	t.mtx.Lock()
-	for _, peer := range t.net.Peers() {
+	for _, peer := range t.host.Network().Peers() {
 		if _, ok := t.followers[peer]; ok {
 			if _, aok := t.connected[peer]; !aok {
 				t.connected[peer] = time.Now()
+				t.host.ConnManager().Protect(peer, "follower")
 				log.Debugf("Connected to follower %s", peer.Pretty())
 			}
 		}

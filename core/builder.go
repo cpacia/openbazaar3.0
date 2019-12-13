@@ -300,7 +300,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	}
 	bm := obnet.NewBanManager(blocked)
 	service := obnet.NewNetworkService(ipfsNode.PeerHost, bm, cfg.Testnet)
-	tracker := NewFollowerTracker(obRepo, bus, ipfsNode.PeerHost.Network())
+	tracker := NewFollowerTracker(obRepo, bus, ipfsNode.PeerHost)
 
 	enabledWallets := make([]iwallet.CoinType, len(cfg.EnabledWallets))
 	for i, ew := range cfg.EnabledWallets {
