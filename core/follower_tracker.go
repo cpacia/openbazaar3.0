@@ -56,7 +56,7 @@ func NewFollowerTracker(repo *repo.Repo, bus events.Bus, host host.Host) *Follow
 		mtx:        sync.RWMutex{},
 		repo:       repo,
 		bus:        bus,
-		host:        host,
+		host:       host,
 	}
 }
 

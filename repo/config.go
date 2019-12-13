@@ -27,7 +27,6 @@ const (
 var (
 	DefaultHomeDir    = AppDataDir("openbazaar", false)
 	defaultConfigFile = filepath.Join(DefaultHomeDir, defaultConfigFilename)
-	defaultLogDir     = filepath.Join(DefaultHomeDir, defaultLogDirname)
 
 	fileLogFormat   = logging.MustStringFormatter(`%{time:2006-01-02 T15:04:05.000} [%{level}] [%{module}] %{message}`)
 	stdoutLogFormat = logging.MustStringFormatter(`%{color:reset}%{color}%{time:15:04:05} [%{level}] [%{module}] %{message}`)
@@ -111,7 +110,6 @@ func LoadConfig() (*Config, []string, error) {
 	cfg := Config{
 		DataDir:    DefaultHomeDir,
 		ConfigFile: defaultConfigFile,
-		LogDir:     defaultLogDir,
 	}
 
 	// Pre-parse the command line options to see if an alternative config
@@ -166,6 +164,9 @@ func LoadConfig() (*Config, []string, error) {
 	}
 
 	cfg.DataDir = cleanAndExpandPath(cfg.DataDir)
+	if cfg.LogDir == "" {
+		cfg.LogDir = cleanAndExpandPath(path.Join(cfg.DataDir, "logs"))
+	}
 
 	// Validate profile port number
 	if cfg.Profile != "" {

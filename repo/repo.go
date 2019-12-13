@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -102,9 +104,9 @@ func (r *Repo) writeVersion(version int) error {
 
 func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 	var (
-		dbIdentity, dbEscrowKey, dbRatingKey, dbBip44Key, dbMnemonic *models.Key
-		err                                                          error
-		isNew                                                        bool
+		dbIdentity, dbEscrowKey, dbRatingKey, dbBip44Key, dbMnemonic, torKey *models.Key
+		err                                                                  error
+		isNew                                                                bool
 	)
 	ipfsDir := path.Join(dataDir, "ipfs")
 	if !fsrepo.IsInitialized(ipfsDir) {
@@ -144,6 +146,11 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 			return nil, err
 		}
 
+		_, torPriv, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			return nil, err
+		}
+
 		dbIdentity = &models.Key{
 			Name:  "identity",
 			Value: identityKey,
@@ -163,6 +170,10 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 		dbMnemonic = &models.Key{
 			Name:  "mnemonic",
 			Value: []byte(mnemonicSeed),
+		}
+		torKey = &models.Key{
+			Name:  "tor",
+			Value: torPriv.Seed(),
 		}
 		if err := cleanIdentityFromConfig(ipfsDir); err != nil {
 			return nil, err
@@ -210,6 +221,11 @@ func newRepo(dataDir, mnemonicSeed string, inMemoryDB bool) (*Repo, error) {
 		}
 		if dbMnemonic != nil {
 			if err := tx.Save(&dbMnemonic); err != nil {
+				return err
+			}
+		}
+		if torKey != nil {
+			if err := tx.Save(&torKey); err != nil {
 				return err
 			}
 		}

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -64,11 +65,19 @@ var (
 
 // NewNode constructs and returns an OpenBazaarNode using the given cfg.
 func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
+	obRepo, err := repo.NewRepo(cfg.DataDir)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := obRepo.WriteUserAgent(cfg.UserAgentComment); err != nil {
+		return nil, err
+	}
+
 	var (
 		embeddedTorClient *tor.Tor
 		transportOpt      libp2p.Option
 		onionID           string
-		err               error
 	)
 	if cfg.Tor || cfg.DualStack {
 		log.Notice("Starting embedded Tor client")
@@ -80,7 +89,22 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		onion, err := embeddedTorClient.Listen(ctx, &tor.ListenConf{RemotePorts: []int{9003}})
+
+		var torKey models.Key
+		err = obRepo.DB().View(func(tx database.Tx) error {
+			return tx.Read().Where("name = ?", "tor").First(&torKey).Error
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		key := ed25519.NewKeyFromSeed(torKey.Value)
+
+		onion, err := embeddedTorClient.Listen(ctx, &tor.ListenConf{
+			RemotePorts: []int{9003},
+			Version3:    true,
+			Key:         key,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create onion service: %v", err)
 		}
@@ -89,15 +113,6 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 			proxyclient.SetProxy(dialer)
 		}
 		transportOpt = libp2p.Transport(oniontransport.NewOnionTransportC(dialer, onion, cfg.DualStack))
-	}
-
-	obRepo, err := repo.NewRepo(cfg.DataDir)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := obRepo.WriteUserAgent(cfg.UserAgentComment); err != nil {
-		return nil, err
 	}
 
 	// Load the IPFS Repo
@@ -124,9 +139,9 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		ipfsConfig.Addresses.Swarm = cfg.SwarmAddrs
 	}
 	if cfg.Tor {
-		ipfsConfig.Addresses.Swarm = []string{fmt.Sprintf("/onion/%s:9003", onionID)}
+		ipfsConfig.Addresses.Swarm = []string{fmt.Sprintf("/onion3/%s:9003", onionID)}
 	} else if cfg.DualStack {
-		ipfsConfig.Addresses.Swarm = append(ipfsConfig.Addresses.Swarm, fmt.Sprintf("/onion/%s:9003", onionID))
+		ipfsConfig.Addresses.Swarm = append(ipfsConfig.Addresses.Swarm, fmt.Sprintf("/onion3/%s:9003", onionID))
 	}
 
 	// If a gateway address was provided in the config, override the IPFS default.
