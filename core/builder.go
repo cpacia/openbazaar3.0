@@ -322,13 +322,13 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		enabledWallets[i] = iwallet.CoinType(strings.ToUpper(ew))
 	}
 
-	mw, err := multiwallet.NewMultiwallet(&multiwallet.Config{
-		DataDir:    cfg.DataDir,
-		UseTestnet: cfg.Testnet,
-		LogLevel:   cfg.LogLevel,
-		LogDir:     cfg.LogDir,
-		Wallets:    enabledWallets,
-	})
+	opts := []multiwallet.Option{
+		multiwallet.DataDir(cfg.DataDir),
+		multiwallet.LogDir(cfg.LogDir),
+		multiwallet.Wallets(enabledWallets),
+		multiwallet.LogLevel(repo.LogLevelMap[strings.ToLower(cfg.LogLevel)]),
+	}
+	mw, err := multiwallet.NewMultiwallet(opts...)
 	if err != nil {
 		return nil, err
 	}

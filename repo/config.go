@@ -30,7 +30,7 @@ var (
 
 	fileLogFormat   = logging.MustStringFormatter(`%{time:2006-01-02 T15:04:05.000} [%{level}] [%{module}] %{message}`)
 	stdoutLogFormat = logging.MustStringFormatter(`%{color:reset}%{color}%{time:15:04:05} [%{level}] [%{module}] %{message}`)
-	logLevelMap     = map[string]logging.Level{
+	LogLevelMap     = map[string]logging.Level{
 		"debug":    logging.DEBUG,
 		"info":     logging.INFO,
 		"notice":   logging.NOTICE,
@@ -161,6 +161,11 @@ func LoadConfig() (*Config, []string, error) {
 
 	if cfg.Tor && cfg.DualStack {
 		return nil, nil, errors.New("tor and dualstack options cannot be used together")
+	}
+
+	_, ok := LogLevelMap[strings.ToLower(cfg.LogLevel)]
+	if !ok {
+		return nil, nil, errors.New("invalid log level")
 	}
 
 	cfg.DataDir = cleanAndExpandPath(cfg.DataDir)
@@ -309,5 +314,5 @@ func setupLogging(logDir, logLevel string) {
 	} else {
 		logging.SetBackend(backendStdoutFormatter)
 	}
-	logging.SetLevel(logLevelMap[strings.ToLower(logLevel)], "")
+	logging.SetLevel(LogLevelMap[strings.ToLower(logLevel)], "")
 }
