@@ -93,10 +93,8 @@ func TestWalletHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
-				ret := map[string]walletAddressResponse{
-					"MCK": {
-						Address: "abc",
-					},
+				ret := map[string]string{
+					"MCK": "abc",
 				}
 				return marshalAndSanitizeJSON(ret)
 			},

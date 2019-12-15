@@ -82,7 +82,7 @@ func (g *Gateway) handleGETAddress(w http.ResponseWriter, r *http.Request) {
 	coinType := mux.Vars(r)["coinType"]
 
 	if coinType == "" {
-		ret := make(map[string]interface{})
+		ret := make(map[string]string)
 
 		for ct, wallet := range g.node.Multiwallet() {
 			address, err := wallet.CurrentAddress()
@@ -91,9 +91,7 @@ func (g *Gateway) handleGETAddress(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			ret[ct.CurrencyCode()] = walletAddressResponse{
-				Address: address.String(),
-			}
+			ret[ct.CurrencyCode()] = address.String()
 		}
 
 		sanitizedJSONResponse(w, ret)
