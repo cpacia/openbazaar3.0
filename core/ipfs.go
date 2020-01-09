@@ -239,6 +239,11 @@ func (n *OpenBazaarNode) resolveOnce(ctx context.Context, p peer.ID, timeout tim
 		}
 	}()
 
+	// NOTE: the Namesys.Resolve function will attempt to resolve a domain using the DNS system if a domain
+	// is passed in to this function. For privacy purposes this would blow user's anonymity if using Tor
+	// as DNS queries will no go through Tor. However the way this function is written only peerIDs and NOT
+	// domain names are passed in via the parameters. However if we ever want to change this we need to
+	// consider anonymity here.
 	pth, err := n.ipfsNode.Namesys.Resolve(ctx, "/ipns/"+p.Pretty(), nameopts.DhtRecordCount(quorum))
 	if err != nil {
 		return nil, err
