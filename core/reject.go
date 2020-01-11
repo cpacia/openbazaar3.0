@@ -42,7 +42,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 	reject := pb.OrderReject{
 		Type:      pb.OrderReject_USER_REJECT,
 		Reason:    reason,
-		Signature: signature,
+		MessageSignature: signature,
 	}
 
 	rejectAny, err := ptypes.MarshalAny(&reject)

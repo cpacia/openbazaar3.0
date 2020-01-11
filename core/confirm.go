@@ -53,7 +53,7 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 		}
 
 		confirmation := &pb.OrderConfirmation{
-			Signature: signature,
+			MessageSignature: signature,
 		}
 
 		var (

@@ -40,7 +40,7 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 	signature, err := priv.Sign([]byte(orderID))
 
 	confirmMsg := &pb.OrderConfirmation{
-		Signature: signature,
+		MessageSignature: signature,
 	}
 
 	confirmationAny, err := ptypes.MarshalAny(confirmMsg)

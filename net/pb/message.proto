@@ -59,14 +59,15 @@ message OrderMessage {
         ORDER_REJECT       = 1;
         ORDER_CANCEL       = 2;
         ORDER_CONFIRMATION = 3;
-        ORDER_FULFILLMENT  = 4;
-        ORDER_COMPLETE     = 5;
-        DISPUTE_OPEN       = 6;
-        DISPUTE_UPDATE     = 7;
-        DISPUTE_CLOSE      = 8;
-        REFUND             = 9;
-        PAYMENT_SENT       = 10;
-        PAYMENT_FINALIZED  = 11;
+        RATING_SIGNATURES  = 4;
+        ORDER_FULFILLMENT  = 5;
+        ORDER_COMPLETE     = 6;
+        DISPUTE_OPEN       = 7;
+        DISPUTE_UPDATE     = 8;
+        DISPUTE_CLOSE      = 9;
+        REFUND             = 10;
+        PAYMENT_SENT       = 11;
+        PAYMENT_FINALIZED  = 12;
     }
 }
 

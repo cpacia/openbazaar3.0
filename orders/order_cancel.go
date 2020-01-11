@@ -50,7 +50,7 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 		return nil, err
 	}
 
-	valid, err := buyerPubkey.Verify([]byte(order.ID.String()), orderCancel.Signature)
+	valid, err := buyerPubkey.Verify([]byte(order.ID.String()), orderCancel.MessageSignature)
 	if err != nil {
 		return nil, err
 	}

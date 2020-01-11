@@ -132,7 +132,7 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 	if err != nil {
 		return
 	}
-	orderOpen.Signature = sig
+	orderOpen.MessageSignature = sig
 
 	// Build message
 	orderAny, err := ptypes.MarshalAny(orderOpen)

@@ -773,7 +773,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				order.Payment.Method = pb.OrderOpen_Payment_DIRECT
 				order.Payment.Address = addr.String()
 
-				order.Signature = nil
+				order.MessageSignature = nil
 				ser, err := proto.Marshal(order)
 				if err != nil {
 					return nil, err
@@ -782,7 +782,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				order.Signature = sig
+				order.MessageSignature = sig
 				return order, nil
 			},
 			valid: true,
@@ -1046,7 +1046,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				order.Payment.Address = address.String()
 				order.Payment.Script = hex.EncodeToString(script)
 
-				order.Signature = nil
+				order.MessageSignature = nil
 				ser, err := proto.Marshal(order)
 				if err != nil {
 					return nil, err
@@ -1055,7 +1055,7 @@ func Test_validateOrderOpen(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				order.Signature = sig
+				order.MessageSignature = sig
 				return order, nil
 			},
 			valid: true,

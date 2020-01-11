@@ -156,7 +156,7 @@ func NewOrder() (*pb.OrderOpen, crypto.PrivKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	order.Signature = orderSig
+	order.MessageSignature = orderSig
 
 	return order, privkey, nil
 }

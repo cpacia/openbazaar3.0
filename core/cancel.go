@@ -48,7 +48,7 @@ func (n *OpenBazaarNode) CancelOrder(orderID models.OrderID, done chan struct{})
 	}
 
 	cancel := &pb.OrderCancel{
-		Signature: signature,
+		MessageSignature: signature,
 	}
 
 	wTx, txid, err := n.releaseFromCancelableAddress(&order)

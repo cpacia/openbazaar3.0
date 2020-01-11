@@ -453,10 +453,10 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	if err := deepCopyProto(&orderCopy, order); err != nil {
 		return err
 	}
-	sigOrder := make([]byte, len(orderCopy.Signature))
-	copy(sigOrder, orderCopy.Signature)
+	sigOrder := make([]byte, len(orderCopy.MessageSignature))
+	copy(sigOrder, orderCopy.MessageSignature)
 
-	orderCopy.Signature = nil
+	orderCopy.MessageSignature = nil
 	ser, err := proto.Marshal(&orderCopy)
 	if err != nil {
 		return err

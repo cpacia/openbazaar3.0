@@ -44,7 +44,7 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 	rejectMsg := &pb.OrderReject{
 		Type:      pb.OrderReject_VALIDATION_ERROR,
 		Reason:    "Test",
-		Signature: sig,
+		MessageSignature: sig,
 	}
 
 	rejectAny, err := ptypes.MarshalAny(rejectMsg)

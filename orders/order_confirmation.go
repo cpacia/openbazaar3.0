@@ -51,7 +51,7 @@ func (op *OrderProcessor) processOrderConfirmationMessage(dbtx database.Tx, orde
 		return nil, err
 	}
 
-	valid, err := vendorPubkey.Verify([]byte(order.ID.String()), orderConfirmation.Signature)
+	valid, err := vendorPubkey.Verify([]byte(order.ID.String()), orderConfirmation.MessageSignature)
 	if err != nil {
 		return nil, err
 	}

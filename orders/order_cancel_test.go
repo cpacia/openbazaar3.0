@@ -44,7 +44,7 @@ func TestOrderProcessor_processCancelMessage(t *testing.T) {
 	}
 
 	cancelMsg := &pb.OrderCancel{
-		Signature: sig,
+		MessageSignature: sig,
 	}
 
 	cancelAny, err := ptypes.MarshalAny(cancelMsg)

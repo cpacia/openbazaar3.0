@@ -148,6 +148,8 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 	case models.RoleVendor:
 		if funded {
 			dbtx.RegisterCommitHook(func() {
+				// TODO: send rating signature message to buyer
+
 				op.bus.Emit(&events.OrderFunded{
 					BuyerHandle: orderOpen.BuyerID.Handle,
 					BuyerID:     orderOpen.BuyerID.PeerID,
