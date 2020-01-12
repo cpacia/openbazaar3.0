@@ -119,7 +119,7 @@ func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
 
 	for i, test := range tests {
 		order := &models.Order{}
-		orderOpen, _, err := factory.NewOrder()
+		orderOpen, err := factory.NewOrder()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -371,7 +371,7 @@ func TestCalculateOrderTotal(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i, test := range tests {
-		order, _, err := factory.NewOrder()
+		order, err := factory.NewOrder()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -419,7 +419,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Normal listing
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -433,7 +433,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Listing slug not found
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -448,7 +448,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Listing serialization not found
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -463,7 +463,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Listing doesn't exist for order item
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -478,7 +478,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Nil listings
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -493,7 +493,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Nil payment
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -508,7 +508,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Nil items
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -523,7 +523,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Nil timestamp
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -538,7 +538,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Nil buyerID
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -553,7 +553,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Nil ratings
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -568,7 +568,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Nil item
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -583,7 +583,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Cryptocurrency listing with "" address.
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -608,7 +608,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Item quantity zero
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -623,7 +623,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Too few options
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -638,7 +638,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Option does not exist
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -653,7 +653,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Option value does not exist
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -668,7 +668,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Shipping option does not exist
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -683,7 +683,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Shipping option service does not exist
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -698,7 +698,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Order payment amount is ""
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -713,7 +713,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Order payment amount is not base 10
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -728,7 +728,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Order payment address is ""
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -743,7 +743,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Unknown payment coin
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -758,7 +758,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Correct direct payment address
 			order: func() (*pb.OrderOpen, error) {
-				order, privKey, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -773,16 +773,6 @@ func Test_validateOrderOpen(t *testing.T) {
 				order.Payment.Method = pb.OrderOpen_Payment_DIRECT
 				order.Payment.Address = addr.String()
 
-				order.MessageSignature = nil
-				ser, err := proto.Marshal(order)
-				if err != nil {
-					return nil, err
-				}
-				sig, err := privKey.Sign(ser)
-				if err != nil {
-					return nil, err
-				}
-				order.MessageSignature = sig
 				return order, nil
 			},
 			valid: true,
@@ -793,7 +783,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Direct payment address where wallet doesn't have the key
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -809,7 +799,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Escrow release fee is ""
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -824,7 +814,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Escrow release fee is invalid
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -839,7 +829,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Invalid moderator peer ID
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -855,7 +845,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Moderator key is nil
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -872,7 +862,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Moderator key is invalid
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -889,7 +879,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Invalid rating keys
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -904,7 +894,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Buyer ID pubkeys is nil
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -919,7 +909,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Invalid buyer ID pubkey
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -934,7 +924,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// ID pubkey does not match peer ID
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -949,7 +939,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Invalid escrow pubkey
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -964,7 +954,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Signature parse error
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -979,7 +969,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Signature invalid
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -994,7 +984,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Valid moderated address
 			order: func() (*pb.OrderOpen, error) {
-				order, privKey, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -1046,16 +1036,6 @@ func Test_validateOrderOpen(t *testing.T) {
 				order.Payment.Address = address.String()
 				order.Payment.Script = hex.EncodeToString(script)
 
-				order.MessageSignature = nil
-				ser, err := proto.Marshal(order)
-				if err != nil {
-					return nil, err
-				}
-				sig, err := privKey.Sign(ser)
-				if err != nil {
-					return nil, err
-				}
-				order.MessageSignature = sig
 				return order, nil
 			},
 			valid: true,
@@ -1066,7 +1046,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Invalid moderated address
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -1089,7 +1069,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Invalid moderated script
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -1150,7 +1130,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Valid cancelable address
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -1200,7 +1180,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Invalid cancelable script
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -1250,7 +1230,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Invalid cancelable script
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -1267,7 +1247,7 @@ func Test_validateOrderOpen(t *testing.T) {
 		{
 			// Invalid orderID
 			order: func() (*pb.OrderOpen, error) {
-				order, _, err := factory.NewOrder()
+				order, err := factory.NewOrder()
 				if err != nil {
 					return nil, err
 				}
@@ -1292,7 +1272,7 @@ func Test_validateOrderOpen(t *testing.T) {
 			continue
 		}
 		processor.db.Update(func(tx database.Tx) error {
-			err := processor.validateOrderOpen(tx, order, models.OrderID(orderHash.B58String()), models.RoleBuyer)
+			err := processor.validateOrderOpen(tx, order, models.OrderID(orderHash.B58String()), models.RoleVendor)
 			if test.valid && err != nil {
 				t.Errorf("Test %d failed when it should not have: %s", i, err)
 			} else if !test.valid && err == nil {

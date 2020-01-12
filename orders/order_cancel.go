@@ -1,7 +1,6 @@
 package orders
 
 import (
-	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -9,7 +8,6 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
-	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
@@ -43,20 +41,6 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 	}
 	if err != nil {
 		return nil, err
-	}
-
-	buyerPubkey, err := crypto.UnmarshalPublicKey(orderOpen.BuyerID.Pubkeys.Identity)
-	if err != nil {
-		return nil, err
-	}
-
-	valid, err := buyerPubkey.Verify([]byte(order.ID.String()), orderCancel.MessageSignature)
-	if err != nil {
-		return nil, err
-	}
-
-	if !valid {
-		return nil, errors.New("invalid buyer signature on order cancel")
 	}
 
 	wallet, err := op.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)

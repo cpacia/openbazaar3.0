@@ -23,7 +23,7 @@ func TestOrderProcessor_processCancelMessage(t *testing.T) {
 	}
 	defer teardown()
 
-	priv, pub, err := crypto.GenerateEd25519Key(rand.Reader)
+	_, pub, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,14 +38,7 @@ func TestOrderProcessor_processCancelMessage(t *testing.T) {
 
 	orderID := "1234"
 
-	sig, err := priv.Sign([]byte(orderID))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cancelMsg := &pb.OrderCancel{
-		MessageSignature: sig,
-	}
+	cancelMsg := &pb.OrderCancel{}
 
 	cancelAny, err := ptypes.MarshalAny(cancelMsg)
 	if err != nil {

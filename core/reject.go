@@ -34,15 +34,9 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 		return err
 	}
 
-	signature, err := n.ipfsNode.PrivateKey.Sign([]byte(order.ID.String()))
-	if err != nil {
-		return err
-	}
-
 	reject := pb.OrderReject{
-		Type:      pb.OrderReject_USER_REJECT,
-		Reason:    reason,
-		MessageSignature: signature,
+		Type:             pb.OrderReject_USER_REJECT,
+		Reason:           reason,
 	}
 
 	rejectAny, err := ptypes.MarshalAny(&reject)
@@ -54,6 +48,10 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 		OrderID:     order.ID.String(),
 		MessageType: npb.OrderMessage_ORDER_REJECT,
 		Message:     rejectAny,
+	}
+
+	if err := n.signOrderMessage(&resp); err != nil {
+		return err
 	}
 
 	payload, err := ptypes.MarshalAny(&resp)
@@ -88,8 +86,12 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 				return err
 			}
 
-			wTx, refundMsg, err := buildRefundMessage(&order, wallet, n.escrowMasterKey)
+			wTx, refundMsg, err := n.buildRefundMessage(&order, wallet)
 			if err != nil {
+				return err
+			}
+
+			if err := n.signOrderMessage(refundMsg); err != nil {
 				return err
 			}
 

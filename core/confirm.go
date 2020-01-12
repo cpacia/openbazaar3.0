@@ -47,18 +47,10 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 			return err
 		}
 
-		signature, err := n.ipfsNode.PrivateKey.Sign([]byte(order.ID.String()))
-		if err != nil {
-			return err
-		}
-
-		confirmation := &pb.OrderConfirmation{
-			MessageSignature: signature,
-		}
-
 		var (
-			wTx  iwallet.Tx
-			txid iwallet.TransactionID
+			wTx          iwallet.Tx
+			txid         iwallet.TransactionID
+			confirmation = &pb.OrderConfirmation{}
 		)
 		if orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
 			wTx, txid, err = n.releaseFromCancelableAddress(&order)
@@ -73,13 +65,17 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 			return err
 		}
 
-		resp := npb.OrderMessage{
+		resp := &npb.OrderMessage{
 			OrderID:     order.ID.String(),
 			MessageType: npb.OrderMessage_ORDER_CONFIRMATION,
 			Message:     confirmAny,
 		}
 
-		payload, err := ptypes.MarshalAny(&resp)
+		if err := n.signOrderMessage(resp); err != nil {
+			return err
+		}
+
+		payload, err := ptypes.MarshalAny(resp)
 		if err != nil {
 			return err
 		}
@@ -88,7 +84,7 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 		message.MessageType = npb.Message_ORDER
 		message.Payload = payload
 
-		_, err = n.orderProcessor.ProcessMessage(tx, vendor, &resp)
+		_, err = n.orderProcessor.ProcessMessage(tx, vendor, resp)
 		if err != nil {
 			if orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
 				wTx.Rollback()

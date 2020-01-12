@@ -185,6 +185,10 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 
 // processMessage passes the message off to the appropriate handler.
 func (op *OrderProcessor) processMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (event interface{}, err error) {
+	err = verifyOrderMessageSignature(peer, message)
+	if err != nil {
+		return nil, err
+	}
 	switch message.MessageType {
 	case npb.OrderMessage_ORDER_OPEN:
 		event, err = op.processOrderOpenMessage(dbtx, order, peer, message)
@@ -218,4 +222,26 @@ func isDuplicate(message proto.Message, serialized []byte) (bool, error) {
 	}
 
 	return bytes.Equal([]byte(ser), serialized), nil
+}
+
+func verifyOrderMessageSignature(peer peer.ID, message *npb.OrderMessage) error {
+	peerPubkey, err := peer.ExtractPublicKey()
+
+	msgCpy := *message
+	msgCpy.Signature = nil
+
+	ser, err := proto.Marshal(&msgCpy)
+	if err != nil {
+		return err
+	}
+
+	valid, err := peerPubkey.Verify(ser, message.Signature)
+	if err != nil {
+		return err
+	}
+
+	if !valid {
+		return errors.New("invalid signature")
+	}
+	return nil
 }

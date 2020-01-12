@@ -123,17 +123,6 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 		}
 	}
 
-	// Sign order
-	ser, err := proto.Marshal(orderOpen)
-	if err != nil {
-		return
-	}
-	sig, err := n.ipfsNode.PrivateKey.Sign(ser)
-	if err != nil {
-		return
-	}
-	orderOpen.MessageSignature = sig
-
 	// Build message
 	orderAny, err := ptypes.MarshalAny(orderOpen)
 	if err != nil {
@@ -146,13 +135,18 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 		return
 	}
 
-	order := npb.OrderMessage{
+	order := &npb.OrderMessage{
 		OrderID:     orderHash.B58String(),
 		MessageType: npb.OrderMessage_ORDER_OPEN,
 		Message:     orderAny,
 	}
 
-	payload, err := ptypes.MarshalAny(&order)
+	err = n.signOrderMessage(order)
+	if err != nil {
+		return
+	}
+
+	payload, err := ptypes.MarshalAny(order)
 	if err != nil {
 		return
 	}
@@ -163,7 +157,7 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 
 	// Process the order, add the watched address to the wallet and send the message.
 	err = n.repo.DB().Update(func(tx database.Tx) error {
-		if _, err = n.orderProcessor.ProcessMessage(tx, vendorPeerID, &order); err != nil {
+		if _, err = n.orderProcessor.ProcessMessage(tx, n.Identity(), order); err != nil {
 			return err
 		}
 

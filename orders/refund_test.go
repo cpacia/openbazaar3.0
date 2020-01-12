@@ -65,6 +65,10 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pubkeyBytes, err := crypto.MarshalPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
 	remotePeer, err := peer.IDFromPublicKey(pub)
 	if err != nil {
 		t.Fatal(err)
@@ -88,6 +92,8 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 	}
 
 	var (
+		buyerPeerID    = remotePeer.Pretty()
+		buyerHandle    = "abc"
 		vendorPeerID   = "xyz"
 		vendorHandle   = "abc"
 		smallImageHash = "aaaa"
@@ -110,6 +116,13 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 						},
 					},
 				},
+			},
+		},
+		BuyerID: &pb.ID{
+			PeerID: buyerPeerID,
+			Handle: buyerHandle,
+			Pubkeys: &pb.ID_Pubkeys{
+				Identity: pubkeyBytes,
 			},
 		},
 		Payment: &pb.OrderOpen_Payment{

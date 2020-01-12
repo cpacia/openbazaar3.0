@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"errors"
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -620,7 +619,7 @@ func Test_buildRefundMessage(t *testing.T) {
 		// Direct first refund.
 		{
 			setup: func(order *models.Order) error {
-				orderOpen, _, err := factory.NewOrder()
+				orderOpen, err := factory.NewOrder()
 				if err != nil {
 					return err
 				}
@@ -639,7 +638,7 @@ func Test_buildRefundMessage(t *testing.T) {
 		// Direct second refund.
 		{
 			setup: func(order *models.Order) error {
-				orderOpen, _, err := factory.NewOrder()
+				orderOpen, err := factory.NewOrder()
 				if err != nil {
 					return err
 				}
@@ -681,7 +680,7 @@ func Test_buildRefundMessage(t *testing.T) {
 		// Moderated first refund.
 		{
 			setup: func(order *models.Order) error {
-				orderOpen, _, err := factory.NewOrder()
+				orderOpen, err := factory.NewOrder()
 				if err != nil {
 					return err
 				}
@@ -728,7 +727,7 @@ func Test_buildRefundMessage(t *testing.T) {
 		// Moderated second refund.
 		{
 			setup: func(order *models.Order) error {
-				orderOpen, _, err := factory.NewOrder()
+				orderOpen, err := factory.NewOrder()
 				if err != nil {
 					return err
 				}
@@ -802,7 +801,7 @@ func Test_buildRefundMessage(t *testing.T) {
 		},
 	}
 
-	key, err := btcec.NewPrivateKey(btcec.S256())
+	n, err := MockNode()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -823,7 +822,7 @@ func Test_buildRefundMessage(t *testing.T) {
 			t.Errorf("Test %d: setup failed: %s", i, err)
 		}
 
-		_, msg, err := buildRefundMessage(&order, net.Wallets()[0], key)
+		_, msg, err := n.buildRefundMessage(&order, net.Wallets()[0])
 		if err != nil {
 			t.Errorf("Test %d: build failed: %s", i, err)
 		}

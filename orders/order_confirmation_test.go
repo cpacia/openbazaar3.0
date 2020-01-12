@@ -23,7 +23,7 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 	}
 	defer teardown()
 
-	priv, pub, err := crypto.GenerateEd25519Key(rand.Reader)
+	_, pub, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,11 +37,8 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 	}
 
 	orderID := "1234"
-	signature, err := priv.Sign([]byte(orderID))
 
-	confirmMsg := &pb.OrderConfirmation{
-		MessageSignature: signature,
-	}
+	confirmMsg := &pb.OrderConfirmation{}
 
 	confirmationAny, err := ptypes.MarshalAny(confirmMsg)
 	if err != nil {

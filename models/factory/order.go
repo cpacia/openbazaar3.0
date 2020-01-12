@@ -14,81 +14,81 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-func NewOrder() (*pb.OrderOpen, crypto.PrivKey, error) {
+func NewOrder() (*pb.OrderOpen, error) {
 	privKeyBytes, err := hex.DecodeString("080112406e22f498c42014ea4485c2d4bdffd90fb3c4ee394f0aaa49a61a7b4e51235e016efc82dba17659db9daf4c8d1e39818f0d41ce9919876e299f56c71031375944")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	privkey, err := crypto.UnmarshalPrivateKey(privKeyBytes)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	pubkeyBytes, err := privkey.GetPublic().Bytes()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	pid, err := peer.IDFromPublicKey(privkey.GetPublic())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	escrowPrivkeyBytes, err := hex.DecodeString("e93fc130413a742e96844ac2d2b38b380081b0a54ddc3aac4e5bdaecb598ff38")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	escrowPrivkey, escrowPubkey := btcec.PrivKeyFromBytes(btcec.S256(), escrowPrivkeyBytes)
 
 	sigHash := sha256.Sum256([]byte(pid.Pretty()))
 	sig, err := escrowPrivkey.Sign(sigHash[:])
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	ratingKey, err := hex.DecodeString("02fcaa2903a6aeff06eb5660d82cf3cd6ce686e7d2e2c23a12b23ea0cbbaf04e99")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	listing := NewSignedListing()
 	ser, err := proto.Marshal(listing)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	h := sha256.Sum256(ser)
 	encoded, err := multihash.Encode(h[:], multihash.SHA2_256)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	listingHash, err := multihash.Cast(encoded)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	chaincode, err := hex.DecodeString("ab4363f632d094270418472d5a5e99c12d38a21a5ded12ddb086102235d69206")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	myPubkey, err := utils.GenerateEscrowPublicKey(escrowPubkey, chaincode)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	vendorEscrowKey, err := btcec.ParsePubKey(listing.Listing.VendorID.Pubkeys.Escrow, btcec.S256())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	theirPubkey, err := utils.GenerateEscrowPublicKey(vendorEscrowKey, chaincode)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	w := wallet.NewMockWallet()
 	addr, script, err := w.CreateMultisigAddress([]btcec.PublicKey{*myPubkey, *theirPubkey}, 1)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	order := &pb.OrderOpen{
@@ -148,15 +148,5 @@ func NewOrder() (*pb.OrderOpen, crypto.PrivKey, error) {
 		AlternateContactInfo: "peter@familyguy.net",
 	}
 
-	ser, err = proto.Marshal(order)
-	if err != nil {
-		return nil, nil, err
-	}
-	orderSig, err := privkey.Sign(ser)
-	if err != nil {
-		return nil, nil, err
-	}
-	order.MessageSignature = orderSig
-
-	return order, privkey, nil
+	return order, nil
 }

@@ -23,7 +23,7 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 	}
 	defer teardown()
 
-	priv, pub, err := crypto.GenerateEd25519Key(rand.Reader)
+	_, pub, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,15 +36,10 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 	orderID := "1234"
-	sig, err := priv.Sign([]byte(orderID))
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	rejectMsg := &pb.OrderReject{
-		Type:      pb.OrderReject_VALIDATION_ERROR,
-		Reason:    "Test",
-		MessageSignature: sig,
+		Type:   pb.OrderReject_VALIDATION_ERROR,
+		Reason: "Test",
 	}
 
 	rejectAny, err := ptypes.MarshalAny(rejectMsg)

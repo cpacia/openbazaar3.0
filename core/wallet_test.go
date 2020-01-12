@@ -14,7 +14,7 @@ func TestOpenBazaarNode_SaveAndGetTransactionMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	orderOpen, _, err := factory.NewOrder()
+	orderOpen, err := factory.NewOrder()
 	if err != nil {
 		t.Fatal(err)
 	}

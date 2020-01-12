@@ -16,7 +16,6 @@ message OrderOpen {
     Payment payment                     = 7;
     repeated bytes ratingKeys           = 8;
     string alternateContactInfo         = 9;
-    bytes messageSignature              = 10;
 
     message Shipping {
         string shipTo       = 1;
@@ -70,7 +69,6 @@ message OrderOpen {
 message OrderReject {
     RejectType type        = 1;
     string reason          = 2;
-    bytes messageSignature = 3;
 
     enum RejectType {
         USER_REJECT      = 0;
@@ -80,17 +78,14 @@ message OrderReject {
 
 message OrderConfirmation {
     string transactionID   = 1; // Only cancelable orders.
-    bytes messageSignature = 2;
 }
 
 message OrderCancel {
     string transactionID   = 1; // Only cancelable orders.
-    bytes messageSignature = 2;
 }
 
 message RatingSignatures {
     repeated RatingSignature sigs = 1;
-    bytes messageSignature        = 2;
 
     message RatingSignature {
         string     slug       = 1;
@@ -113,7 +108,6 @@ message Refund {
         EscrowRelease releaseInfo = 2;
     }
     string amount = 3;
-    bytes messageSignature = 4;
 
     message EscrowRelease {
         repeated Signature escrowSignatures = 1;

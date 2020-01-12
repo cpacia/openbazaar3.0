@@ -27,7 +27,7 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 				}
 
 				err = op.db.Update(func(tx database.Tx) error {
-					orderOpen, _, err := factory.NewOrder()
+					orderOpen, err := factory.NewOrder()
 					if err != nil {
 						return err
 					}
@@ -100,7 +100,7 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 				}
 
 				err = op.db.Update(func(tx database.Tx) error {
-					orderOpen, _, err := factory.NewOrder()
+					orderOpen, err := factory.NewOrder()
 					if err != nil {
 						return err
 					}
@@ -166,7 +166,7 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 				}
 
 				err = op.db.Update(func(tx database.Tx) error {
-					orderOpen, _, err := factory.NewOrder()
+					orderOpen, err := factory.NewOrder()
 					if err != nil {
 						return err
 					}
@@ -246,7 +246,7 @@ func TestOrderProcessor_checkForMorePayments(t *testing.T) {
 
 	op.multiwallet[iwallet.CtMock] = wn.Wallets()[0]
 
-	orderOpen, _, err := factory.NewOrder()
+	orderOpen, err := factory.NewOrder()
 	if err != nil {
 		t.Fatal(err)
 	}

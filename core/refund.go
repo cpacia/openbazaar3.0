@@ -3,7 +3,6 @@ package core
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
@@ -54,8 +53,12 @@ func (n *OpenBazaarNode) RefundOrder(orderID models.OrderID, done chan struct{})
 		if err != nil {
 			return err
 		}
-		wTx, refundMsg, err := buildRefundMessage(&order, wallet, n.escrowMasterKey)
+		wTx, refundMsg, err := n.buildRefundMessage(&order, wallet)
 		if err != nil {
+			return err
+		}
+
+		if err := n.signOrderMessage(refundMsg); err != nil {
 			return err
 		}
 
@@ -83,7 +86,7 @@ func (n *OpenBazaarNode) RefundOrder(orderID models.OrderID, done chan struct{})
 	})
 }
 
-func buildRefundMessage(order *models.Order, wallet iwallet.Wallet, escrowMasterKey *btcec.PrivateKey) (iwallet.Tx, *npb.OrderMessage, error) {
+func (n *OpenBazaarNode) buildRefundMessage(order *models.Order, wallet iwallet.Wallet) (iwallet.Tx, *npb.OrderMessage, error) {
 	orderOpen, err := order.OrderOpenMessage()
 	if err != nil {
 		return nil, nil, err
@@ -93,7 +96,7 @@ func buildRefundMessage(order *models.Order, wallet iwallet.Wallet, escrowMaster
 		refundMsg       = newMessageWithID()
 		prevRefundTotal = iwallet.NewAmount(0)
 		refundPayload   *any.Any
-		refundResp      = npb.OrderMessage{
+		refundResp      = &npb.OrderMessage{
 			OrderID:     order.ID.String(),
 			MessageType: npb.OrderMessage_REFUND,
 		}
@@ -177,7 +180,7 @@ func buildRefundMessage(order *models.Order, wallet iwallet.Wallet, escrowMaster
 			return nil, nil, err
 		}
 
-		vendorKey, err := utils.GenerateEscrowPrivateKey(escrowMasterKey, chainCode)
+		vendorKey, err := utils.GenerateEscrowPrivateKey(n.escrowMasterKey, chainCode)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -220,5 +223,5 @@ func buildRefundMessage(order *models.Order, wallet iwallet.Wallet, escrowMaster
 
 	refundMsg.MessageType = npb.Message_ORDER
 	refundMsg.Payload = refundPayload
-	return wdbTx, &refundResp, nil
+	return wdbTx, refundResp, nil
 }

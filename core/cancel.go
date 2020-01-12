@@ -42,33 +42,31 @@ func (n *OpenBazaarNode) CancelOrder(orderID models.OrderID, done chan struct{})
 		return err
 	}
 
-	signature, err := n.ipfsNode.PrivateKey.Sign([]byte(order.ID.String()))
+	wTx, txid, err := n.releaseFromCancelableAddress(&order)
 	if err != nil {
 		return err
 	}
 
 	cancel := &pb.OrderCancel{
-		MessageSignature: signature,
+		TransactionID: txid.String(),
 	}
-
-	wTx, txid, err := n.releaseFromCancelableAddress(&order)
-	if err != nil {
-		return err
-	}
-	cancel.TransactionID = txid.String()
 
 	cancelAny, err := ptypes.MarshalAny(cancel)
 	if err != nil {
 		return err
 	}
 
-	resp := npb.OrderMessage{
+	resp := &npb.OrderMessage{
 		OrderID:     order.ID.String(),
 		MessageType: npb.OrderMessage_ORDER_CANCEL,
 		Message:     cancelAny,
 	}
 
-	payload, err := ptypes.MarshalAny(&resp)
+	if err := n.signOrderMessage(resp); err != nil {
+		return err
+	}
+
+	payload, err := ptypes.MarshalAny(resp)
 	if err != nil {
 		return err
 	}
@@ -78,7 +76,7 @@ func (n *OpenBazaarNode) CancelOrder(orderID models.OrderID, done chan struct{})
 	message.Payload = payload
 
 	return n.repo.DB().Update(func(tx database.Tx) error {
-		_, err = n.orderProcessor.ProcessMessage(tx, buyer, &resp)
+		_, err = n.orderProcessor.ProcessMessage(tx, buyer, resp)
 		if err != nil {
 			wTx.Rollback()
 			return err

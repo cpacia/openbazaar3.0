@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/OpenBazaar/jsonpb"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
@@ -188,10 +187,8 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	if role == models.RoleVendor { // If we are vendor.
 		// Check to make sure we actually have the item for sale.
 		for _, listing := range order.Listings {
-			var theirListing pb.SignedListing
-			if err := deepCopyProto(&theirListing, listing); err != nil {
-				return err
-			}
+			listingCpy := proto.Clone(listing)
+			theirListing := listingCpy.(*pb.SignedListing)
 
 			myListing, err := dbtx.GetListing(theirListing.Listing.Slug)
 			if err != nil {
@@ -251,8 +248,8 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		if listing.Metadata.ContractType == pb.Listing_Metadata_CRYPTOCURRENCY && item.PaymentAddress == "" {
 			return fmt.Errorf("payment address for cryptocurrency item %d is empty", i)
 		}
-		if item.Quantity == "" {
-			return fmt.Errorf("item %d quantity is empty", i)
+		if iwallet.NewAmount(item.Quantity).Cmp(iwallet.NewAmount(0)) <= 0 {
+			return fmt.Errorf("item %d quantity must be a positive integer", i)
 		}
 
 		if listing.Metadata.EscrowTimeoutHours > escrowTimeoutHours {
@@ -448,27 +445,6 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		}
 	}
 
-	// Check signature
-	var orderCopy pb.OrderOpen
-	if err := deepCopyProto(&orderCopy, order); err != nil {
-		return err
-	}
-	sigOrder := make([]byte, len(orderCopy.MessageSignature))
-	copy(sigOrder, orderCopy.MessageSignature)
-
-	orderCopy.MessageSignature = nil
-	ser, err := proto.Marshal(&orderCopy)
-	if err != nil {
-		return err
-	}
-	validSig, err := idPubkey.Verify(ser, sigOrder)
-	if err != nil {
-		return err
-	}
-	if !validSig {
-		return errors.New("invalid signature on order")
-	}
-
 	// Validate order ID
 	orderHash, err := utils.CalcOrderID(order)
 	if err != nil {
@@ -491,16 +467,16 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 
 	// Calculate the price of each item
 	for i, item := range order.Items {
-		if item.Quantity == "" {
-			return orderTotal, fmt.Errorf("item %d quantity is empty", i)
-		}
-
 		// Step one is we just want to get the price, in the payment currency,
 		// for the listing.
 		var (
 			itemTotal    iwallet.Amount
 			itemQuantity = iwallet.NewAmount(item.Quantity)
 		)
+
+		if itemQuantity.Cmp(iwallet.NewAmount(0)) <= 0 {
+			return orderTotal, fmt.Errorf("item %d quantity is not a positive integer", i)
+		}
 
 		listing, err := extractListing(item.ListingHash, order.Listings)
 		if err != nil {
@@ -824,20 +800,6 @@ func extractListing(hash string, listings []*pb.SignedListing) (*pb.Listing, err
 		}
 	}
 	return nil, fmt.Errorf("listing %s not found in order", hash)
-}
-
-func deepCopyProto(dest proto.Message, src proto.Message) error {
-	m := jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: true,
-		Indent:       "",
-		OrigName:     false,
-	}
-	out, err := m.MarshalToString(src)
-	if err != nil {
-		return err
-	}
-	return jsonpb.UnmarshalString(out, dest)
 }
 
 // getSelectedSku returns the SKU from the listing which matches the provided options.
