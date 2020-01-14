@@ -813,6 +813,33 @@ func (o *Order) IsFunded() (bool, error) {
 	return totalPaid.Cmp(requestedAmount) >= 0, nil
 }
 
+// IsFulfilled returns whether a fulfillment message is saved for each item in the order.
+func (o *Order) IsFulfilled() (bool, error) {
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return false, err
+	}
+
+	m := make(map[int]bool)
+
+	for i := range orderOpen.Items {
+		m[i] = true
+	}
+
+	fulfillments, err := o.OrderFulfillmentMessages()
+	if err != nil && !IsMessageNotExistError(err) {
+		return false, err
+	}
+
+	for _, f := range fulfillments {
+		for _, f2 := range f.Fulfillments {
+			delete(m, int(f2.ItemIndex))
+		}
+	}
+
+	return len(m) == 0, nil
+}
+
 // FundingTotal returns the total amount paid to this order.
 func (o *Order) FundingTotal() (iwallet.Amount, error) {
 	orderOpen, err := o.OrderOpenMessage()

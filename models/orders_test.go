@@ -1797,6 +1797,114 @@ func TestOrder_IsFunded(t *testing.T) {
 	}
 }
 
+func TestOrder_IsFulfilled(t *testing.T) {
+	tests := []struct {
+		setup       func(order *Order) error
+		isFulfilled bool
+	}{
+		// Fulfilled
+		{
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Payment: &pb.OrderOpen_Payment{
+						Amount:  "1000",
+						Address: "aaaaaa",
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+						{
+							ListingHash: "123",
+						},
+					},
+				}))
+				if err != nil {
+					return err
+				}
+
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+					Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+						{
+							ItemIndex: 0,
+						},
+						{
+							ItemIndex: 1,
+						},
+					},
+				}))
+			},
+			isFulfilled: true,
+		},
+		// Only one fulfilled.
+		{
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Payment: &pb.OrderOpen_Payment{
+						Amount:  "1000",
+						Address: "aaaaaa",
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+						{
+							ListingHash: "123",
+						},
+					},
+				}))
+				if err != nil {
+					return err
+				}
+
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+					Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+						{
+							ItemIndex: 0,
+						},
+					},
+				}))
+			},
+			isFulfilled: false,
+		},
+		// No fulfillments
+		{
+			setup: func(order *Order) error {
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Payment: &pb.OrderOpen_Payment{
+						Amount:  "1000",
+						Address: "aaaaaa",
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+						{
+							ListingHash: "123",
+						},
+					},
+				}))
+			},
+			isFulfilled: false,
+		},
+	}
+
+	for i, test := range tests {
+		var order Order
+		if err := test.setup(&order); err != nil {
+			t.Errorf("Test %d setup failed: %s", i, err)
+		}
+
+		isFulfilled, err := order.IsFulfilled()
+		if err != nil {
+			t.Errorf("Test %d: Is fufilled error: %s", i, err)
+		}
+		if isFulfilled != test.isFulfilled {
+			t.Errorf("Got incorrect result. Expected %t, got %t", test.isFulfilled, isFulfilled)
+		}
+	}
+}
+
 func TestOrder_FundingTotal(t *testing.T) {
 	tests := []struct {
 		setup func(order *Order) error
