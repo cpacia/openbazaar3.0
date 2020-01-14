@@ -137,78 +137,17 @@ func (n *OpenBazaarNode) buildRefundMessage(order *models.Order, wallet iwallet.
 
 		refundResp.Message = refundAny
 	case pb.OrderOpen_Payment_MODERATED:
-		txs, err := order.GetTransactions()
+		release, err := n.buildEscrowRelease(order, wallet,
+			iwallet.NewAddress(orderOpen.RefundAddress, iwallet.CoinType(orderOpen.Payment.Coin)),
+			iwallet.NewAmount(orderOpen.Payment.EscrowReleaseFee))
 		if err != nil {
 			return nil, nil, err
 		}
-
-		escrowWallet, ok := wallet.(iwallet.Escrow)
-		if !ok {
-			return nil, nil, errors.New("wallet for moderated order does not support escrow")
-		}
-
-		var (
-			txn      iwallet.Transaction
-			totalOut = iwallet.NewAmount(0)
-		)
-		spent := make(map[string]bool)
-		for _, tx := range txs {
-			for _, from := range tx.From {
-				spent[hex.EncodeToString(from.ID)] = true
-			}
-		}
-		for _, tx := range txs {
-			for _, to := range tx.To {
-				if !spent[hex.EncodeToString(to.ID)] && to.Address.String() == orderOpen.Payment.Address {
-					txn.From = append(txn.From, to)
-					totalOut = totalOut.Add(to.Amount)
-				}
-			}
-		}
-		txn.To = append(txn.To, iwallet.SpendInfo{
-			Address: iwallet.NewAddress(orderOpen.RefundAddress, iwallet.CoinType(orderOpen.Payment.Coin)),
-			Amount:  totalOut.Sub(iwallet.NewAmount(orderOpen.Payment.EscrowReleaseFee)),
-		})
-
-		script, err := hex.DecodeString(orderOpen.Payment.Script)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		chainCode, err := hex.DecodeString(orderOpen.Payment.Chaincode)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		vendorKey, err := utils.GenerateEscrowPrivateKey(n.escrowMasterKey, chainCode)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		sigs, err := escrowWallet.SignMultisigTransaction(txn, *vendorKey, script)
-		if err != nil {
-			return nil, nil, err
-		}
-
 		refund := pb.Refund{
 			RefundInfo: &pb.Refund_ReleaseInfo{
-				ReleaseInfo: &pb.Refund_EscrowRelease{
-					ToAddress: txn.To[0].Address.String(),
-					ToAmount:  txn.To[0].Amount.String(),
-				},
+				ReleaseInfo: release,
 			},
-			Amount: txn.To[0].Amount.String(),
-		}
-
-		for _, from := range txn.From {
-			refund.GetReleaseInfo().FromIDs = append(refund.GetReleaseInfo().FromIDs, from.ID)
-		}
-
-		for _, sig := range sigs {
-			refund.GetReleaseInfo().EscrowSignatures = append(refund.GetReleaseInfo().EscrowSignatures, &pb.Refund_Signature{
-				Signature: sig.Signature,
-				Index:     uint32(sig.Index),
-			})
+			Amount: release.ToAmount,
 		}
 
 		refundAny, err := ptypes.MarshalAny(&refund)
@@ -224,4 +163,82 @@ func (n *OpenBazaarNode) buildRefundMessage(order *models.Order, wallet iwallet.
 	refundMsg.MessageType = npb.Message_ORDER
 	refundMsg.Payload = refundPayload
 	return wdbTx, refundResp, nil
+}
+
+func (n *OpenBazaarNode) buildEscrowRelease(order *models.Order, wallet iwallet.Wallet, to iwallet.Address, escrowReleaseFee iwallet.Amount) (*pb.EscrowRelease, error) {
+	escrowWallet, ok := wallet.(iwallet.Escrow)
+	if !ok {
+		return nil, errors.New("wallet does not support escrow")
+	}
+
+	txs, err := order.GetTransactions()
+	if err != nil {
+		return nil, err
+	}
+
+	orderOpen, err := order.OrderOpenMessage()
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		txn      iwallet.Transaction
+		totalOut = iwallet.NewAmount(0)
+	)
+	spent := make(map[string]bool)
+	for _, tx := range txs {
+		for _, from := range tx.From {
+			spent[hex.EncodeToString(from.ID)] = true
+		}
+	}
+	for _, tx := range txs {
+		for _, to := range tx.To {
+			if !spent[hex.EncodeToString(to.ID)] && to.Address.String() == orderOpen.Payment.Address {
+				txn.From = append(txn.From, to)
+				totalOut = totalOut.Add(to.Amount)
+			}
+		}
+	}
+	txn.To = append(txn.To, iwallet.SpendInfo{
+		Address: to,
+		Amount:  totalOut.Sub(escrowReleaseFee),
+	})
+
+	script, err := hex.DecodeString(orderOpen.Payment.Script)
+	if err != nil {
+		return nil, err
+	}
+
+	chainCode, err := hex.DecodeString(orderOpen.Payment.Chaincode)
+	if err != nil {
+		return nil, err
+	}
+
+	vendorKey, err := utils.GenerateEscrowPrivateKey(n.escrowMasterKey, chainCode)
+	if err != nil {
+		return nil, err
+	}
+
+	sigs, err := escrowWallet.SignMultisigTransaction(txn, *vendorKey, script)
+	if err != nil {
+		return nil, err
+	}
+
+	release := &pb.EscrowRelease{
+		ToAddress: txn.To[0].Address.String(),
+		ToAmount:  txn.To[0].Amount.String(),
+	}
+
+	for _, from := range txn.From {
+		release.FromIDs = append(release.FromIDs, from.ID)
+	}
+
+	for _, sig := range sigs {
+		release.EscrowSignatures = append(release.EscrowSignatures, &pb.Signature{
+			Signature: sig.Signature,
+			Index:     uint32(sig.Index),
+		})
+	}
+
+	return release, nil
 }

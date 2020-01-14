@@ -44,7 +44,6 @@ func TestOrderProcessor_processOrderFulfillmentMessage(t *testing.T) {
 				ItemIndex: 1,
 			},
 		},
-		Note: "abc",
 	}
 
 	fulfillmentAny, err := ptypes.MarshalAny(fulfillmentMsg)

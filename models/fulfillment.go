@@ -20,6 +20,7 @@ type CryptocurrencyDelivery struct {
 // Fulfillment contains all the data needed to execute an order fulfillment.
 type Fulfillment struct {
 	ItemIndex              int                     `json:"itemIndex"`
+	Note                   string                  `json:"note"`
 	PhysicalDelivery       *PhysicalDelivery       `json:"physicalDelivery"`
 	DigitalDelivery        *DigitalDelivery        `json:"digitalDelivery"`
 	CryptocurrencyDelivery *CryptocurrencyDelivery `json:"cryptocurrencyDelivery"`

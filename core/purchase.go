@@ -232,7 +232,7 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 		return nil, err
 	}
 	if len(purchase.Items) == 0 {
-		return nil, errors.New("no listings selected in purchase")
+		return nil, fmt.Errorf("%w: no listings selected in purchase", coreiface.ErrBadRequest)
 	}
 	addedListings := make(map[string]bool)
 	vendors := make(map[string]bool)
@@ -255,7 +255,7 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 
 		vendors[listing.Listing.VendorID.PeerID] = true
 		if len(vendors) > 1 {
-			return nil, errors.New("order can only purchase items from a single vendor")
+			return nil, fmt.Errorf("%w: order can only purchase items from a single vendor", coreiface.ErrBadRequest)
 		}
 		// If we are purchasing the same listing multiple times but with
 		// different options we don't need to include the full listing
@@ -340,7 +340,7 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 
 	escrowWallet, walletSupportsEscrow := wallet.(iwallet.Escrow)
 	if !walletSupportsEscrow && purchase.Moderator != "" {
-		return nil, errors.New("selected payment currency does not support escrow transactions")
+		return nil, fmt.Errorf("%w: selected payment currency does not support escrow transactions", coreiface.ErrBadRequest)
 	}
 	escrowTimeoutWallet, walletSupportsEscrowTimeout := wallet.(iwallet.EscrowWithTimeout)
 	if !walletSupportsEscrowTimeout {

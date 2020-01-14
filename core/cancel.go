@@ -3,6 +3,8 @@ package core
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
@@ -30,7 +32,7 @@ func (n *OpenBazaarNode) CancelOrder(orderID models.OrderID, done chan struct{})
 	}
 
 	if !order.CanCancel(n.Identity()) {
-		return errors.New("order is not in a state where it can be canceled")
+		return fmt.Errorf("%w: order is not in a state where it can be canceled", coreiface.ErrBadRequest)
 	}
 
 	buyer, err := order.Buyer()

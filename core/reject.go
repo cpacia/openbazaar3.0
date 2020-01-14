@@ -1,7 +1,8 @@
 package core
 
 import (
-	"errors"
+	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
@@ -23,7 +24,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 	}
 
 	if !order.CanReject(n.Identity()) {
-		return errors.New("order is not in a state where it can be rejected")
+		return fmt.Errorf("%w: order is not in a state where it can be rejected", coreiface.ErrBadRequest)
 	}
 
 	buyer, err := order.Buyer()

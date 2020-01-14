@@ -747,6 +747,45 @@ func (o *Order) CanRefund(ourPeerID peer.ID) bool {
 	return true
 }
 
+// CanFulfill returns whether or not this order is in a state where the user can
+// fulfill the order.
+func (o *Order) CanFulfill(ourPeerID peer.ID) bool {
+	// OrderOpen must exist.
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return false
+	}
+	if orderOpen.BuyerID == nil {
+		return false
+	}
+	// Only vendors can fulfill.
+	if orderOpen.BuyerID.PeerID == ourPeerID.Pretty() {
+		return false
+	}
+
+	// Order must have been confirmed.
+	if o.SerializedOrderConfirmation == nil {
+		return false
+	}
+
+	// Order must be funded.
+	funded, err := o.IsFunded()
+	if err != nil {
+		return false
+	}
+
+	if !funded {
+		return false
+	}
+
+	// Cannot fulfill if the order has been completed or canceled.
+	if o.SerializedOrderComplete != nil || o.SerializedPaymentFinalized != nil || o.SerializedOrderCancel != nil {
+		return false
+	}
+
+	return true
+}
+
 // IsFunded returns whether this order is fully funded or not.
 func (o *Order) IsFunded() (bool, error) {
 	orderOpen, err := o.OrderOpenMessage()

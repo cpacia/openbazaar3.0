@@ -97,28 +97,28 @@ message RatingSignatures {
 message OrderFulfillment {
     repeated FulfilledItem fulfillments = 1;
     EscrowRelease releaseInfo           = 2; // Moderated orders only.
-    string note                         = 3;
 
     message FulfilledItem {
-        int32 itemIndex = 1;
+        uint32 itemIndex = 1;
+        string note      = 2;
         oneof delivery {
             // Physical goods only
-            PhysicalDelivery physicalDelivery             = 2;
+            PhysicalDelivery physicalDelivery             = 3;
 
             // Digital goods only
-            DigitalDelivery digitalDelivery               = 3;
+            DigitalDelivery digitalDelivery               = 4;
 
             // CryptoCurrency items only
-            CryptocurrencyDelivery cryptocurrencyDelivery = 4;
+            CryptocurrencyDelivery cryptocurrencyDelivery = 5;
         }
 
         message PhysicalDelivery {
-            string shipper = 1;
+            string shipper        = 1;
             string trackingNumber = 2;
         }
 
         message DigitalDelivery {
-            string url = 1;
+            string url      = 1;
             string password = 2;
         }
 
