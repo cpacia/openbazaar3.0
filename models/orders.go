@@ -778,6 +778,16 @@ func (o *Order) CanFulfill(ourPeerID peer.ID) bool {
 		return false
 	}
 
+	// Order must not be fulfilled already.
+	fulfilled, err := o.IsFulfilled()
+	if err != nil {
+		return false
+	}
+
+	if fulfilled {
+		return false
+	}
+
 	// Cannot fulfill if the order has been completed or canceled.
 	if o.SerializedOrderComplete != nil || o.SerializedPaymentFinalized != nil || o.SerializedOrderCancel != nil {
 		return false

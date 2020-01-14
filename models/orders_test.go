@@ -1316,6 +1316,11 @@ func TestOrder_CanFulfill(t *testing.T) {
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+					},
 				}))
 				if err != nil {
 					return err
@@ -1336,6 +1341,11 @@ func TestOrder_CanFulfill(t *testing.T) {
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 						Amount: iwallet.NewAmount(1).String(),
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
 					},
 				}))
 				if err != nil {
@@ -1366,6 +1376,11 @@ func TestOrder_CanFulfill(t *testing.T) {
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+					},
 				}))
 				return err
 			},
@@ -1391,6 +1406,11 @@ func TestOrder_CanFulfill(t *testing.T) {
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_CANCELABLE,
 					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+					},
 				}))
 				return err
 			},
@@ -1407,6 +1427,11 @@ func TestOrder_CanFulfill(t *testing.T) {
 					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
 					},
 				}))
 				if err != nil {
@@ -1429,6 +1454,11 @@ func TestOrder_CanFulfill(t *testing.T) {
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+					},
 				}))
 				if err != nil {
 					return err
@@ -1449,6 +1479,11 @@ func TestOrder_CanFulfill(t *testing.T) {
 					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
 					},
 				}))
 				if err != nil {
