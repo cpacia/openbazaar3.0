@@ -179,6 +179,8 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 		key = "refund_acked"
 	case npb.OrderMessage_PAYMENT_SENT:
 		key = "payment_sent_acked"
+	case npb.OrderMessage_RATING_SIGNATURES:
+		key = "rating_signatures_acked"
 	case npb.OrderMessage_PAYMENT_FINALIZED:
 		key = "payment_finalized_acked"
 	default:
@@ -198,6 +200,8 @@ func (op *OrderProcessor) processMessage(dbtx database.Tx, order *models.Order, 
 		event, err = op.processOrderOpenMessage(dbtx, order, peer, message)
 	case npb.OrderMessage_PAYMENT_SENT:
 		event, err = op.processPaymentSentMessage(dbtx, order, peer, message)
+	case npb.OrderMessage_RATING_SIGNATURES:
+		event, err = op.processRatingSignaturesMessage(dbtx, order, peer, message)
 	case npb.OrderMessage_ORDER_REJECT:
 		event, err = op.processOrderRejectMessage(dbtx, order, peer, message)
 	case npb.OrderMessage_ORDER_CONFIRMATION:

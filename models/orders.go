@@ -93,6 +93,10 @@ type Order struct {
 	OrderConfirmationSignature  string
 	OrderConfirmationAcked      bool
 
+	SerializedRatingSignatures json.RawMessage
+	RatingSignaturesSignature  string
+	RatingSignaturesAcked      bool
+
 	SerializedOrderFulfillment json.RawMessage
 	OrderFulfillmentSignature  string
 	OrderFulfillmentAcked      bool
@@ -262,6 +266,18 @@ func (o *Order) OrderConfirmationMessage() (*pb.OrderConfirmation, error) {
 	return orderConfirmation, nil
 }
 
+// RatingSignaturesMessage returns the unmarshalled proto object if it exists in the order.
+func (o *Order) RatingSignaturesMessage() (*pb.RatingSignatures, error) {
+	if o.SerializedRatingSignatures == nil || len(o.SerializedRatingSignatures) == 0 {
+		return nil, ErrMessageDoesNotExist
+	}
+	ratingSignatures := new(pb.RatingSignatures)
+	if err := jsonpb.UnmarshalString(string(o.SerializedRatingSignatures), ratingSignatures); err != nil {
+		return nil, err
+	}
+	return ratingSignatures, nil
+}
+
 // OrderFulfillmentMessage returns the unmarshalled proto object if it exists in the order.
 func (o *Order) OrderFulfillmentMessage() (*pb.OrderFulfillment, error) {
 	if o.SerializedOrderFulfillment == nil || len(o.SerializedOrderFulfillment) == 0 {
@@ -392,6 +408,10 @@ func (o *Order) PutMessage(message *npb.OrderMessage) error {
 		msg = new(pb.OrderConfirmation)
 		setMessage = func(ser []byte) { o.SerializedOrderConfirmation = ser }
 		o.OrderConfirmationSignature = sig
+	case npb.OrderMessage_RATING_SIGNATURES:
+		msg = new(pb.RatingSignatures)
+		setMessage = func(ser []byte) { o.SerializedRatingSignatures = ser }
+		o.RatingSignaturesSignature = sig
 	case npb.OrderMessage_ORDER_FULFILLMENT:
 		msg = new(pb.OrderFulfillment)
 		setMessage = func(ser []byte) { o.SerializedOrderFulfillment = ser }

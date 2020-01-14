@@ -23,6 +23,8 @@ func MustWrapOrderMessage(message proto.Message) *npb.OrderMessage {
 		messageType = npb.OrderMessage_ORDER_CANCEL
 	case *pb.OrderConfirmation:
 		messageType = npb.OrderMessage_ORDER_CONFIRMATION
+	case *pb.RatingSignatures:
+		messageType = npb.OrderMessage_RATING_SIGNATURES
 	case *pb.OrderFulfillment:
 		messageType = npb.OrderMessage_ORDER_FULFILLMENT
 	case *pb.OrderComplete:

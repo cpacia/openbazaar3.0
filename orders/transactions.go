@@ -153,7 +153,9 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 	case models.RoleVendor:
 		if funded {
 			dbtx.RegisterCommitHook(func() {
-				// TODO: send rating signature message to buyer
+				if err := op.sendRatingSignatures(dbtx, order, orderOpen); err != nil {
+					log.Errorf("Error sending rating signature message: %s", err)
+				}
 
 				op.bus.Emit(&events.OrderFunded{
 					BuyerHandle: orderOpen.BuyerID.Handle,

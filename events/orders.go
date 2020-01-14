@@ -52,6 +52,10 @@ type PaymentSentReceived struct {
 	Txid    string `json:"transactionID"`
 }
 
+type RatingSignaturesReceived struct {
+	OrderID string `json:"orderID"`
+}
+
 type OrderConfirmation struct {
 	Notification
 	OrderID      string    `json:"orderID"`

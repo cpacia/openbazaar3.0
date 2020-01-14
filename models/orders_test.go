@@ -157,6 +157,7 @@ func TestOrder_PutAndGet(t *testing.T) {
 		&pb.OrderReject{},
 		&pb.OrderCancel{},
 		&pb.OrderConfirmation{},
+		&pb.RatingSignatures{},
 		&pb.OrderFulfillment{},
 		&pb.OrderComplete{},
 		&pb.DisputeOpen{},
@@ -211,6 +212,16 @@ func TestOrder_PutAndGet(t *testing.T) {
 		t.Error("Message is nil")
 	}
 	if order.OrderConfirmationSignature == "" {
+		t.Error("signature is empty")
+	}
+	ratingSignatures, err := order.RatingSignaturesMessage()
+	if err != nil {
+		t.Errorf("Get failed: %s", err)
+	}
+	if ratingSignatures == nil {
+		t.Error("Message is nil")
+	}
+	if order.RatingSignaturesSignature == "" {
 		t.Error("signature is empty")
 	}
 	orderFulfillment, err := order.OrderFulfillmentMessage()
@@ -295,6 +306,10 @@ func TestOrder_PutAndGet(t *testing.T) {
 		t.Errorf("Get failed to return correct error: %s", err)
 	}
 	orderConfirmation, err = order.OrderConfirmationMessage()
+	if err != ErrMessageDoesNotExist {
+		t.Errorf("Get failed to return correct error: %s", err)
+	}
+	ratingSignatures, err = order.RatingSignaturesMessage()
 	if err != ErrMessageDoesNotExist {
 		t.Errorf("Get failed to return correct error: %s", err)
 	}
