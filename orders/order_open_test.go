@@ -1261,6 +1261,21 @@ func Test_validateOrderOpen(t *testing.T) {
 				return utils.MultihashSha256([]byte{0x00})
 			},
 		},
+		{
+			// Len ratings keys doesn't match len items.
+			order: func() (*pb.OrderOpen, error) {
+				order, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.RatingKeys = append(order.RatingKeys, order.RatingKeys[0])
+				return order, nil
+			},
+			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
+		},
 	}
 
 	for i, test := range tests {

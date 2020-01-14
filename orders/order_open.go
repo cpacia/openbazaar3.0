@@ -443,6 +443,9 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	}
 
 	// Validate rating keys
+	if len(order.RatingKeys) != len(order.Items) {
+		return errors.New("incorrect number of ratings keys")
+	}
 	for _, key := range order.RatingKeys {
 		if _, err := btcec.ParsePubKey(key, btcec.S256()); err != nil {
 			return errors.New("invalid rating pubkey")
