@@ -24,6 +24,7 @@ type mockNode struct {
 	deleteChatConversationFunc   func(peerID peer.ID) error
 	deleteGroupChatMessagesFunc  func(orderID models.OrderID) error
 	confirmOrderFunc             func(orderID models.OrderID, done chan struct{}) error
+	fulfillOrderFunc             func(orderID models.OrderID, fulfillments []models.Fulfillment, done chan struct{}) error
 	cancelOrderFunc              func(orderID models.OrderID, done chan struct{}) error
 	followNodeFunc               func(peerID peer.ID, done chan<- struct{}) error
 	unfollowNodeFunc             func(peerID peer.ID, done chan<- struct{}) error
@@ -94,6 +95,9 @@ func (m *mockNode) DeleteGroupChatMessages(orderID models.OrderID) error {
 }
 func (m *mockNode) ConfirmOrder(orderID models.OrderID, done chan struct{}) error {
 	return m.confirmOrderFunc(orderID, done)
+}
+func (m *mockNode) FulfillOrder(orderID models.OrderID, fulfillments []models.Fulfillment, done chan struct{}) error {
+	return m.fulfillOrderFunc(orderID, fulfillments, done)
 }
 func (m *mockNode) CancelOrder(orderID models.OrderID, done chan struct{}) error {
 	return m.cancelOrderFunc(orderID, done)

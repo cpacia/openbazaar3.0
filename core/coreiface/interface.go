@@ -27,6 +27,7 @@ type CoreIface interface {
 	DeleteChatConversation(peerID peer.ID) error
 	DeleteGroupChatMessages(orderID models.OrderID) error
 	ConfirmOrder(orderID models.OrderID, done chan struct{}) error
+	FulfillOrder(orderID models.OrderID, fulfillments []models.Fulfillment, done chan struct{}) error
 	CancelOrder(orderID models.OrderID, done chan struct{}) error
 	FollowNode(peerID peer.ID, done chan<- struct{}) error
 	UnfollowNode(peerID peer.ID, done chan<- struct{}) error
