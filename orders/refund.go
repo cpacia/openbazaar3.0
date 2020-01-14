@@ -83,7 +83,7 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 	return event, nil
 }
 
-func (op *OrderProcessor) releaseEscrowFunds(wallet iwallet.Wallet, orderOpen *pb.OrderOpen, releaseInfo *pb.Refund_EscrowRelease) error {
+func (op *OrderProcessor) releaseEscrowFunds(wallet iwallet.Wallet, orderOpen *pb.OrderOpen, releaseInfo *pb.EscrowRelease) error {
 	escrowWallet, ok := wallet.(iwallet.Escrow)
 	if !ok {
 		return errors.New("wallet for moderated order does not support escrow")

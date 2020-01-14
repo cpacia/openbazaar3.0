@@ -94,7 +94,40 @@ message RatingSignatures {
     }
 }
 
-message OrderFulfillment {}
+message OrderFulfillment {
+    repeated FulfilledItem fulfillments = 1;
+    EscrowRelease releaseInfo           = 2; // Moderated orders only.
+    string note                         = 3;
+
+    message FulfilledItem {
+        int32 itemIndex = 1;
+        oneof delivery {
+            // Physical goods only
+            PhysicalDelivery physicalDelivery             = 2;
+
+            // Digital goods only
+            DigitalDelivery digitalDelivery               = 3;
+
+            // CryptoCurrency items only
+            CryptocurrencyDelivery cryptocurrencyDelivery = 4;
+        }
+
+        message PhysicalDelivery {
+            string shipper = 1;
+            string trackingNumber = 2;
+        }
+
+        message DigitalDelivery {
+            string url = 1;
+            string password = 2;
+        }
+
+        message CryptocurrencyDelivery {
+            string transactionID = 1;
+        }
+    }
+}
+
 message OrderComplete {}
 message DisputeOpen {}
 message DisputeUpdate {}
@@ -108,19 +141,6 @@ message Refund {
         EscrowRelease releaseInfo = 2;
     }
     string amount = 3;
-
-    message EscrowRelease {
-        repeated Signature escrowSignatures = 1;
-        repeated bytes fromIDs              = 2;
-        string toAddress                    = 3;
-        string toAmount                     = 4;
-    }
-
-    message Signature {
-        bytes from      = 1;
-        bytes signature = 2;
-        uint32 index    = 3;
-    }
 }
 
 message PaymentSent {
@@ -129,12 +149,34 @@ message PaymentSent {
 
 message PaymentFinalized {}
 
+message EscrowRelease {
+    repeated Signature escrowSignatures = 1;
+    repeated bytes fromIDs              = 2;
+    string toAddress                    = 3;
+    string toAmount                     = 4;
+}
+
+message Signature {
+    bytes from      = 1;
+    bytes signature = 2;
+    uint32 index    = 3;
+}
+
 message PaymentSentList {
     repeated Message messages = 1;
 
     message Message {
         PaymentSent paymentSentMessage = 1;
         bytes signature                = 2;
+    }
+}
+
+message FulfillmentList {
+    repeated Message messages = 1;
+
+    message Message {
+        OrderFulfillment fulfillmentMessage = 1;
+        bytes signature                     = 2;
     }
 }
 

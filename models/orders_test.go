@@ -224,15 +224,12 @@ func TestOrder_PutAndGet(t *testing.T) {
 	if order.RatingSignaturesSignature == "" {
 		t.Error("signature is empty")
 	}
-	orderFulfillment, err := order.OrderFulfillmentMessage()
+	orderFulfillment, err := order.OrderFulfillmentMessages()
 	if err != nil {
 		t.Errorf("Get failed: %s", err)
 	}
 	if orderFulfillment == nil {
 		t.Error("Message is nil")
-	}
-	if order.OrderFulfillmentSignature == "" {
-		t.Error("signature is empty")
 	}
 	orderComplete, err := order.OrderCompleteMessage()
 	if err != nil {
@@ -313,7 +310,7 @@ func TestOrder_PutAndGet(t *testing.T) {
 	if err != ErrMessageDoesNotExist {
 		t.Errorf("Get failed to return correct error: %s", err)
 	}
-	orderFulfillment, err = order.OrderFulfillmentMessage()
+	orderFulfillment, err = order.OrderFulfillmentMessages()
 	if err != ErrMessageDoesNotExist {
 		t.Errorf("Get failed to return correct error: %s", err)
 	}
@@ -384,13 +381,64 @@ func TestOrder_Payments(t *testing.T) {
 	}
 }
 
+func TestOrder_Fulfillments(t *testing.T) {
+	var (
+		order Order
+		note1 = "xyz"
+		note2 = "abc"
+	)
+
+	err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+		Note: note1,
+		Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+			{
+				ItemIndex: 1,
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+		Note: note2,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+		Note: note1,
+		Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+			{
+				ItemIndex: 1,
+			},
+		},
+	}))
+	if err != ErrDuplicateTransaction {
+		t.Errorf("Failed to return duplicate transaction error")
+	}
+
+	fulfillments, err := order.OrderFulfillmentMessages()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for fulfillments[0].Note != note1 {
+		t.Errorf("Incorrect note returned. Expected %s, got %s", note1, fulfillments[0].Note)
+	}
+	for fulfillments[1].Note != note2 {
+		t.Errorf("Incorrect note returned. Expected %s, got %s", note2, fulfillments[1].Note)
+	}
+}
+
 func TestOrder_Refunds(t *testing.T) {
 	var (
 		order    Order
 		id0      = "xyz"
 		id1      = "abc"
-		release0 = &pb.Refund_ReleaseInfo{ReleaseInfo: &pb.Refund_EscrowRelease{
-			EscrowSignatures: []*pb.Refund_Signature{
+		release0 = &pb.Refund_ReleaseInfo{ReleaseInfo: &pb.EscrowRelease{
+			EscrowSignatures: []*pb.Signature{
 				{
 					From:      []byte{0x00},
 					Signature: []byte{0x01},
@@ -400,8 +448,8 @@ func TestOrder_Refunds(t *testing.T) {
 			ToAddress: "abc",
 			ToAmount:  "0",
 		}}
-		release1 = &pb.Refund_ReleaseInfo{ReleaseInfo: &pb.Refund_EscrowRelease{
-			EscrowSignatures: []*pb.Refund_Signature{
+		release1 = &pb.Refund_ReleaseInfo{ReleaseInfo: &pb.EscrowRelease{
+			EscrowSignatures: []*pb.Signature{
 				{
 					From:      []byte{0x00},
 					Signature: []byte{0x02},
@@ -700,7 +748,7 @@ func TestOrder_CanCancel(t *testing.T) {
 		{
 			// Non nil fulfillment
 			setup: func(order *Order) error {
-				order.SerializedOrderFulfillment = []byte{0x00}
+				order.SerializedOrderFulfillments = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
 					Listings: []*pb.SignedListing{
 						{
@@ -992,7 +1040,7 @@ func TestOrder_CanReject(t *testing.T) {
 		{
 			// Non nil fulfillment
 			setup: func(order *Order) error {
-				order.SerializedOrderFulfillment = []byte{0x00}
+				order.SerializedOrderFulfillments = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
 					BuyerID: &pb.ID{
 						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
@@ -1344,7 +1392,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 		{
 			// Non nil fulfillment
 			setup: func(order *Order) error {
-				order.SerializedOrderFulfillment = []byte{0x00}
+				order.SerializedOrderFulfillments = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
 					BuyerID: &pb.ID{
 						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",

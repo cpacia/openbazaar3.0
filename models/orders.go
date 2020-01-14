@@ -97,10 +97,6 @@ type Order struct {
 	RatingSignaturesSignature  string
 	RatingSignaturesAcked      bool
 
-	SerializedOrderFulfillment json.RawMessage
-	OrderFulfillmentSignature  string
-	OrderFulfillmentAcked      bool
-
 	SerializedOrderComplete json.RawMessage
 	OrderCompleteSignature  string
 	OrderCompleteAcked      bool
@@ -120,6 +116,9 @@ type Order struct {
 	SerializedPaymentFinalized json.RawMessage
 	PaymentFinalizedSignature  string
 	PaymentFinalizedAcked      bool
+
+	SerializedOrderFulfillments json.RawMessage
+	OrderFulfillmentAcked       bool
 
 	SerializedRefunds json.RawMessage
 	RefundAcked       bool
@@ -278,16 +277,20 @@ func (o *Order) RatingSignaturesMessage() (*pb.RatingSignatures, error) {
 	return ratingSignatures, nil
 }
 
-// OrderFulfillmentMessage returns the unmarshalled proto object if it exists in the order.
-func (o *Order) OrderFulfillmentMessage() (*pb.OrderFulfillment, error) {
-	if o.SerializedOrderFulfillment == nil || len(o.SerializedOrderFulfillment) == 0 {
+// OrderFulfillmentMessage returns the unmarshalled proto objects if they exists in the order.
+func (o *Order) OrderFulfillmentMessages() ([]*pb.OrderFulfillment, error) {
+	if o.SerializedOrderFulfillments == nil || len(o.SerializedOrderFulfillments) == 0 {
 		return nil, ErrMessageDoesNotExist
 	}
-	orderFulfillment := new(pb.OrderFulfillment)
-	if err := jsonpb.UnmarshalString(string(o.SerializedOrderFulfillment), orderFulfillment); err != nil {
+	fulfillmentList := new(pb.FulfillmentList)
+	if err := jsonpb.UnmarshalString(string(o.SerializedOrderFulfillments), fulfillmentList); err != nil {
 		return nil, err
 	}
-	return orderFulfillment, nil
+	fulfillments := make([]*pb.OrderFulfillment, 0, len(fulfillmentList.Messages))
+	for _, m := range fulfillmentList.Messages {
+		fulfillments = append(fulfillments, m.FulfillmentMessage)
+	}
+	return fulfillments, nil
 }
 
 // OrderCompleteMessage returns the unmarshalled proto object if it exists in the order.
@@ -412,10 +415,6 @@ func (o *Order) PutMessage(message *npb.OrderMessage) error {
 		msg = new(pb.RatingSignatures)
 		setMessage = func(ser []byte) { o.SerializedRatingSignatures = ser }
 		o.RatingSignaturesSignature = sig
-	case npb.OrderMessage_ORDER_FULFILLMENT:
-		msg = new(pb.OrderFulfillment)
-		setMessage = func(ser []byte) { o.SerializedOrderFulfillment = ser }
-		o.OrderFulfillmentSignature = sig
 	case npb.OrderMessage_ORDER_COMPLETE:
 		msg = new(pb.OrderComplete)
 		setMessage = func(ser []byte) { o.SerializedOrderComplete = ser }
@@ -432,6 +431,38 @@ func (o *Order) PutMessage(message *npb.OrderMessage) error {
 		msg = new(pb.DisputeClose)
 		setMessage = func(ser []byte) { o.SerializedDisputeClosed = ser }
 		o.DisputeClosedSignature = sig
+	case npb.OrderMessage_ORDER_FULFILLMENT:
+		fulfillmentMsg := new(pb.OrderFulfillment)
+		if err := ptypes.UnmarshalAny(message.Message, fulfillmentMsg); err != nil {
+			return err
+		}
+
+		fulfillmentList := new(pb.FulfillmentList)
+		if o.SerializedOrderFulfillments != nil {
+			if err := jsonpb.UnmarshalString(string(o.SerializedOrderFulfillments), fulfillmentList); err != nil {
+				return err
+			}
+		}
+		for _, f := range fulfillmentList.Messages {
+			for _, item := range f.FulfillmentMessage.Fulfillments {
+				for _, fulfilledItems := range fulfillmentMsg.Fulfillments {
+					if item.ItemIndex == fulfilledItems.ItemIndex {
+						return ErrDuplicateTransaction
+					}
+				}
+			}
+		}
+		fulfillmentList.Messages = append(fulfillmentList.Messages, &pb.FulfillmentList_Message{
+			FulfillmentMessage: fulfillmentMsg,
+			Signature:          message.Signature,
+		})
+		ser, err := marshaler.MarshalToString(fulfillmentList)
+		if err != nil {
+			return err
+		}
+
+		o.SerializedOrderFulfillments = []byte(ser)
+		return nil
 	case npb.OrderMessage_REFUND:
 		refundMsg := new(pb.Refund)
 		if err := ptypes.UnmarshalAny(message.Message, refundMsg); err != nil {
@@ -617,7 +648,7 @@ func (o *Order) CanReject(ourPeerID peer.ID) bool {
 
 	// Cannot cancel if the order has progressed passed order open.
 	if o.SerializedOrderReject != nil || o.SerializedOrderCancel != nil ||
-		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillment != nil ||
+		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillments != nil ||
 		o.SerializedOrderComplete != nil || o.SerializedDisputeOpen != nil ||
 		o.SerializedDisputeUpdate != nil || o.SerializedDisputeClosed != nil ||
 		o.SerializedRefunds != nil || o.SerializedPaymentFinalized != nil {
@@ -645,7 +676,7 @@ func (o *Order) CanConfirm(ourPeerID peer.ID) bool {
 
 	// Cannot confirm if the order has progressed passed order open.
 	if o.SerializedOrderReject != nil || o.SerializedOrderCancel != nil ||
-		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillment != nil ||
+		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillments != nil ||
 		o.SerializedOrderComplete != nil || o.SerializedDisputeOpen != nil ||
 		o.SerializedDisputeUpdate != nil || o.SerializedDisputeClosed != nil ||
 		o.SerializedRefunds != nil || o.SerializedPaymentFinalized != nil {
@@ -677,7 +708,7 @@ func (o *Order) CanCancel(ourPeerID peer.ID) bool {
 
 	// Cannot cancel if the order has progressed passed order open.
 	if o.SerializedOrderReject != nil || o.SerializedOrderCancel != nil ||
-		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillment != nil ||
+		o.SerializedOrderConfirmation != nil || o.SerializedOrderFulfillments != nil ||
 		o.SerializedOrderComplete != nil || o.SerializedDisputeOpen != nil ||
 		o.SerializedDisputeUpdate != nil || o.SerializedDisputeClosed != nil ||
 		o.SerializedRefunds != nil || o.SerializedPaymentFinalized != nil {
@@ -793,10 +824,6 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		out["orderConfirmation"] = o.SerializedOrderConfirmation
 		out["orderConfirmationAcked"] = o.OrderOpenAcked
 	}
-	if o.SerializedOrderFulfillment != nil {
-		out["orderFulfillment"] = o.SerializedOrderFulfillment
-		out["orderFulfillmentAcked"] = o.OrderOpenAcked
-	}
 	if o.SerializedOrderComplete != nil {
 		out["orderComplete"] = o.SerializedOrderComplete
 		out["orderCompleteAcked"] = o.OrderOpenAcked
@@ -816,6 +843,22 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 	if o.SerializedPaymentFinalized != nil {
 		out["orderOpen"] = o.SerializedOrderOpen
 		out["paymentFinalizedAcked"] = o.OrderOpenAcked
+	}
+	if o.SerializedOrderFulfillments != nil {
+		fulfillmentList := new(pb.FulfillmentList)
+		if err := jsonpb.UnmarshalString(string(o.SerializedOrderFulfillments), fulfillmentList); err != nil {
+			return nil, err
+		}
+		ser := make([]json.RawMessage, 0, len(fulfillmentList.Messages))
+		for _, fulfillment := range fulfillmentList.Messages {
+			serializedFulfillment, err := marshaler.MarshalToString(fulfillment.FulfillmentMessage)
+			if err != nil {
+				return nil, err
+			}
+			ser = append(ser, []byte(serializedFulfillment))
+		}
+		out["orderFulfillments"] = ser
+		out["orderFulfillmentsAcked"] = o.OrderFulfillmentAcked
 	}
 	if o.SerializedRefunds != nil {
 		refundList := new(pb.RefundList)
