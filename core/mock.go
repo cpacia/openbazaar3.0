@@ -128,6 +128,7 @@ func MockNode() (*OpenBazaarNode, error) {
 	}
 	node.orderProcessor = orders.NewOrderProcessor(&orders.Config{
 		Identity:             ipfsNode.Identity,
+		IdentityPrivateKey:   ipfsNode.PrivateKey,
 		Db:                   r.DB(),
 		Multiwallet:          mw,
 		Messenger:            node.messenger,
@@ -263,6 +264,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 		}
 		node.orderProcessor = orders.NewOrderProcessor(&orders.Config{
 			Identity:             ipfsNode.Identity,
+			IdentityPrivateKey:   ipfsNode.PrivateKey,
 			Db:                   r.DB(),
 			Messenger:            node.messenger,
 			Multiwallet:          mw,

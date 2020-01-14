@@ -93,7 +93,10 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 			// Normal case where order open exists.
 			setup: func(order *models.Order) error {
 				order.ID = models.OrderID(orderID)
-				return order.PutMessage(orderOpen)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature: []byte("abc"),
+					Message:   mustBuildAny(orderOpen),
+				})
 			},
 			expectedError: nil,
 			expectedEvent: &events.OrderConfirmation{
@@ -128,7 +131,11 @@ func TestOrderProcessor_processOrderConfirmationMessage(t *testing.T) {
 		{
 			// Duplicate order confirmation.
 			setup: func(order *models.Order) error {
-				return order.PutMessage(confirmMsg)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature:   []byte("abc"),
+					Message:     mustBuildAny(confirmMsg),
+					MessageType: npb.OrderMessage_ORDER_CONFIRMATION,
+				})
 			},
 			expectedError: nil,
 			expectedEvent: nil,

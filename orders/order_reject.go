@@ -59,5 +59,5 @@ func (op *OrderProcessor) processOrderRejectMessage(dbtx database.Tx, order *mod
 		log.Infof("Processed own ORDER_REJECT for orderID: %s", order.ID)
 	}
 
-	return event, order.PutMessage(orderReject)
+	return event, order.PutMessage(message)
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	iwallet "github.com/cpacia/wallet-interface"
 	"testing"
 )
@@ -22,7 +23,7 @@ func TestOpenBazaarNode_SaveAndGetTransactionMetadata(t *testing.T) {
 	var order models.Order
 	order.ID = models.OrderID("123")
 	order.PaymentAddress = orderOpen.Payment.Address
-	if err := order.PutMessage(orderOpen); err != nil {
+	if err := order.PutMessage(utils.MustWrapOrderMessage(orderOpen)); err != nil {
 		t.Fatal(err)
 	}
 

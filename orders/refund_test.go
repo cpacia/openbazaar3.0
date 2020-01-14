@@ -142,7 +142,10 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 			setup: func(order *models.Order) error {
 				order.ID = "1234"
 				order.PaymentAddress = addr.String()
-				return order.PutMessage(orderOpen)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature: []byte("abc"),
+					Message:   mustBuildAny(orderOpen),
+				})
 			},
 			expectedError: nil,
 			expectedEvent: &events.Refund{
@@ -171,7 +174,11 @@ func TestOrderProcessor_processRefundMessage(t *testing.T) {
 		{
 			// Duplicate order refund.
 			setup: func(order *models.Order) error {
-				return order.PutMessage(refundMsg)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature:   []byte("abc"),
+					Message:     mustBuildAny(refundMsg),
+					MessageType: npb.OrderMessage_REFUND,
+				})
 			},
 			expectedError: nil,
 			expectedEvent: nil,

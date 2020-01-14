@@ -74,6 +74,10 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 				Message:     rejectAny,
 			}
 
+			if err := utils.SignOrderMessage(&resp, op.identityPrivateKey); err != nil {
+				return nil, err
+			}
+
 			payload, err := ptypes.MarshalAny(&resp)
 			if err != nil {
 				return nil, err
@@ -94,7 +98,7 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 				return nil, err
 			}
 
-			if err := order.PutMessage(&reject); err != nil {
+			if err := order.PutMessage(&resp); err != nil {
 				return nil, err
 			}
 		}
@@ -125,7 +129,7 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 		}
 	}
 
-	if err := order.PutMessage(orderOpen); err != nil {
+	if err := order.PutMessage(message); err != nil {
 		return nil, err
 	}
 	if orderOpen.Payment != nil {

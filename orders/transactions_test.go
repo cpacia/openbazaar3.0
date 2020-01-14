@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
+	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
@@ -37,7 +38,10 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 						PaymentAddress: "abcd",
 					}
 					order.SetRole(models.RoleBuyer)
-					if err := order.PutMessage(orderOpen); err != nil {
+					if err := order.PutMessage(&npb.OrderMessage{
+						Signature: []byte("abc"),
+						Message:   mustBuildAny(orderOpen),
+					}); err != nil {
 						return err
 					}
 					return tx.Save(&order)
@@ -110,7 +114,11 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 						PaymentAddress: "abcd",
 					}
 					order.SetRole(models.RoleVendor)
-					if err := order.PutMessage(orderOpen); err != nil {
+
+					if err := order.PutMessage(&npb.OrderMessage{
+						Signature: []byte("abc"),
+						Message:   mustBuildAny(orderOpen),
+					}); err != nil {
 						return err
 					}
 					return tx.Save(&order)
@@ -175,7 +183,10 @@ func TestOrderProcessor_processWalletTransaction(t *testing.T) {
 						ID:             "1234",
 						PaymentAddress: "abcd",
 					}
-					if err := order.PutMessage(orderOpen); err != nil {
+					if err := order.PutMessage(&npb.OrderMessage{
+						Signature: []byte("abc"),
+						Message:   mustBuildAny(orderOpen),
+					}); err != nil {
 						return err
 					}
 					return tx.Save(&order)
@@ -292,22 +303,45 @@ func TestOrderProcessor_checkForMorePayments(t *testing.T) {
 		Open:           true,
 		PaymentAddress: orderOpen.Payment.Address,
 	}
-	if err := order.PutMessage(orderOpen); err != nil {
+	if err := order.PutMessage(&npb.OrderMessage{
+		Signature: []byte("abc"),
+		Message:   mustBuildAny(orderOpen),
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := order.PutMessage(&pb.PaymentSent{TransactionID: fundingTxids[1].String()}); err != nil {
+	if err := order.PutMessage(&npb.OrderMessage{
+		Signature:   []byte("abc"),
+		Message:     mustBuildAny(&pb.PaymentSent{TransactionID: fundingTxids[1].String()}),
+		MessageType: npb.OrderMessage_PAYMENT_SENT,
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := order.PutMessage(&pb.Refund{RefundInfo: &pb.Refund_TransactionID{TransactionID: fundingTxids[2].String()}}); err != nil {
+	if err := order.PutMessage(&npb.OrderMessage{
+		Signature:   []byte("abc"),
+		Message:     mustBuildAny(&pb.Refund{RefundInfo: &pb.Refund_TransactionID{TransactionID: fundingTxids[2].String()}}),
+		MessageType: npb.OrderMessage_REFUND,
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := order.PutMessage(&pb.OrderCancel{TransactionID: fundingTxids[2].String()}); err != nil {
+	if err := order.PutMessage(&npb.OrderMessage{
+		Signature:   []byte("abc"),
+		Message:     mustBuildAny(&pb.OrderCancel{TransactionID: fundingTxids[2].String()}),
+		MessageType: npb.OrderMessage_ORDER_CANCEL,
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := order.PutMessage(&pb.OrderConfirmation{TransactionID: fundingTxids[3].String()}); err != nil {
+	if err := order.PutMessage(&npb.OrderMessage{
+		Signature:   []byte("abc"),
+		Message:     mustBuildAny(&pb.OrderConfirmation{TransactionID: fundingTxids[3].String()}),
+		MessageType: npb.OrderMessage_ORDER_CONFIRMATION,
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := order.PutMessage(&pb.DisputeClose{TransactionID: fundingTxids[4].String()}); err != nil {
+	if err := order.PutMessage(&npb.OrderMessage{
+		Signature:   []byte("abc"),
+		Message:     mustBuildAny(&pb.DisputeClose{TransactionID: fundingTxids[4].String()}),
+		MessageType: npb.OrderMessage_DISPUTE_CLOSE,
+	}); err != nil {
 		t.Fatal(err)
 	}
 

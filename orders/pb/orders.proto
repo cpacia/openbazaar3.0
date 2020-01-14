@@ -130,9 +130,19 @@ message PaymentSent {
 message PaymentFinalized {}
 
 message PaymentSentList {
-    repeated PaymentSent messages = 1;
+    repeated Message messages = 1;
+
+    message Message {
+        PaymentSent paymentSentMessage = 1;
+        bytes signature                = 2;
+    }
 }
 
 message RefundList {
-    repeated Refund messages = 1;
+    repeated Message messages = 1;
+
+    message Message {
+        Refund refundMessage = 1;
+        bytes signature      = 2;
+    }
 }

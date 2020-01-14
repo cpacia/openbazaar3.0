@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"github.com/OpenBazaar/jsonpb"
@@ -77,40 +78,50 @@ type Order struct {
 	RescanPerformed      bool
 
 	SerializedOrderOpen json.RawMessage
+	OrderOpenSignature  string
 	OrderOpenAcked      bool
 
 	SerializedOrderReject json.RawMessage
+	OrderRejectSignature  string
 	OrderRejectAcked      bool
 
 	SerializedOrderCancel json.RawMessage
+	OrderCancelSignature  string
 	OrderCancelAcked      bool
 
 	SerializedOrderConfirmation json.RawMessage
+	OrderConfirmationSignature  string
 	OrderConfirmationAcked      bool
 
 	SerializedOrderFulfillment json.RawMessage
+	OrderFulfillmentSignature  string
 	OrderFulfillmentAcked      bool
 
 	SerializedOrderComplete json.RawMessage
+	OrderCompleteSignature  string
 	OrderCompleteAcked      bool
 
 	SerializedDisputeOpen json.RawMessage
+	DisputeOpenSignature  string
 	DisputeOpenAcked      bool
 
 	SerializedDisputeUpdate json.RawMessage
+	DisputeUpdateSignature  string
 	DisputeUpdateAcked      bool
 
 	SerializedDisputeClosed json.RawMessage
+	DisputeClosedSignature  string
 	DisputeClosedAcked      bool
+
+	SerializedPaymentFinalized json.RawMessage
+	PaymentFinalizedSignature  string
+	PaymentFinalizedAcked      bool
 
 	SerializedRefunds json.RawMessage
 	RefundAcked       bool
 
 	SerializedPaymentSent json.RawMessage
 	PaymentSentAcked      bool
-
-	SerializedPaymentFinalized json.RawMessage
-	PaymentFinalizedAcked      bool
 
 	ParkedMessages  []byte
 	ErroredMessages []byte
@@ -320,8 +331,10 @@ func (o *Order) Refunds() ([]*pb.Refund, error) {
 	if err := jsonpb.UnmarshalString(string(o.SerializedRefunds), refundList); err != nil {
 		return nil, err
 	}
-	var refunds []*pb.Refund
-	refunds = append(refunds, refundList.Messages...)
+	refunds := make([]*pb.Refund, 0, len(refundList.Messages))
+	for _, m := range refundList.Messages {
+		refunds = append(refunds, m.RefundMessage)
+	}
 	return refunds, nil
 }
 
@@ -334,10 +347,10 @@ func (o *Order) PaymentSentMessages() ([]*pb.PaymentSent, error) {
 	if err := jsonpb.UnmarshalString(string(o.SerializedPaymentSent), paymentList); err != nil {
 		return nil, err
 	}
-
 	payments := make([]*pb.PaymentSent, 0, len(paymentList.Messages))
-	payments = append(payments, paymentList.Messages...)
-
+	for _, m := range paymentList.Messages {
+		payments = append(payments, m.PaymentSentMessage)
+	}
 	return payments, nil
 }
 
@@ -355,32 +368,56 @@ func (o *Order) PaymentFinalizedMessage() (*pb.PaymentFinalized, error) {
 
 // PutMessage serializes the message and saves it in the object at
 // the correct location.
-func (o *Order) PutMessage(message proto.Message) error {
-	s, err := marshaler.MarshalToString(message)
-	if err != nil {
-		return err
-	}
-	ser := []byte(s)
-	switch message.(type) {
-	case *pb.OrderOpen:
-		o.SerializedOrderOpen = ser
-	case *pb.OrderReject:
-		o.SerializedOrderReject = ser
-	case *pb.OrderCancel:
-		o.SerializedOrderCancel = ser
-	case *pb.OrderConfirmation:
-		o.SerializedOrderConfirmation = ser
-	case *pb.OrderFulfillment:
-		o.SerializedOrderFulfillment = ser
-	case *pb.OrderComplete:
-		o.SerializedOrderComplete = ser
-	case *pb.DisputeOpen:
-		o.SerializedDisputeOpen = ser
-	case *pb.DisputeUpdate:
-		o.SerializedDisputeUpdate = ser
-	case *pb.DisputeClose:
-		o.SerializedDisputeClosed = ser
-	case *pb.Refund:
+func (o *Order) PutMessage(message *npb.OrderMessage) error {
+	sig := base64.StdEncoding.EncodeToString(message.Signature)
+	var (
+		msg        proto.Message
+		setMessage func(ser []byte)
+	)
+
+	switch message.MessageType {
+	case npb.OrderMessage_ORDER_OPEN:
+		msg = new(pb.OrderOpen)
+		setMessage = func(ser []byte) { o.SerializedOrderOpen = ser }
+		o.OrderOpenSignature = sig
+	case npb.OrderMessage_ORDER_REJECT:
+		msg = new(pb.OrderReject)
+		setMessage = func(ser []byte) { o.SerializedOrderReject = ser }
+		o.OrderRejectSignature = sig
+	case npb.OrderMessage_ORDER_CANCEL:
+		msg = new(pb.OrderCancel)
+		setMessage = func(ser []byte) { o.SerializedOrderCancel = ser }
+		o.OrderCancelSignature = sig
+	case npb.OrderMessage_ORDER_CONFIRMATION:
+		msg = new(pb.OrderConfirmation)
+		setMessage = func(ser []byte) { o.SerializedOrderConfirmation = ser }
+		o.OrderConfirmationSignature = sig
+	case npb.OrderMessage_ORDER_FULFILLMENT:
+		msg = new(pb.OrderFulfillment)
+		setMessage = func(ser []byte) { o.SerializedOrderFulfillment = ser }
+		o.OrderFulfillmentSignature = sig
+	case npb.OrderMessage_ORDER_COMPLETE:
+		msg = new(pb.OrderComplete)
+		setMessage = func(ser []byte) { o.SerializedOrderComplete = ser }
+		o.OrderCompleteSignature = sig
+	case npb.OrderMessage_DISPUTE_OPEN:
+		msg = new(pb.DisputeOpen)
+		setMessage = func(ser []byte) { o.SerializedDisputeOpen = ser }
+		o.DisputeOpenSignature = sig
+	case npb.OrderMessage_DISPUTE_UPDATE:
+		msg = new(pb.DisputeUpdate)
+		setMessage = func(ser []byte) { o.SerializedDisputeUpdate = ser }
+		o.DisputeUpdateSignature = sig
+	case npb.OrderMessage_DISPUTE_CLOSE:
+		msg = new(pb.DisputeClose)
+		setMessage = func(ser []byte) { o.SerializedDisputeClosed = ser }
+		o.DisputeClosedSignature = sig
+	case npb.OrderMessage_REFUND:
+		refundMsg := new(pb.Refund)
+		if err := ptypes.UnmarshalAny(message.Message, refundMsg); err != nil {
+			return err
+		}
+
 		refundList := new(pb.RefundList)
 		if o.SerializedRefunds != nil {
 			if err := jsonpb.UnmarshalString(string(o.SerializedRefunds), refundList); err != nil {
@@ -388,15 +425,15 @@ func (o *Order) PutMessage(message proto.Message) error {
 			}
 		}
 		for _, r := range refundList.Messages {
-			if r.GetTransactionID() != "" && r.GetTransactionID() == message.(*pb.Refund).GetTransactionID() {
+			if r.RefundMessage.GetTransactionID() != "" && r.RefundMessage.GetTransactionID() == refundMsg.GetTransactionID() {
 				return ErrDuplicateTransaction
 			}
-			if r.GetReleaseInfo() != nil && message.(*pb.Refund).GetReleaseInfo() != nil {
-				out1, err := marshaler.MarshalToString(r.GetReleaseInfo())
+			if r.RefundMessage.GetReleaseInfo() != nil && refundMsg.GetReleaseInfo() != nil {
+				out1, err := marshaler.MarshalToString(r.RefundMessage.GetReleaseInfo())
 				if err != nil {
 					return err
 				}
-				out2, err := marshaler.MarshalToString(message.(*pb.Refund).GetReleaseInfo())
+				out2, err := marshaler.MarshalToString(refundMsg.GetReleaseInfo())
 				if err != nil {
 					return err
 				}
@@ -406,14 +443,23 @@ func (o *Order) PutMessage(message proto.Message) error {
 				}
 			}
 		}
-		refundList.Messages = append(refundList.Messages, message.(*pb.Refund))
+		refundList.Messages = append(refundList.Messages, &pb.RefundList_Message{
+			RefundMessage: refundMsg,
+			Signature:     message.Signature,
+		})
 		ser, err := marshaler.MarshalToString(refundList)
 		if err != nil {
 			return err
 		}
 
 		o.SerializedRefunds = []byte(ser)
-	case *pb.PaymentSent:
+		return nil
+	case npb.OrderMessage_PAYMENT_SENT:
+		pymtSentMsg := new(pb.PaymentSent)
+		if err := ptypes.UnmarshalAny(message.Message, pymtSentMsg); err != nil {
+			return err
+		}
+
 		paymentList := new(pb.PaymentSentList)
 		if o.SerializedPaymentSent != nil {
 			if err := jsonpb.UnmarshalString(string(o.SerializedPaymentSent), paymentList); err != nil {
@@ -421,20 +467,35 @@ func (o *Order) PutMessage(message proto.Message) error {
 			}
 		}
 		for _, m := range paymentList.Messages {
-			if m.TransactionID == message.(*pb.PaymentSent).TransactionID {
+			if m.PaymentSentMessage.TransactionID == pymtSentMsg.TransactionID {
 				return ErrDuplicateTransaction
 			}
 		}
-		paymentList.Messages = append(paymentList.Messages, message.(*pb.PaymentSent))
+		paymentList.Messages = append(paymentList.Messages, &pb.PaymentSentList_Message{
+			PaymentSentMessage: pymtSentMsg,
+			Signature:          message.Signature,
+		})
 		ser, err := marshaler.MarshalToString(paymentList)
 		if err != nil {
 			return err
 		}
 
 		o.SerializedPaymentSent = []byte(ser)
-	case *pb.PaymentFinalized:
-		o.SerializedPaymentFinalized = ser
+		return nil
+	case npb.OrderMessage_PAYMENT_FINALIZED:
+		msg = new(pb.PaymentFinalized)
+		setMessage = func(ser []byte) { o.SerializedPaymentFinalized = ser }
+		o.PaymentFinalizedSignature = sig
 	}
+
+	if err := ptypes.UnmarshalAny(message.Message, msg); err != nil {
+		return err
+	}
+	out, err := marshaler.MarshalToString(msg)
+	if err != nil {
+		return err
+	}
+	setMessage([]byte(out))
 	return nil
 }
 
@@ -442,16 +503,16 @@ func (o *Order) PutMessage(message proto.Message) error {
 func (o *Order) ParkMessage(message *npb.OrderMessage) error {
 	parkedMessages := new(npb.OrderList)
 	if o.ParkedMessages != nil {
-		if err := jsonpb.UnmarshalString(string(o.ParkedMessages), parkedMessages); err != nil {
+		if err := proto.Unmarshal(o.ParkedMessages, parkedMessages); err != nil {
 			return err
 		}
 	}
 	parkedMessages.Messages = append(parkedMessages.Messages, message)
-	ser, err := marshaler.MarshalToString(parkedMessages)
+	ser, err := proto.Marshal(parkedMessages)
 	if err != nil {
 		return err
 	}
-	o.ParkedMessages = []byte(ser)
+	o.ParkedMessages = ser
 	return nil
 }
 
@@ -459,7 +520,7 @@ func (o *Order) ParkMessage(message *npb.OrderMessage) error {
 func (o *Order) DeleteParkedMessage(messageType npb.OrderMessage_MessageType) error {
 	parkedMessages := new(npb.OrderList)
 	if o.ParkedMessages != nil {
-		if err := jsonpb.UnmarshalString(string(o.ParkedMessages), parkedMessages); err != nil {
+		if err := proto.Unmarshal(o.ParkedMessages, parkedMessages); err != nil {
 			return err
 		}
 	}
@@ -469,11 +530,11 @@ func (o *Order) DeleteParkedMessage(messageType npb.OrderMessage_MessageType) er
 			break
 		}
 	}
-	ser, err := marshaler.MarshalToString(parkedMessages)
+	ser, err := proto.Marshal(parkedMessages)
 	if err != nil {
 		return err
 	}
-	o.ParkedMessages = []byte(ser)
+	o.ParkedMessages = ser
 	return nil
 }
 
@@ -483,7 +544,7 @@ func (o *Order) GetParkedMessages() ([]*npb.OrderMessage, error) {
 	if o.ParkedMessages == nil || len(o.ParkedMessages) == 0 {
 		return nil, nil
 	}
-	if err := jsonpb.UnmarshalString(string(o.ParkedMessages), parkedMessages); err != nil {
+	if err := proto.Unmarshal(o.ParkedMessages, parkedMessages); err != nil {
 		return nil, err
 	}
 	return parkedMessages.Messages, nil
@@ -493,16 +554,16 @@ func (o *Order) GetParkedMessages() ([]*npb.OrderMessage, error) {
 func (o *Order) PutErrorMessage(message *npb.OrderMessage) error {
 	erroredMessages := new(npb.OrderList)
 	if o.ErroredMessages != nil {
-		if err := jsonpb.UnmarshalString(string(o.ErroredMessages), erroredMessages); err != nil {
+		if err := proto.Unmarshal(o.ErroredMessages, erroredMessages); err != nil {
 			return err
 		}
 	}
 	erroredMessages.Messages = append(erroredMessages.Messages, message)
-	ser, err := marshaler.MarshalToString(erroredMessages)
+	ser, err := proto.Marshal(erroredMessages)
 	if err != nil {
 		return err
 	}
-	o.ErroredMessages = []byte(ser)
+	o.ErroredMessages = ser
 	return nil
 }
 
@@ -512,7 +573,7 @@ func (o *Order) GetErroredMessages() ([]*npb.OrderMessage, error) {
 	if o.ErroredMessages == nil || len(o.ErroredMessages) == 0 {
 		return nil, nil
 	}
-	if err := jsonpb.UnmarshalString(string(o.ErroredMessages), erroredMessages); err != nil {
+	if err := proto.Unmarshal(o.ErroredMessages, erroredMessages); err != nil {
 		return nil, err
 	}
 	return erroredMessages.Messages, nil
@@ -743,7 +804,7 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		}
 		ser := make([]json.RawMessage, 0, len(refundList.Messages))
 		for _, refund := range refundList.Messages {
-			serializedRefund, err := marshaler.MarshalToString(refund)
+			serializedRefund, err := marshaler.MarshalToString(refund.RefundMessage)
 			if err != nil {
 				return nil, err
 			}
@@ -759,7 +820,7 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		}
 		ser := make([]json.RawMessage, 0, len(paymentSentList.Messages))
 		for _, payment := range paymentSentList.Messages {
-			serializedPayment, err := marshaler.MarshalToString(payment)
+			serializedPayment, err := marshaler.MarshalToString(payment.PaymentSentMessage)
 			if err != nil {
 				return nil, err
 			}
@@ -769,10 +830,26 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		out["paymentsSentAcked"] = o.PaymentSentAcked
 	}
 	if o.ParkedMessages != nil {
-		out["parkedMessages"] = o.ParkedMessages
+		parked := new(npb.OrderList)
+		if err := json.Unmarshal(o.ParkedMessages, parked); err != nil {
+			return nil, err
+		}
+		m, err := marshaler.MarshalToString(parked)
+		if err != nil {
+			return nil, err
+		}
+		out["parkedMessages"] = m
 	}
 	if o.ErroredMessages != nil {
-		out["erroredMessages"] = o.ErroredMessages
+		errored := new(npb.OrderList)
+		if err := json.Unmarshal(o.ParkedMessages, errored); err != nil {
+			return nil, err
+		}
+		m, err := marshaler.MarshalToString(errored)
+		if err != nil {
+			return nil, err
+		}
+		out["erroredMessages"] = m
 	}
 
 	return json.Marshal(out)

@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/golang/protobuf/ptypes"
 )
 
@@ -35,8 +36,8 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 	}
 
 	reject := pb.OrderReject{
-		Type:             pb.OrderReject_USER_REJECT,
-		Reason:           reason,
+		Type:   pb.OrderReject_USER_REJECT,
+		Reason: reason,
 	}
 
 	rejectAny, err := ptypes.MarshalAny(&reject)
@@ -50,7 +51,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 		Message:     rejectAny,
 	}
 
-	if err := n.signOrderMessage(&resp); err != nil {
+	if err := utils.SignOrderMessage(&resp, n.ipfsNode.PrivateKey); err != nil {
 		return err
 	}
 
@@ -91,7 +92,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 				return err
 			}
 
-			if err := n.signOrderMessage(refundMsg); err != nil {
+			if err := utils.SignOrderMessage(refundMsg, n.ipfsNode.PrivateKey); err != nil {
 				return err
 			}
 

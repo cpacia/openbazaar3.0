@@ -95,7 +95,10 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 			// Normal case where order open exists.
 			setup: func(order *models.Order) error {
 				order.ID = "1234"
-				return order.PutMessage(orderOpen)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature: []byte("abc"),
+					Message:   mustBuildAny(orderOpen),
+				})
 			},
 			expectedError: nil,
 			expectedEvent: &events.OrderDeclined{
@@ -131,7 +134,11 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 		{
 			// Duplicate order reject.
 			setup: func(order *models.Order) error {
-				return order.PutMessage(rejectMsg)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature:   []byte("abc"),
+					Message:     mustBuildAny(rejectMsg),
+					MessageType: npb.OrderMessage_ORDER_REJECT,
+				})
 			},
 			expectedError: nil,
 			expectedEvent: nil,
@@ -141,7 +148,11 @@ func TestOrderProcessor_processOrderRejectMessage(t *testing.T) {
 			setup: func(order *models.Order) error {
 				msg2 := *rejectMsg
 				msg2.Type = pb.OrderReject_USER_REJECT
-				return order.PutMessage(&msg2)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature:   []byte("abc"),
+					Message:     mustBuildAny(&msg2),
+					MessageType: npb.OrderMessage_ORDER_REJECT,
+				})
 			},
 			expectedError: ErrChangedMessage,
 			expectedEvent: nil,

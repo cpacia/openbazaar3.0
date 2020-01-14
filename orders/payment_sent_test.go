@@ -78,11 +78,14 @@ func Test_processPaymentSentMessage(t *testing.T) {
 			setup: func(order *models.Order) error {
 				order.ID = "1234"
 				order.PaymentAddress = addr.String()
-				return order.PutMessage(&pb.OrderOpen{
-					Payment: &pb.OrderOpen_Payment{
-						Coin:   "MCK",
-						Amount: "1000",
-					},
+				return order.PutMessage(&npb.OrderMessage{
+					Signature: []byte("abc"),
+					Message: mustBuildAny(&pb.OrderOpen{
+						Payment: &pb.OrderOpen_Payment{
+							Coin:   "MCK",
+							Amount: "1000",
+						},
+					}),
 				})
 			},
 			expectedError: nil,
@@ -107,10 +110,13 @@ func Test_processPaymentSentMessage(t *testing.T) {
 		{
 			// Duplicate payment
 			setup: func(order *models.Order) error {
-				payment := &pb.PaymentSent{
-					TransactionID: "xyz",
-				}
-				return order.PutMessage(payment)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature: []byte("abc"),
+					Message: mustBuildAny(&pb.PaymentSent{
+						TransactionID: "xyz",
+					}),
+					MessageType: npb.OrderMessage_PAYMENT_SENT,
+				})
 			},
 			expectedError: nil,
 			expectedEvent: nil,

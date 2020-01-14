@@ -82,6 +82,7 @@ func newMockOrderProcessor() (*OrderProcessor, func(), error) {
 
 	return NewOrderProcessor(&Config{
 			Identity:             ipfsNode.Identity,
+			IdentityPrivateKey:   ipfsNode.PrivateKey,
 			Db:                   r.DB(),
 			Messenger:            messenger,
 			Multiwallet:          mw,

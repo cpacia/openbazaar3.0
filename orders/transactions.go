@@ -8,6 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
@@ -99,6 +100,10 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 			Message:     paymentAny,
 		}
 
+		if err := utils.SignOrderMessage(&resp, op.identityPrivateKey); err != nil {
+			return err
+		}
+
 		payload, err := ptypes.MarshalAny(&resp)
 		if err != nil {
 			return err
@@ -124,7 +129,7 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 			return err
 		}
 
-		if err := order.PutMessage(&payment); err != nil {
+		if err := order.PutMessage(&resp); err != nil {
 			return err
 		}
 

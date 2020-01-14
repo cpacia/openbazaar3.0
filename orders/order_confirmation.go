@@ -80,5 +80,5 @@ func (op *OrderProcessor) processOrderConfirmationMessage(dbtx database.Tx, orde
 		log.Infof("Processed own ORDER_CONFIRMATION for order %s", order.ID)
 	}
 
-	return event, order.PutMessage(orderConfirmation)
+	return event, order.PutMessage(message)
 }

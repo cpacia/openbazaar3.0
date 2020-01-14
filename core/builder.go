@@ -425,6 +425,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	obNode.orderProcessor = orders.NewOrderProcessor(&orders.Config{
 		Identity:             ipfsNode.Identity,
+		IdentityPrivateKey:   ipfsNode.PrivateKey,
 		Db:                   obRepo.DB(),
 		Multiwallet:          mw,
 		Messenger:            obNode.messenger,

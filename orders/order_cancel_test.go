@@ -9,12 +9,22 @@ import (
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	"github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-peer"
 	"reflect"
 	"testing"
 )
+
+func mustBuildAny(msg proto.Message) *any.Any {
+	a, err := ptypes.MarshalAny(msg)
+	if err != nil {
+		panic(err)
+	}
+	return a
+}
 
 func TestOrderProcessor_processCancelMessage(t *testing.T) {
 	op, teardown, err := newMockOrderProcessor()
@@ -93,7 +103,12 @@ func TestOrderProcessor_processCancelMessage(t *testing.T) {
 			// Normal case where order open exists.
 			setup: func(order *models.Order) error {
 				order.ID = models.OrderID(orderID)
-				return order.PutMessage(orderOpen)
+
+				return order.PutMessage(&npb.OrderMessage{
+					Signature:   []byte("abc"),
+					Message:     mustBuildAny(orderOpen),
+					MessageType: npb.OrderMessage_ORDER_OPEN,
+				})
 			},
 			expectedError: nil,
 			expectedEvent: &events.OrderCancel{
@@ -128,7 +143,11 @@ func TestOrderProcessor_processCancelMessage(t *testing.T) {
 		{
 			// Duplicate order cancel.
 			setup: func(order *models.Order) error {
-				return order.PutMessage(cancelMsg)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature:   []byte("abc"),
+					Message:     mustBuildAny(cancelMsg),
+					MessageType: npb.OrderMessage_ORDER_CANCEL,
+				})
 			},
 			expectedError: nil,
 			expectedEvent: nil,

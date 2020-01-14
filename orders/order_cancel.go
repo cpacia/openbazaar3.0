@@ -53,7 +53,6 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 		// retry at it's next interval.
 		tx, err := wallet.GetTransaction(iwallet.TransactionID(orderCancel.TransactionID))
 		if err == nil {
-			log.Info("Processing tx")
 			for _, from := range tx.From {
 				if from.Address.String() == order.PaymentAddress {
 					if err := op.processOutgoingPayment(dbtx, order, tx); err != nil {
@@ -80,5 +79,5 @@ func (op *OrderProcessor) processOrderCancelMessage(dbtx database.Tx, order *mod
 		log.Infof("Received ORDER_CANCEL message for order %s", order.ID)
 	}
 
-	return event, order.PutMessage(orderCancel)
+	return event, order.PutMessage(message)
 }

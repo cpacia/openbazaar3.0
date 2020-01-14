@@ -62,7 +62,7 @@ func (n *OpenBazaarNode) CancelOrder(orderID models.OrderID, done chan struct{})
 		Message:     cancelAny,
 	}
 
-	if err := n.signOrderMessage(resp); err != nil {
+	if err := utils.SignOrderMessage(resp, n.ipfsNode.PrivateKey); err != nil {
 		return err
 	}
 

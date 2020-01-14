@@ -8,6 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
@@ -368,7 +369,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	orderAckSub1, err := network.Nodes()[0].eventBus.Subscribe(&events.MessageACK{})
+	orderAckSub1, err := network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -626,7 +627,7 @@ func Test_buildRefundMessage(t *testing.T) {
 				orderOpen.RefundAddress = "abc"
 				orderOpen.Payment.Method = pb.OrderOpen_Payment_DIRECT
 
-				return order.PutMessage(orderOpen)
+				return order.PutMessage(utils.MustWrapOrderMessage(orderOpen))
 			},
 			check: func(msg *pb.Refund) error {
 				if msg.GetTransactionID() == "" {
@@ -658,14 +659,14 @@ func Test_buildRefundMessage(t *testing.T) {
 					return err
 				}
 
-				err = order.PutMessage(&pb.Refund{
+				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.Refund{
 					Amount: "9000",
-				})
+				}))
 				if err != nil {
 					return err
 				}
 
-				return order.PutMessage(orderOpen)
+				return order.PutMessage(utils.MustWrapOrderMessage(orderOpen))
 			},
 			check: func(msg *pb.Refund) error {
 				if msg.GetTransactionID() == "" {
@@ -700,7 +701,7 @@ func Test_buildRefundMessage(t *testing.T) {
 					return err
 				}
 
-				return order.PutMessage(orderOpen)
+				return order.PutMessage(utils.MustWrapOrderMessage(orderOpen))
 			},
 			check: func(msg *pb.Refund) error {
 				if msg.GetReleaseInfo() == nil {
@@ -775,7 +776,7 @@ func Test_buildRefundMessage(t *testing.T) {
 					return err
 				}
 
-				return order.PutMessage(orderOpen)
+				return order.PutMessage(utils.MustWrapOrderMessage(orderOpen))
 			},
 			check: func(msg *pb.Refund) error {
 				if msg.GetReleaseInfo() == nil {

@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/op/go-logging"
 	"time"
@@ -33,6 +34,7 @@ var (
 type Config struct {
 	Identity             peer.ID
 	Db                   database.Database
+	IdentityPrivateKey   crypto.PrivKey
 	EscrowPrivateKey     *btcec.PrivateKey
 	Messenger            *net.Messenger
 	Multiwallet          multiwallet.Multiwallet
@@ -42,27 +44,29 @@ type Config struct {
 
 // OrderProcessor is used to deterministically process orders.
 type OrderProcessor struct {
-	identity         peer.ID
-	db               database.Database
-	messenger        *net.Messenger
-	multiwallet      multiwallet.Multiwallet
-	escrowPrivateKey *btcec.PrivateKey
-	erp              *wallet.ExchangeRateProvider
-	bus              events.Bus
-	shutdown         chan struct{}
+	identity           peer.ID
+	identityPrivateKey crypto.PrivKey
+	db                 database.Database
+	messenger          *net.Messenger
+	multiwallet        multiwallet.Multiwallet
+	escrowPrivateKey   *btcec.PrivateKey
+	erp                *wallet.ExchangeRateProvider
+	bus                events.Bus
+	shutdown           chan struct{}
 }
 
 // NewOrderProcessor initializes and returns a new OrderProcessor
 func NewOrderProcessor(cfg *Config) *OrderProcessor {
 	return &OrderProcessor{
-		identity:         cfg.Identity,
-		db:               cfg.Db,
-		messenger:        cfg.Messenger,
-		multiwallet:      cfg.Multiwallet,
-		escrowPrivateKey: cfg.EscrowPrivateKey,
-		erp:              cfg.ExchangeRateProvider,
-		bus:              cfg.EventBus,
-		shutdown:         make(chan struct{}),
+		identity:           cfg.Identity,
+		identityPrivateKey: cfg.IdentityPrivateKey,
+		db:                 cfg.Db,
+		messenger:          cfg.Messenger,
+		multiwallet:        cfg.Multiwallet,
+		escrowPrivateKey:   cfg.EscrowPrivateKey,
+		erp:                cfg.ExchangeRateProvider,
+		bus:                cfg.EventBus,
+		shutdown:           make(chan struct{}),
 	}
 }
 

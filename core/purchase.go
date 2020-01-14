@@ -141,7 +141,7 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 		Message:     orderAny,
 	}
 
-	err = n.signOrderMessage(order)
+	err = utils.SignOrderMessage(order, n.ipfsNode.PrivateKey)
 	if err != nil {
 		return
 	}

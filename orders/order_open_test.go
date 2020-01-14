@@ -100,7 +100,10 @@ func TestOrderProcessor_processOrderOpenMessage(t *testing.T) {
 			setup: func(order *models.Order, orderOpen *pb.OrderOpen) error {
 				order.PaymentAddress = orderOpen.Payment.Address
 				order.SetRole(models.RoleVendor)
-				return order.PutMessage(orderOpen)
+				return order.PutMessage(&npb.OrderMessage{
+					Signature: []byte("abc"),
+					Message:   mustBuildAny(orderOpen),
+				})
 			},
 			expectedError: nil,
 			expectedEvent: nil,

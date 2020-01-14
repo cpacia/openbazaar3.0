@@ -58,7 +58,7 @@ func (n *OpenBazaarNode) RefundOrder(orderID models.OrderID, done chan struct{})
 			return err
 		}
 
-		if err := n.signOrderMessage(refundMsg); err != nil {
+		if err := utils.SignOrderMessage(refundMsg, n.ipfsNode.PrivateKey); err != nil {
 			return err
 		}
 

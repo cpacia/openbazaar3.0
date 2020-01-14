@@ -9,6 +9,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models/factory"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	iwallet "github.com/cpacia/wallet-interface"
 	"testing"
 	"time"
@@ -255,7 +256,7 @@ func TestOpenBazaarNode_releaseFromCancelableAddress(t *testing.T) {
 	}
 
 	order := new(models.Order)
-	if err := order.PutMessage(orderOpen); err != nil {
+	if err := order.PutMessage(utils.MustWrapOrderMessage(orderOpen)); err != nil {
 		t.Fatal(err)
 	}
 

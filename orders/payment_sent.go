@@ -25,7 +25,7 @@ func (op *OrderProcessor) processPaymentSentMessage(dbtx database.Tx, order *mod
 		return nil, err
 	}
 
-	err = order.PutMessage(payment)
+	err = order.PutMessage(message)
 	if models.IsDuplicateTransactionError(err) {
 		return nil, nil
 	}

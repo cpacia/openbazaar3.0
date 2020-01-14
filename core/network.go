@@ -404,22 +404,3 @@ func (n *OpenBazaarNode) publishHandler() {
 		}
 	}()
 }
-
-// signOrderMessage puts a signature on an order message using the IPFS private
-// key. The protobuf serialization of the message object without the signature
-// is what is signed.
-func (n *OpenBazaarNode) signOrderMessage(message *pb.OrderMessage) error {
-	message.Signature = nil
-	ser, err := proto.Marshal(message)
-	if err != nil {
-		return err
-	}
-
-	sig, err := n.ipfsNode.PrivateKey.Sign(ser)
-	if err != nil {
-		return err
-	}
-
-	message.Signature = sig
-	return nil
-}
