@@ -18,7 +18,7 @@ const (
 	maxMessageLength = 20000
 )
 
-// SendChatMessage sends a chat message to the given peer. The message is sent
+// SendChatMessage sends a channels message to the given peer. The message is sent
 // reliably using the messenger in a separate goroutine so this method will
 // not block during the send. The done chan will be closed when the sending is
 // complete if you need this information.
@@ -102,7 +102,7 @@ func (n *OpenBazaarNode) SendTypingMessage(to peer.ID, orderID models.OrderID) e
 	return n.networkService.SendMessage(ctx, to, msg)
 }
 
-// MarkChatMessagesAsRead will mark chat messages for the given orderID as read locally
+// MarkChatMessagesAsRead will mark channels messages for the given orderID as read locally
 // and send the READ message to the remote peer. The READ message contains the last ID
 // that was marked as read the remote peer will set that message and everything before
 // it as read.
@@ -201,7 +201,7 @@ func (n *OpenBazaarNode) GetChatConversations() ([]models.ChatConversation, erro
 	return convos, nil
 }
 
-// GetChatMessagesByPeer returns a list of chat messages for a given peer ID.
+// GetChatMessagesByPeer returns a list of channels messages for a given peer ID.
 func (n *OpenBazaarNode) GetChatMessagesByPeer(peer peer.ID, limit int, offsetID string) ([]models.ChatMessage, error) {
 	var messages []models.ChatMessage
 	err := n.repo.DB().View(func(tx database.Tx) error {
@@ -221,7 +221,7 @@ func (n *OpenBazaarNode) GetChatMessagesByPeer(peer peer.ID, limit int, offsetID
 	return messages, nil
 }
 
-// GetChatMessagesByOrderID returns a list of chat messages for a given orderID.
+// GetChatMessagesByOrderID returns a list of channels messages for a given orderID.
 func (n *OpenBazaarNode) GetChatMessagesByOrderID(orderID models.OrderID, limit int, offsetID string) ([]models.ChatMessage, error) {
 	var messages []models.ChatMessage
 	err := n.repo.DB().View(func(tx database.Tx) error {
@@ -262,7 +262,7 @@ func (n *OpenBazaarNode) DeleteGroupChatMessages(orderID models.OrderID) error {
 	})
 }
 
-// handleChatMessage handles incoming chat messages from the network.
+// handleChatMessage handles incoming channels messages from the network.
 func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) error {
 	if n.isDuplicate(message) {
 		n.sendAckMessage(message.MessageID, from)
@@ -321,7 +321,7 @@ func (n *OpenBazaarNode) handleChatMessage(from peer.ID, message *pb.Message) er
 		return nil
 
 	default:
-		return errors.New("unknown chat message flag")
+		return errors.New("unknown channels message flag")
 
 	}
 }

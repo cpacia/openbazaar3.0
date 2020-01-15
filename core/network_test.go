@@ -99,7 +99,7 @@ func TestOpenBazaarNode_syncMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Build three chat messages and save them to the outgoing message table.
+	// Build three channels messages and save them to the outgoing message table.
 	chatMsg := pb.ChatMessage{
 		Message:   "Hello",
 		OrderID:   "",

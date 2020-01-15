@@ -211,10 +211,10 @@ func TestOpenBazaarNode_MarkChatMessagesAsRead(t *testing.T) {
 	}
 
 	if !chatMessage1.Read {
-		t.Error("Node 0 failed to mark chat message as read in database")
+		t.Error("Node 0 failed to mark channels message as read in database")
 	}
 	if !chatMessage2.Read {
-		t.Error("Node 1 failed to mark chat message as read in database")
+		t.Error("Node 1 failed to mark channels message as read in database")
 	}
 }
 
@@ -267,7 +267,7 @@ func TestOpenBazaarNode_GetChat(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(messages) != 2 {
-			t.Errorf("Expected 2 chat messages got %d", len(messages))
+			t.Errorf("Expected 2 channels messages got %d", len(messages))
 		}
 
 		if messages[0].Read {
@@ -302,7 +302,7 @@ func TestOpenBazaarNode_GetChat(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(messages) != 1 {
-			t.Errorf("Expected 1 chat messages got %d", len(messages))
+			t.Errorf("Expected 1 channels messages got %d", len(messages))
 		}
 		if messages[0].Message != lastMessage {
 			t.Errorf("Incorrect last message. Expected %s, got %s", lastMessage, messages[0].Message)
@@ -313,7 +313,7 @@ func TestOpenBazaarNode_GetChat(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(messages) != 1 {
-			t.Errorf("Expected 1 chat messages got %d", len(messages))
+			t.Errorf("Expected 1 channels messages got %d", len(messages))
 		}
 		if messages[0].Message != firstMessage {
 			t.Errorf("Incorrect first message. Expected %s, got %s", firstMessage, messages[0].Message)
@@ -482,7 +482,7 @@ func TestOpenBazaarNode_ChatSequence(t *testing.T) {
 	}
 
 	if len(messages) != 3 {
-		t.Fatalf("Incorrect number of chat messages. Expected 3 got %d", len(messages))
+		t.Fatalf("Incorrect number of channels messages. Expected 3 got %d", len(messages))
 	}
 
 	for i, c := range messages {

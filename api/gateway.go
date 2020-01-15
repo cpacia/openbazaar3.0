@@ -94,6 +94,11 @@ func (g *Gateway) NotifyWebsockets(message interface{}) error {
 	return nil
 }
 
+func (g *Gateway) Write(p []byte) (n int, err error) {
+	g.hub.Broadcast <- p
+	return len(p), nil
+}
+
 // Serve begins listening on the configured address.
 func (g *Gateway) Serve() error {
 	log.Infof("Gateway/API server listening on %s\n", g.listener.Addr())

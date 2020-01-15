@@ -12,7 +12,7 @@ import (
 func TestChatHandlers(t *testing.T) {
 	runAPITests(t, apiTests{
 		{
-			name:   "Post chat message",
+			name:   "Post channels message",
 			path:   "/v1/ob/chatmessage",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -27,7 +27,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post chat message invalid JSON",
+			name:   "Post channels message invalid JSON",
 			path:   "/v1/ob/chatmessage",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -42,7 +42,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post chat message invalid peer ID",
+			name:   "Post channels message invalid peer ID",
 			path:   "/v1/ob/chatmessage",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -57,7 +57,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post chat message fail",
+			name:   "Post channels message fail",
 			path:   "/v1/ob/chatmessage",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -72,7 +72,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post group chat message",
+			name:   "Post group channels message",
 			path:   "/v1/ob/groupchatmessage",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -87,7 +87,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post group chat message invalid JSON",
+			name:   "Post group channels message invalid JSON",
 			path:   "/v1/ob/groupchatmessage",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -102,7 +102,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post group chat message invalid peer ID",
+			name:   "Post group channels message invalid peer ID",
 			path:   "/v1/ob/groupchatmessage",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -117,7 +117,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post group chat message fail",
+			name:   "Post group channels message fail",
 			path:   "/v1/ob/groupchatmessage",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -252,7 +252,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post mark chat as read",
+			name:   "Post mark channels as read",
 			path:   "/v1/ob/markchatasread",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -267,7 +267,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post mark chat as read invalid JSON",
+			name:   "Post mark channels as read invalid JSON",
 			path:   "/v1/ob/markchatasread",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -282,7 +282,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post mark chat as read invalid peerID",
+			name:   "Post mark channels as read invalid peerID",
 			path:   "/v1/ob/markchatasread",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -297,7 +297,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Post mark chat as read fail",
+			name:   "Post mark channels as read fail",
 			path:   "/v1/ob/markchatasread",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
@@ -312,7 +312,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get chat conversations",
+			name:   "Get channels conversations",
 			path:   "/v1/ob/chatconversations",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -335,7 +335,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get chat conversations nil",
+			name:   "Get channels conversations nil",
 			path:   "/v1/ob/chatconversations",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -349,7 +349,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get chat conversations fail",
+			name:   "Get channels conversations fail",
 			path:   "/v1/ob/chatconversations",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -363,7 +363,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get chat messages",
+			name:   "Get channels messages",
 			path:   "/v1/ob/chatmessages/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -386,7 +386,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get chat messages nil",
+			name:   "Get channels messages nil",
 			path:   "/v1/ob/chatmessages/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -400,7 +400,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get chat messages with limit",
+			name:   "Get channels messages with limit",
 			path:   "/v1/ob/chatmessages/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN?limit=2",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -426,7 +426,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get chat messages invalid limit",
+			name:   "Get channels messages invalid limit",
 			path:   "/v1/ob/chatmessages/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN?limit=a",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -447,7 +447,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get chat messages invalid peerID",
+			name:   "Get channels messages invalid peerID",
 			path:   "/v1/ob/chatmessages/adsf",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -461,7 +461,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get chat messages fail",
+			name:   "Get channels messages fail",
 			path:   "/v1/ob/chatmessages/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -475,7 +475,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get group chat messages",
+			name:   "Get group channels messages",
 			path:   "/v1/ob/groupchatmessages/abc",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -498,7 +498,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get group chat messages nil",
+			name:   "Get group channels messages nil",
 			path:   "/v1/ob/groupchatmessages/abc",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -512,7 +512,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get group chat messages with limit",
+			name:   "Get group channels messages with limit",
 			path:   "/v1/ob/groupchatmessages/abc?limit=2",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -529,7 +529,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get group chat messages invalid limit",
+			name:   "Get group channels messages invalid limit",
 			path:   "/v1/ob/groupchatmessages/abc?limit=a",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -543,7 +543,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Get group chat messages fail",
+			name:   "Get group channels messages fail",
 			path:   "/v1/ob/groupchatmessages/abc",
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
@@ -574,7 +574,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Delete chat message fail",
+			name:   "Delete channels message fail",
 			path:   "/v1/ob/chatmessage/abc",
 			method: http.MethodDelete,
 			setNodeMethods: func(n *mockNode) {
@@ -588,7 +588,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Delete group chat messages",
+			name:   "Delete group channels messages",
 			path:   "/v1/ob/groupchatmessages/abc",
 			method: http.MethodDelete,
 			setNodeMethods: func(n *mockNode) {
@@ -605,7 +605,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Delete group chat messages fail",
+			name:   "Delete group channels messages fail",
 			path:   "/v1/ob/groupchatmessages/abc",
 			method: http.MethodDelete,
 			setNodeMethods: func(n *mockNode) {
@@ -619,7 +619,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Delete chat conversation",
+			name:   "Delete channels conversation",
 			path:   "/v1/ob/chatconversation/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN",
 			method: http.MethodDelete,
 			setNodeMethods: func(n *mockNode) {
@@ -636,7 +636,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Delete chat conversation invalid peerID",
+			name:   "Delete channels conversation invalid peerID",
 			path:   "/v1/ob/chatconversation/xxx",
 			method: http.MethodDelete,
 			setNodeMethods: func(n *mockNode) {
@@ -653,7 +653,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 		},
 		{
-			name:   "Delete chat conversation fail",
+			name:   "Delete channels conversation fail",
 			path:   "/v1/ob/chatconversation/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN",
 			method: http.MethodDelete,
 			setNodeMethods: func(n *mockNode) {

@@ -475,6 +475,7 @@ func autoMigrateDatabase(db database.Database) error {
 		&models.TransactionMetadata{},
 		&models.UserPreferences{},
 		&models.StoreAndForwardServers{},
+		&models.Channel{},
 	}
 
 	return db.Update(func(tx database.Tx) error {

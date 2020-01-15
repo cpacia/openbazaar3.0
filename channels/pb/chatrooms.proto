@@ -1,0 +1,22 @@
+syntax = "proto3";
+option go_package = "pb";
+
+import "google/protobuf/timestamp.proto";
+
+message Message {
+    string fromPeerID        = 1;
+    oneof message {
+        Chat chatMessage     = 2;
+        Typing typingMessage = 3;
+    }
+    bytes signature          = 4;
+
+    message Chat {
+        string message                      = 1;
+        string link                         = 2;
+        google.protobuf.Timestamp timestamp = 3;
+        repeated string previousCIDs        = 4;
+    }
+
+    message Typing {}
+}

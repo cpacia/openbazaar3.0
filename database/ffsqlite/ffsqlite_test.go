@@ -219,7 +219,7 @@ func TestFFSqliteDB_CRUD(t *testing.T) {
 	}
 
 	if len(messages3) != 0 {
-		t.Error("Failed to delete chat message from the database")
+		t.Error("Failed to delete channels message from the database")
 	}
 }
 
