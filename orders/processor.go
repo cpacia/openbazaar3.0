@@ -15,6 +15,7 @@ import (
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/ipfs/go-cid"
 	"github.com/jinzhu/gorm"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -40,6 +41,7 @@ type Config struct {
 	Multiwallet          multiwallet.Multiwallet
 	ExchangeRateProvider *wallet.ExchangeRateProvider
 	EventBus             events.Bus
+	CalcCIDFunc          func(file []byte) (cid.Cid, error)
 }
 
 // OrderProcessor is used to deterministically process orders.
@@ -52,6 +54,7 @@ type OrderProcessor struct {
 	escrowPrivateKey   *btcec.PrivateKey
 	erp                *wallet.ExchangeRateProvider
 	bus                events.Bus
+	calcCIDFunc        func(file []byte) (cid.Cid, error)
 	shutdown           chan struct{}
 }
 
@@ -66,6 +69,7 @@ func NewOrderProcessor(cfg *Config) *OrderProcessor {
 		escrowPrivateKey:   cfg.EscrowPrivateKey,
 		erp:                cfg.ExchangeRateProvider,
 		bus:                cfg.EventBus,
+		calcCIDFunc:        cfg.CalcCIDFunc,
 		shutdown:           make(chan struct{}),
 	}
 }
@@ -212,6 +216,8 @@ func (op *OrderProcessor) processMessage(dbtx database.Tx, order *models.Order, 
 		event, err = op.processRefundMessage(dbtx, order, peer, message)
 	case npb.OrderMessage_ORDER_FULFILLMENT:
 		event, err = op.processOrderFulfillmentMessage(dbtx, order, peer, message)
+	case npb.OrderMessage_ORDER_COMPLETE:
+		event, err = op.processOrderCompleteMessage(dbtx, order, peer, message)
 	default:
 		return nil, errors.New("unknown order message type")
 	}

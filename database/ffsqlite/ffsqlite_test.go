@@ -2,10 +2,14 @@ package ffsqlite
 
 import (
 	"errors"
+	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
+	"github.com/golang/protobuf/proto"
 	"github.com/jinzhu/gorm"
+	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -565,6 +569,210 @@ func TestFFSqliteDB_listingIndex(t *testing.T) {
 	var index models.ListingIndex
 	err = db.View(func(tx database.Tx) error {
 		index, err = tx.GetListingIndex()
+		return err
+	})
+	if err != nil {
+		t.Error(err)
+	}
+	if index[0].Slug != index2[0].Slug {
+		t.Errorf("Returned incorred index. Expected slug %s, got %s", index2[0].Slug, index[0].Slug)
+	}
+	if index[1].Slug != index2[1].Slug {
+		t.Errorf("Returned incorred index. Expected slug %s, got %s", index2[1].Slug, index[1].Slug)
+	}
+}
+
+func TestFFSqliteDB_rating(t *testing.T) {
+	dataDir := path.Join(os.TempDir(), "openbazaar-test", "ffsqlitedb-rating")
+
+	if err := os.MkdirAll(dataDir, os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+	//defer os.RemoveAll(dataDir)
+
+	db, err := NewFFMemoryDB(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var (
+		rating1 = &pb.Rating{
+			VendorSig: &pb.RatingSignature{
+				Slug: "slug0",
+			},
+			Overall: 5,
+		}
+		rating2 = &pb.Rating{
+			VendorSig: &pb.RatingSignature{
+				Slug: "slug1",
+			},
+			Overall: 4,
+		}
+		rating3 = &pb.Rating{
+			VendorSig: &pb.RatingSignature{
+				Slug: "slug2",
+			},
+			Overall: 3,
+		}
+	)
+	err = db.Update(func(tx database.Tx) error {
+		if err := tx.SetRating(rating1); err != nil {
+			return err
+		}
+		if err := tx.SetRating(rating2); err != nil {
+			return err
+		}
+		if err := tx.SetRating(rating3); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	ser, err := proto.Marshal(rating1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := utils.MultihashSha256(ser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := ioutil.ReadFile(path.Join(dataDir, "public", "ratings", h.B58String()[:16]+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r2 := new(pb.Rating)
+	err = jsonpb.UnmarshalString(string(f), r2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if r2.Overall != 5 {
+		t.Errorf("Expected overall of 5 got %d", r2.Overall)
+	}
+
+	if r2.VendorSig.Slug != rating1.VendorSig.Slug {
+		t.Errorf("Expected slug of %s got %s", rating1.VendorSig.Slug, r2.VendorSig.Slug)
+	}
+
+	ser, err = proto.Marshal(rating2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err = utils.MultihashSha256(ser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err = ioutil.ReadFile(path.Join(dataDir, "public", "ratings", h.B58String()[:16]+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r2 = new(pb.Rating)
+	err = jsonpb.UnmarshalString(string(f), r2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if r2.Overall != 4 {
+		t.Errorf("Expected overall of 4 got %d", r2.Overall)
+	}
+
+	if r2.VendorSig.Slug != rating2.VendorSig.Slug {
+		t.Errorf("Expected slug of %s got %s", rating2.VendorSig.Slug, r2.VendorSig.Slug)
+	}
+
+	ser, err = proto.Marshal(rating3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err = utils.MultihashSha256(ser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err = ioutil.ReadFile(path.Join(dataDir, "public", "ratings", h.B58String()[:16]+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r2 = new(pb.Rating)
+	err = jsonpb.UnmarshalString(string(f), r2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if r2.Overall != 3 {
+		t.Errorf("Expected overall of 3 got %d", r2.Overall)
+	}
+
+	if r2.VendorSig.Slug != rating3.VendorSig.Slug {
+		t.Errorf("Expected slug of %s got %s", rating3.VendorSig.Slug, r2.VendorSig.Slug)
+	}
+}
+
+func TestFFSqliteDB_ratingIndex(t *testing.T) {
+	dataDir := path.Join(os.TempDir(), "openbazaar-test", "ffsqlitedb-ratingIndex")
+
+	if err := os.MkdirAll(dataDir, os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dataDir)
+
+	db, err := NewFFMemoryDB(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var (
+		index1 = models.RatingIndex{
+			{
+				Slug: "slug1",
+			},
+			{
+				Slug: "slug2",
+			},
+		}
+		index2 = models.RatingIndex{
+			{
+				Slug: "slug3",
+			},
+			{
+				Slug: "slug4",
+			},
+		}
+	)
+	err = db.Update(func(tx database.Tx) error {
+		if err := tx.SetRatingIndex(index1); err != nil {
+			return err
+		}
+		if err := tx.SetRatingIndex(index2); err != nil {
+			return err
+		}
+
+		index, err := tx.GetRatingIndex()
+		if err != nil {
+			return err
+		}
+		if index[0].Slug != index2[0].Slug {
+			t.Errorf("Returned incorred index. Expected slug %s, got %s", index2[0].Slug, index[0].Slug)
+		}
+		if index[1].Slug != index2[1].Slug {
+			t.Errorf("Returned incorred index. Expected slug %s, got %s", index2[1].Slug, index[1].Slug)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
+	}
+	var index models.RatingIndex
+	err = db.View(func(tx database.Tx) error {
+		index, err = tx.GetRatingIndex()
 		return err
 	})
 	if err != nil {

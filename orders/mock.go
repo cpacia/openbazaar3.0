@@ -2,19 +2,22 @@ package orders
 
 import (
 	"context"
+	"path"
+
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	coremock "github.com/ipfs/go-ipfs/core/mock"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-	"path"
 )
 
 func newMockOrderProcessor() (*OrderProcessor, func(), error) {
@@ -88,8 +91,17 @@ func newMockOrderProcessor() (*OrderProcessor, func(), error) {
 			Multiwallet:          mw,
 			ExchangeRateProvider: erp,
 			EventBus:             events.NewBus(),
+			CalcCIDFunc:          calcMockCID,
 		}), func() {
 			ipfsNode.Close()
 			r.DestroyRepo()
 		}, nil
+}
+
+func calcMockCID(file []byte) (cid.Cid, error) {
+	h, err := utils.MultihashSha256(file)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return cid.Decode(h.B58String())
 }

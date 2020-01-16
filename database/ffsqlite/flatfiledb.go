@@ -5,6 +5,8 @@ import (
 	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
+	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"os"
 	"path"
@@ -21,6 +23,8 @@ const (
 	FollowingFile = "following.json"
 	// ListingIndexFile is the filename of the listing index file on disk.
 	ListingIndexFile = "listings.json"
+	// RatingIndexFile is the filename of the rating index file on disk.
+	RatingIndexFile = "ratings.json"
 )
 
 // FlatFileDB represents the IPFS root directory that holds the node's
@@ -231,7 +235,63 @@ func (fdb *FlatFileDB) SetListingIndex(index models.ListingIndex) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(fdb.rootDir, ListingIndexFile), out, os.ModePerm)
+	return ioutil.WriteFile(path.Join(fdb.rootDir, RatingIndexFile), out, os.ModePerm)
+}
+
+// GetListingIndex returns the rating index.
+func (fdb *FlatFileDB) GetRatingIndex() (models.RatingIndex, error) {
+	fdb.mtx.RLock()
+	defer fdb.mtx.RUnlock()
+
+	raw, err := ioutil.ReadFile(path.Join(fdb.rootDir, RatingIndexFile))
+	if err != nil {
+		return nil, err
+	}
+	var index models.RatingIndex
+	err = json.Unmarshal(raw, &index)
+	if err != nil {
+		return nil, err
+	}
+	return index, nil
+}
+
+// SetRatingIndex sets the rating index.
+func (fdb *FlatFileDB) SetRatingIndex(index models.RatingIndex) error {
+	fdb.mtx.Lock()
+	defer fdb.mtx.Unlock()
+
+	out, err := json.MarshalIndent(index, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(path.Join(fdb.rootDir, RatingIndexFile), out, os.ModePerm)
+}
+
+// SetRating saves the given rating.
+func (fdb *FlatFileDB) SetRating(rating *pb.Rating) error {
+	fdb.mtx.Lock()
+	defer fdb.mtx.Unlock()
+
+	ser, err := proto.Marshal(rating)
+	if err != nil {
+		return err
+	}
+	h, err := utils.MultihashSha256(ser)
+	if err != nil {
+		return err
+	}
+
+	m := jsonpb.Marshaler{
+		EmitDefaults: false,
+		Indent:       "    ",
+	}
+	out, err := m.MarshalToString(rating)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(path.Join(fdb.rootDir, "ratings", h.B58String()[:16]+".json"), []byte(out), os.ModePerm)
 }
 
 // dataPathJoin is a helper function which joins the pathArgs to the service's

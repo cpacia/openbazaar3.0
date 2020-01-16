@@ -135,6 +135,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		EscrowPrivateKey:     escrowKey,
 		ExchangeRateProvider: erp,
 		EventBus:             bus,
+		CalcCIDFunc:          node.cid,
 	})
 
 	node.registerHandlers()
@@ -271,6 +272,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			EscrowPrivateKey:     escrowKey,
 			ExchangeRateProvider: erp,
 			EventBus:             bus,
+			CalcCIDFunc:          node.cid,
 		})
 
 		node.registerHandlers()

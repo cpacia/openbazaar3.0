@@ -206,6 +206,10 @@ func (t *tx) Read() *gorm.DB {
 	return t.dbtx
 }
 
+// Update will update the given key to the value for the given model. The
+// where map can be used to impose extra conditions on which specific model
+// gets updated. The map key must be of the format "key = ?". This allows
+// for using alternative conditions such as "timestamp <= ?".
 func (t *tx) Update(key string, value interface{}, where map[string]interface{}, model interface{}) error {
 	if !t.isForWrites {
 		return ErrReadOnly
@@ -384,6 +388,40 @@ func (t *tx) SetListingIndex(index models.ListingIndex) error {
 	return nil
 }
 
+// GetRatingIndex returns the rating index.
+func (t *tx) GetRatingIndex() (models.RatingIndex, error) {
+	for x := len(t.commitCache) - 1; x >= 0; x-- {
+		index, ok := t.commitCache[x].(models.RatingIndex)
+		if ok {
+			return index, nil
+		}
+	}
+	return t.ffdb.GetRatingIndex()
+}
+
+// SetRatingIndex sets the rating index.
+func (t *tx) SetRatingIndex(index models.RatingIndex) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
+	current, err := t.ffdb.GetRatingIndex()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	t.rollbackCache = append(t.rollbackCache, current)
+	t.commitCache = append(t.commitCache, index)
+	return nil
+}
+
+// SetRating saves the given rating.
+func (t *tx) SetRating(rating *pb.Rating) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
+	t.commitCache = append(t.commitCache, rating)
+	return nil
+}
+
 func (t *tx) setInterfaceType(i interface{}) error {
 	switch i.(type) {
 	case *models.Profile:
@@ -410,6 +448,17 @@ func (t *tx) setInterfaceType(i interface{}) error {
 		}
 	case models.ListingIndex:
 		if err := t.ffdb.SetListingIndex(i.(models.ListingIndex)); err != nil {
+			return err
+		}
+	case models.RatingIndex:
+		if err := t.ffdb.SetRatingIndex(i.(models.RatingIndex)); err != nil {
+			return err
+		}
+	case *pb.Rating:
+		if i.(*pb.Rating) == nil {
+			return nil
+		}
+		if err := t.ffdb.SetRating(i.(*pb.Rating)); err != nil {
 			return err
 		}
 	case deleteListing:

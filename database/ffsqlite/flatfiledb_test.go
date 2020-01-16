@@ -1,8 +1,12 @@
 package ffsqlite
 
 import (
+	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
+	"github.com/golang/protobuf/proto"
+	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -225,5 +229,98 @@ func TestFlatFileDB_ListingIndex(t *testing.T) {
 	}
 	if index[1].Hash != h2 {
 		t.Errorf("Incorrect index returned. Expected hash %s got %s", h2, index[1].Hash)
+	}
+}
+
+func TestFlatFileDB_RatingIndex(t *testing.T) {
+	dir := path.Join(os.TempDir(), "openbazaar", "ratingIndex_test")
+	fdb, err := NewFlatFileDB(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	var (
+		slug1 = "test-listing1"
+		slug2 = "test-listing2"
+		h1    = "111"
+		h2    = "222"
+	)
+	i := models.RatingIndex{
+		{
+			Slug: slug1,
+			Ratings: []string{
+				h1,
+			},
+		},
+		{
+			Slug: slug2,
+			Ratings: []string{
+				h2,
+			},
+		},
+	}
+	err = fdb.SetRatingIndex(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	index, err := fdb.GetRatingIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if index[0].Slug != slug1 {
+		t.Errorf("Incorrect index returned. Expected slug %s got %s", slug1, index[0].Slug)
+	}
+	if index[1].Slug != slug2 {
+		t.Errorf("Incorrect index returned. Expected slug %s got %s", slug2, index[1].Slug)
+	}
+	if index[0].Ratings[0] != h1 {
+		t.Errorf("Incorrect index returned. Expected hash %s got %s", h1, index[0].Ratings[0])
+	}
+	if index[1].Ratings[0] != h2 {
+		t.Errorf("Incorrect index returned. Expected hash %s got %s", h2, index[1].Ratings[0])
+	}
+}
+
+func TestFlatFileDB_Rating(t *testing.T) {
+	dir := path.Join(os.TempDir(), "openbazaar", "rating_test")
+	fdb, err := NewFlatFileDB(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	r := &pb.Rating{
+		Overall: 5,
+	}
+	err = fdb.SetRating(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ser, err := proto.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := utils.MultihashSha256(ser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := ioutil.ReadFile(path.Join(fdb.rootDir, "ratings", h.B58String()[:16]+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r2 := new(pb.Rating)
+	err = jsonpb.UnmarshalString(string(f), r2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if r2.Overall != 5 {
+		t.Errorf("Expected overall of 5 got %d", r2.Overall)
 	}
 }

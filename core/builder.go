@@ -432,6 +432,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		EscrowPrivateKey:     escrowKey,
 		ExchangeRateProvider: erp,
 		EventBus:             bus,
+		CalcCIDFunc:          obNode.cid,
 	})
 
 	obNode.registerHandlers()

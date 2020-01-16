@@ -41,6 +41,15 @@ type PublicData interface {
 
 	// SetListingIndex sets the listing index.
 	SetListingIndex(index models.ListingIndex) error
+
+	// GetListingIndex returns the rating index.
+	GetRatingIndex() (models.RatingIndex, error)
+
+	// SetRatingIndex sets the rating index.
+	SetRatingIndex(index models.RatingIndex) error
+
+	// SetRating saves the given rating.
+	SetRating(rating *pb.Rating) error
 }
 
 // Tx represents a database transaction.  It can either by read-only or
