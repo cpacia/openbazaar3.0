@@ -61,7 +61,7 @@ func (op *OrderProcessor) processRatingSignaturesMessage(dbtx database.Tx, order
 		}
 
 		cpy := proto.Clone(sig)
-		cpy.(*pb.RatingSignatures_RatingSignature).VendorSignature = nil
+		cpy.(*pb.RatingSignature).VendorSignature = nil
 
 		ser, err := proto.Marshal(cpy)
 		if err != nil {
@@ -95,7 +95,7 @@ func (op *OrderProcessor) sendRatingSignatures(dbtx database.Tx, order *models.O
 			return err
 		}
 
-		r := &pb.RatingSignatures_RatingSignature{
+		r := &pb.RatingSignature{
 			Slug:      listing.Slug,
 			RatingKey: orderOpen.RatingKeys[i],
 		}

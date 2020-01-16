@@ -91,7 +91,7 @@ func Test_processRatingSignaturesMessage(t *testing.T) {
 		ListingHash: h.B58String(),
 	})
 
-	sig := &pb.RatingSignatures_RatingSignature{
+	sig := &pb.RatingSignature{
 		Slug:      orderOpen.Listings[0].Listing.Slug,
 		RatingKey: orderOpen.RatingKeys[0],
 	}
@@ -108,7 +108,7 @@ func Test_processRatingSignaturesMessage(t *testing.T) {
 	sig.VendorSignature = sigBytes
 
 	rsMsg := &pb.RatingSignatures{
-		Sigs: []*pb.RatingSignatures_RatingSignature{sig},
+		Sigs: []*pb.RatingSignature{sig},
 	}
 
 	rsAny, err := ptypes.MarshalAny(rsMsg)
@@ -309,7 +309,7 @@ func TestOrderProcessor_sendRatingSignatures(t *testing.T) {
 	}
 
 	cpy := proto.Clone(rs.Sigs[0])
-	cpy.(*pb.RatingSignatures_RatingSignature).VendorSignature = nil
+	cpy.(*pb.RatingSignature).VendorSignature = nil
 
 	ser, err := proto.Marshal(cpy)
 	if err != nil {
