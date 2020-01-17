@@ -427,7 +427,7 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 	}
 	order.Payment.Amount = total.String()
 
-	ratingKeys, err := utils.GenerateRatingPublicKeys(n.ratingMasterKey.PubKey(), len(order.Listings), chaincode)
+	ratingKeys, err := utils.GenerateRatingPublicKeys(n.ratingMasterKey.PubKey(), len(order.Items), chaincode)
 	if err != nil {
 		return nil, err
 	}

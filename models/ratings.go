@@ -52,3 +52,13 @@ type RatingInfo struct {
 	Average float64  `json:"average"`
 	Ratings []string `json:"ratings"`
 }
+
+// Rating holds the review information for a listing.
+type Rating struct {
+	Overall         uint8  `json:"Overall"`
+	Quality         uint8  `json:"Quality"`
+	Description     uint8  `json:"Description"`
+	DeliverySpeed   uint8  `json:"DeliverySpeed"`
+	CustomerService uint8  `json:"CustomerService"`
+	Review          string `json:"Review"`
+}

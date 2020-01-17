@@ -20,25 +20,23 @@ func ValidateRating(rating *pb.Rating) error {
 		return errors.New("invalid vendor signature")
 	}
 
-	// Validate rating signature
-	cpy := proto.Clone(rating)
-	cpy.(*pb.Rating).RatingSignature = nil
-	ser, err := proto.Marshal(cpy)
-	if err != nil {
-		return err
+	if rating.Overall < 1 || rating.Overall > 5 {
+		return errors.New("overall rating out of range")
 	}
-	ratingKey, err := btcec.ParsePubKey(rating.VendorSig.RatingKey, btcec.S256())
-	if err != nil {
-		return err
+	if rating.Quality < 1 || rating.Quality > 5 {
+		return errors.New("quality rating out of range")
 	}
-	sig, err := btcec.ParseSignature(rating.RatingSignature, btcec.S256())
-	if err != nil {
-		return err
+	if rating.Description < 1 || rating.Description > 5 {
+		return errors.New("description rating out of range")
 	}
-	hashed := sha256.Sum256(ser)
-	valid := sig.Verify(hashed[:], ratingKey)
-	if !valid {
-		return errors.New("invalid rating signature")
+	if rating.DeliverySpeed < 1 || rating.DeliverySpeed > 5 {
+		return errors.New("delivery speed rating out of range")
+	}
+	if rating.CustomerService < 1 || rating.CustomerService > 5 {
+		return errors.New("customer service rating out of range")
+	}
+	if len(rating.Review) > 10000 {
+		return errors.New("review greater than max characters")
 	}
 
 	// Validate the vendor's signature
@@ -47,13 +45,13 @@ func ValidateRating(rating *pb.Rating) error {
 		return err
 	}
 
-	cpy = proto.Clone(rating.VendorSig)
+	cpy := proto.Clone(rating.VendorSig)
 	cpy.(*pb.RatingSignature).VendorSignature = nil
-	ser, err = proto.Marshal(cpy)
+	ser, err := proto.Marshal(cpy)
 	if err != nil {
 		return err
 	}
-	valid, err = vendorKey.Verify(ser, rating.VendorSig.VendorSignature)
+	valid, err := vendorKey.Verify(ser, rating.VendorSig.VendorSignature)
 	if !valid || err != nil {
 		return errors.New("invalid vendor signature")
 	}
@@ -89,6 +87,27 @@ func ValidateRating(rating *pb.Rating) error {
 		if !id.MatchesPublicKey(buyerKey) {
 			return errors.New("buyer ID does not match public key")
 		}
+	}
+
+	// Validate rating signature
+	cpy = proto.Clone(rating)
+	cpy.(*pb.Rating).RatingSignature = nil
+	ser, err = proto.Marshal(cpy)
+	if err != nil {
+		return err
+	}
+	ratingKey, err := btcec.ParsePubKey(rating.VendorSig.RatingKey, btcec.S256())
+	if err != nil {
+		return err
+	}
+	sig, err := btcec.ParseSignature(rating.RatingSignature, btcec.S256())
+	if err != nil {
+		return err
+	}
+	hashed := sha256.Sum256(ser)
+	valid = sig.Verify(hashed[:], ratingKey)
+	if !valid {
+		return errors.New("invalid rating signature")
 	}
 
 	return nil

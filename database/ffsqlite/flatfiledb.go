@@ -235,7 +235,7 @@ func (fdb *FlatFileDB) SetListingIndex(index models.ListingIndex) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(fdb.rootDir, RatingIndexFile), out, os.ModePerm)
+	return ioutil.WriteFile(path.Join(fdb.rootDir, ListingIndexFile), out, os.ModePerm)
 }
 
 // GetListingIndex returns the rating index.

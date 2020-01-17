@@ -1,6 +1,7 @@
 package orders
 
 import (
+	"errors"
 	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
@@ -10,6 +11,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/golang/protobuf/ptypes"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"os"
 )
 
 func (op *OrderProcessor) processOrderCompleteMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
@@ -42,45 +44,43 @@ func (op *OrderProcessor) processOrderCompleteMessage(dbtx database.Tx, order *m
 		return nil, err
 	}
 
-	if err := order.PutMessage(message); err != nil {
-		if models.IsDuplicateTransactionError(err) {
-			return nil, nil
-		}
-		return nil, err
+	if len(complete.Ratings) != len(orderOpen.Items) {
+		return nil, errors.New("number of ratings does not equal number of items in the order")
 	}
 
-	if complete.Rating != nil {
-		if err := utils.ValidateRating(complete.Rating); err != nil {
-			return nil, err
+	if len(complete.Ratings) > 0 {
+		for _, rating := range complete.Ratings {
+			if err := utils.ValidateRating(rating); err != nil {
+				return nil, err
+			}
 		}
 	}
-	if order.Role() == models.RoleVendor && complete.Rating != nil {
-		err = op.db.Update(func(tx database.Tx) error {
-			index, err := tx.GetRatingIndex()
-			if err != nil {
-				return err
-			}
+	if order.Role() == models.RoleVendor && len(complete.Ratings) > 0 {
+		index, err := dbtx.GetRatingIndex()
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		for _, rating := range complete.Ratings {
 			m := jsonpb.Marshaler{Indent: "    "}
-			out, err := m.MarshalToString(complete.Rating)
+			out, err := m.MarshalToString(rating)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			id, err := op.calcCIDFunc([]byte(out))
 			if err != nil {
-				return err
+				return nil, err
 			}
-			err = index.AddRating(complete.Rating, id)
+			err = index.AddRating(rating, id)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			if err := tx.SetRatingIndex(index); err != nil {
-				return err
+			if err := dbtx.SetRatingIndex(index); err != nil {
+				return nil, err
 			}
-			return tx.SetRating(complete.Rating)
-		})
-		if err != nil {
-			return nil, err
+			if err := dbtx.SetRating(rating); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -107,8 +107,8 @@ func (op *OrderProcessor) processOrderCompleteMessage(dbtx database.Tx, order *m
 			Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
 			Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
 		},
-		BuyerHandle: orderOpen.Listings[0].Listing.VendorID.Handle,
-		BuyerID:     orderOpen.Listings[0].Listing.VendorID.PeerID,
+		BuyerHandle: orderOpen.BuyerID.Handle,
+		BuyerID:     orderOpen.BuyerID.PeerID,
 	}
-	return event, nil
+	return event, order.PutMessage(message)
 }

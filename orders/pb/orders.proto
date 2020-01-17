@@ -129,7 +129,7 @@ message OrderFulfillment {
 }
 
 message OrderComplete {
-    Rating rating             = 1;
+    repeated Rating ratings   = 1;
     EscrowRelease releaseInfo = 2; // Moderated orders only.
 }
 
