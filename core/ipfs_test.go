@@ -6,9 +6,12 @@ import (
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/repo"
+	"github.com/gogo/protobuf/proto"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-ipfs/core/coreapi"
+	ipnspb "github.com/ipfs/go-ipns/pb"
 	fpath "github.com/ipfs/go-path"
+	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -233,5 +236,60 @@ func Test_ipfsCid(t *testing.T) {
 	expected := "QmZNhQu5jyvfNtZrp7Xvu7iqhuF4occHLcxZKj7S3F8a3D"
 	if cid.String() != expected {
 		t.Errorf("Returned incorrect cid. Expected %s, got %s", expected, cid.String())
+	}
+}
+
+func Test_publishIPNSRecordToPubsub(t *testing.T){
+	mocknet, err := NewMocknet(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer mocknet.TearDown()
+
+	api, err := coreapi.NewCoreAPI(mocknet.Nodes()[0].ipfsNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sub, err := api.PubSub().Subscribe(context.Background(), ipnsPubsubTopic)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan struct{})
+	if err := mocknet.Nodes()[1].SetProfile(&models.Profile{Name: "Ron Paul"}, done); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second*10):
+		t.Fatal("timed out")
+	}
+
+	ch := make(chan iface.PubSubMessage)
+	go func() {
+		message, err := sub.Next(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		ch <- message
+	}()
+
+	var message iface.PubSubMessage
+	select {
+	case message = <-ch:
+	case <-time.After(time.Second*10):
+		t.Fatal("timed out")
+	}
+
+	if message.From() != mocknet.Nodes()[1].Identity() {
+		t.Errorf("Expected identity %s, got %s", mocknet.Nodes()[1].Identity(), message.From())
+	}
+
+	rec := new(ipnspb.IpnsEntry)
+	if err := proto.Unmarshal(message.Data(), rec); err != nil {
+		t.Fatal(err)
 	}
 }

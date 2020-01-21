@@ -32,6 +32,8 @@ import (
 const (
 	catTimeout     = time.Second * 30
 	resolveTimeout = time.Second * 120
+
+	ipnsPubsubTopic = "/ipns/all"
 )
 
 // cat fetches a file from IPFS given a path.
@@ -287,26 +289,46 @@ func (n *OpenBazaarNode) fetchGraph(ctx context.Context) ([]cid.Cid, error) {
 	return ret, nil
 }
 
-// ipfsRecordValue returns the current value of our ipns record.
-func (n *OpenBazaarNode) ipnsRecordValue() (cid.Cid, error) {
+// ipnsRecord returns our current ipns record.
+func (n *OpenBazaarNode) ipnsRecord() (*ipnspb.IpnsEntry, error) {
 	ipnskey := namesys.IpnsDsKey(n.Identity())
 	ival, err := n.ipfsNode.Repo.Datastore().Get(ipnskey)
 	if err != nil {
-		return cid.Cid{}, err
+		return nil, err
 	}
 
 	ourIpnsRecord := new(ipnspb.IpnsEntry)
 	err = proto.Unmarshal(ival, ourIpnsRecord)
+	return ourIpnsRecord, err
+}
+
+
+// ipfsRecordValue returns the current value of our ipns record.
+func (n *OpenBazaarNode) ipnsRecordValue() (cid.Cid, error) {
+	ourIpnsRecord, err := n.ipnsRecord()
 	if err != nil {
-		// If this cannot be unmarhsaled due to an error we should
-		// delete the key so that it doesn't cause other processes to
-		// fail. The publisher will re-create a new one.
-		if err := n.ipfsNode.Repo.Datastore().Delete(ipnskey); err != nil {
-			log.Errorf("Error deleting bad ipns record: %s", err)
-		}
 		return cid.Cid{}, err
 	}
 	return cid.Decode(strings.TrimPrefix(string(ourIpnsRecord.Value), "/ipfs/"))
+}
+
+// publishIPNSRecordToPubsub publishes the current raw IPNS record bytes to
+// IPNS pubsub topic.
+func (n *OpenBazaarNode) publishIPNSRecordToPubsub(ctx context.Context) error {
+	record, err := n.ipnsRecord()
+	if err != nil {
+		return err
+	}
+	ser, err := proto.Marshal(record)
+	if err != nil {
+		return err
+	}
+
+	api, err := coreapi.NewCoreAPI(n.ipfsNode)
+	if err != nil {
+		return err
+	}
+	return api.PubSub().Publish(ctx, ipnsPubsubTopic, ser)
 }
 
 // getFromDatastore looks in two places in the database for a record. First is

@@ -13,6 +13,9 @@ import (
 	crypto "github.com/libp2p/go-libp2p-crypto"
 )
 
+// CompleteOrder builds a OrderComplete message and sends it to the vendor. The ratings slice must
+// include one rating per item and must be in the same order as the items in the order. If you wish
+// to include the buyerID with the rating then send includingIDInRating.
 func (n *OpenBazaarNode) CompleteOrder(orderID models.OrderID, ratings []models.Rating, includeIDInRating bool, done chan struct{}) error {
 	var (
 		order   models.Order

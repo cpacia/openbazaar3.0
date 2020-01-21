@@ -95,7 +95,6 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 
 		if err := api.Pin().Rm(context.Background(), rp, options.Pin.RmRecursive(true)); err != nil {
 			log.Errorf("Error unpinning root: %s", err.Error())
-			return
 		}
 	}
 
@@ -115,7 +114,7 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 	opts := []options.UnixfsAddOption{
 		options.Unixfs.Pin(true),
 	}
-	pth, err := api.Unixfs().Add(context.Background(), files.ToDir(f), opts...)
+	pth, err := api.Unixfs().Add(cctx, files.ToDir(f), opts...)
 	if err != nil {
 		log.Errorf("Error adding root: %s", err.Error())
 		return
@@ -126,6 +125,13 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 		log.Errorf("Error namesys publish: %s", err.Error())
 		return
 	}
+
+	// Publish to pubsub all records topic.
+	go func() {
+		if err := n.publishIPNSRecordToPubsub(context.Background()); err != nil {
+			log.Errorf("Error publishing IPNS record to pubsub: %s", err)
+		}
+	}()
 
 	err = n.repo.DB().Update(func(tx database.Tx) error {
 		return tx.Save(&models.Event{Name: "last_publish", Time: time.Now()})
