@@ -297,7 +297,7 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 		for _, server := range servers {
 			go func() {
 				defer wg.Done()
-				err := m.snfClient.SendMessage(context.Background(), peerID, server, nil, cipherText)
+				err := m.snfClient.SendMessage(context.Background(), peerID, server, nil, cipherText, []byte(message.MessageType.String()))
 				if err != nil {
 					log.Warningf("Error pushing offline message %s to server %s: %s", message.MessageID, server.Pretty(), err)
 					return
