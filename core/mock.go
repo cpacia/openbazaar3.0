@@ -62,7 +62,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		Online: true,
 		Repo:   ipfsRepo,
 		Host:   coremock.MockHostOption(mn),
-		ExtraOpts: map[string]bool {
+		ExtraOpts: map[string]bool{
 			"pubsub": true,
 		},
 	})
@@ -200,7 +200,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			Online: true,
 			Repo:   ipfsRepo,
 			Host:   coremock.MockHostOption(mn),
-			ExtraOpts: map[string]bool {
+			ExtraOpts: map[string]bool{
 				"pubsub": true,
 			},
 		})

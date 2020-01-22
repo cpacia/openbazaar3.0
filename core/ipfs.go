@@ -302,7 +302,6 @@ func (n *OpenBazaarNode) ipnsRecord() (*ipnspb.IpnsEntry, error) {
 	return ourIpnsRecord, err
 }
 
-
 // ipfsRecordValue returns the current value of our ipns record.
 func (n *OpenBazaarNode) ipnsRecordValue() (cid.Cid, error) {
 	ourIpnsRecord, err := n.ipnsRecord()

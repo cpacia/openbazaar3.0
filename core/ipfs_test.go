@@ -239,7 +239,7 @@ func Test_ipfsCid(t *testing.T) {
 	}
 }
 
-func Test_publishIPNSRecordToPubsub(t *testing.T){
+func Test_publishIPNSRecordToPubsub(t *testing.T) {
 	mocknet, err := NewMocknet(2)
 	if err != nil {
 		t.Fatal(err)
@@ -264,7 +264,7 @@ func Test_publishIPNSRecordToPubsub(t *testing.T){
 
 	select {
 	case <-done:
-	case <-time.After(time.Second*10):
+	case <-time.After(time.Second * 10):
 		t.Fatal("timed out")
 	}
 
@@ -280,7 +280,7 @@ func Test_publishIPNSRecordToPubsub(t *testing.T){
 	var message iface.PubSubMessage
 	select {
 	case message = <-ch:
-	case <-time.After(time.Second*10):
+	case <-time.After(time.Second * 10):
 		t.Fatal("timed out")
 	}
 

@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/cpacia/go-libtor"
-	oniontransport "github.com/cpacia/go-onion-transport"
 	storeandforward "github.com/cpacia/go-store-and-forward"
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/api"
@@ -25,7 +23,6 @@ import (
 	"github.com/cpacia/openbazaar3.0/wallet"
 	"github.com/cpacia/proxyclient"
 	iwallet "github.com/cpacia/wallet-interface"
-	"github.com/cretz/bine/tor"
 	bitswap "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-datastore"
 	config "github.com/ipfs/go-ipfs-config"
@@ -75,20 +72,12 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	}
 
 	var (
-		embeddedTorClient *tor.Tor
-		transportOpt      libp2p.Option
-		onionID           string
+		transportOpt    libp2p.Option
+		onionID         string
+		shutdownTorFunc func() error
 	)
 	if cfg.Tor || cfg.DualStack {
 		log.Notice("Starting embedded Tor client")
-		embeddedTorClient, err = tor.Start(nil, &tor.StartConf{ProcessCreator: libtor.Creator, DataDir: path.Join(cfg.DataDir, "tor")})
-		if err != nil {
-			return nil, fmt.Errorf("failed to start tor: %v", err)
-		}
-		dialer, err := embeddedTorClient.Dialer(context.Background(), nil)
-		if err != nil {
-			return nil, err
-		}
 
 		var torKey models.Key
 		err = obRepo.DB().View(func(tx database.Tx) error {
@@ -100,19 +89,17 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 		key := ed25519.NewKeyFromSeed(torKey.Value)
 
-		onion, err := embeddedTorClient.Listen(ctx, &tor.ListenConf{
-			RemotePorts: []int{9003},
-			Version3:    true,
-			Key:         key,
-		})
+		onion, dialer, transport, closeTor, err := obnet.SetupTor(ctx, key, cfg.DataDir, cfg.DualStack)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create onion service: %v", err)
+			return nil, err
 		}
-		onionID = onion.ID
+		onionID = onion
+		transportOpt = transport
+		shutdownTorFunc = closeTor
+
 		if cfg.Tor {
 			proxyclient.SetProxy(dialer)
 		}
-		transportOpt = libp2p.Transport(oniontransport.NewOnionTransportC(dialer, onion, cfg.DualStack))
 	}
 
 	// Load the IPFS Repo
@@ -279,12 +266,12 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	if cfg.IPFSOnly {
 		return &OpenBazaarNode{
-			repo:              obRepo,
-			ipfsNode:          ipfsNode,
-			ipfsOnlyMode:      true,
-			embeddedTorClient: embeddedTorClient,
-			eventBus:          events.NewBus(),
-			shutdown:          make(chan struct{}),
+			repo:            obRepo,
+			ipfsNode:        ipfsNode,
+			ipfsOnlyMode:    true,
+			shutdownTorFunc: shutdownTorFunc,
+			eventBus:        events.NewBus(),
+			shutdown:        make(chan struct{}),
 		}, nil
 	}
 
@@ -398,7 +385,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		exchangeRates:          erp,
 		testnet:                cfg.Testnet,
 		storeAndForwardServers: cfg.StoreAndForwardServers,
-		embeddedTorClient:      embeddedTorClient,
+		shutdownTorFunc:        shutdownTorFunc,
 		publishChan:            make(chan pubCloser),
 		initialBootstrapChan:   make(chan struct{}),
 		shutdown:               make(chan struct{}),
