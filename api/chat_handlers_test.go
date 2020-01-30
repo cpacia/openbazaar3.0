@@ -53,7 +53,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "xxx", "message": "", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -113,7 +113,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerIDs": ["xxx"], "message": "", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -173,7 +173,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "xxx", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -233,7 +233,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerIDs": ["xxx"], "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -293,7 +293,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "xxx", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -457,7 +457,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 35, got 1"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -649,7 +649,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "multihash length inconsistent: expected 13535, got 0"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
 			},
 		},
 		{

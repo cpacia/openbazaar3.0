@@ -87,7 +87,7 @@ func TestProfileHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "multihash length inconsistent: expected 13535, got 0"}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "length greater than remaining number of bytes in buffer"}`)), nil
 			},
 		},
 		{
