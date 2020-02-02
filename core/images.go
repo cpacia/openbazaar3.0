@@ -128,7 +128,7 @@ func (n *OpenBazaarNode) resizeAndAddImage(dbtx database.Tx, base64ImageData, fi
 		return models.ImageHashes{}, err
 	}
 
-	return models.ImageHashes{Tiny: t.String(), Small: s.String(), Medium: m.String(), Large: l.String(), Original: o.String()}, nil
+	return models.ImageHashes{Tiny: t.String(), Small: s.String(), Medium: m.String(), Large: l.String(), Original: o.String(), Filename: filename}, nil
 }
 
 func (n *OpenBazaarNode) addImage(dbtx database.Tx, img models.Image) (cid.Cid, error) {

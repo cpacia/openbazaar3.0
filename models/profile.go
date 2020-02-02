@@ -80,6 +80,7 @@ type ImageHashes struct {
 	Medium   string `json:"medium"`
 	Large    string `json:"large"`
 	Original string `json:"original"`
+	Filename string `json:"filename"`
 }
 
 // ImageSize is a string representation of the image size.
