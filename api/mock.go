@@ -37,10 +37,10 @@ type mockNode struct {
 	deleteListingFunc            func(slug string, done chan<- struct{}) error
 	getMyListingsFunc            func() (models.ListingIndex, error)
 	getListingsFunc              func(ctx context.Context, peerID peer.ID, useCache bool) (models.ListingIndex, error)
-	getMyListingsBySlugFunc      func(slug string) (*pb.SignedListing, error)
-	getMyListingsByCIDFunc       func(cid cid.Cid) (*pb.SignedListing, error)
-	getListingsBySlugFunc        func(ctx context.Context, peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error)
-	getListingsByCIDFunc         func(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error)
+	getMyListingBySlugFunc       func(slug string) (*pb.SignedListing, error)
+	getMyListingByCIDFunc        func(cid cid.Cid) (*pb.SignedListing, error)
+	getListingBySlugFunc         func(ctx context.Context, peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error)
+	getListingByCIDFunc          func(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error)
 	setSelfAsModeratorFunc       func(ctx context.Context, modInfo *models.ModeratorInfo, done chan struct{}) error
 	removeSelfAsModeratorFunc    func(ctx context.Context, done chan<- struct{}) error
 	getModeratorsFunc            func(ctx context.Context) []peer.ID
@@ -136,16 +136,16 @@ func (m *mockNode) GetListings(ctx context.Context, peerID peer.ID, useCache boo
 	return m.getListingsFunc(ctx, peerID, useCache)
 }
 func (m *mockNode) GetMyListingBySlug(slug string) (*pb.SignedListing, error) {
-	return m.getMyListingsBySlugFunc(slug)
+	return m.getMyListingBySlugFunc(slug)
 }
 func (m *mockNode) GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, error) {
-	return m.getMyListingsByCIDFunc(cid)
+	return m.getMyListingByCIDFunc(cid)
 }
 func (m *mockNode) GetListingBySlug(ctx context.Context, peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error) {
-	return m.getListingsBySlugFunc(ctx, peerID, slug, useCache)
+	return m.getListingBySlugFunc(ctx, peerID, slug, useCache)
 }
 func (m *mockNode) GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error) {
-	return m.getListingsByCIDFunc(ctx, cid)
+	return m.getListingByCIDFunc(ctx, cid)
 }
 func (m *mockNode) SetSelfAsModerator(ctx context.Context, modInfo *models.ModeratorInfo, done chan struct{}) error {
 	return m.setSelfAsModeratorFunc(ctx, modInfo, done)

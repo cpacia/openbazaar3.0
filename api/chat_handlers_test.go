@@ -457,7 +457,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in bufferH"}%s`, "\n")), nil
 			},
 		},
 		{

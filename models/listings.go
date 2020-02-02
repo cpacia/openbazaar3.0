@@ -33,6 +33,7 @@ func (li *ListingIndex) UpdateListing(listingMetadata ListingMetadata) {
 	}
 }
 
+// DeleteListing deletes a listing from the index.
 func (li *ListingIndex) DeleteListing(slug string) {
 	for i, lm := range *li {
 		if lm.Slug == slug {
@@ -42,6 +43,7 @@ func (li *ListingIndex) DeleteListing(slug string) {
 	}
 }
 
+// GetListingSlug returns a listing given the slug
 func (li *ListingIndex) GetListingSlug(cid cid.Cid) (string, error) {
 	for _, lm := range *li {
 		if lm.Hash == cid.String() {
@@ -49,6 +51,16 @@ func (li *ListingIndex) GetListingSlug(cid cid.Cid) (string, error) {
 		}
 	}
 	return "", errors.New("listing not found")
+}
+
+// GetListingCID returns a listing given the CID.
+func (li *ListingIndex) GetListingCID(slug string) (cid.Cid, error) {
+	for _, lm := range *li {
+		if lm.Slug == slug {
+			return cid.Decode(lm.Hash)
+		}
+	}
+	return cid.Cid{}, errors.New("listing not found")
 }
 
 // Count returns the number of listings.

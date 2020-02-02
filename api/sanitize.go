@@ -41,8 +41,8 @@ func sanitizedJSONResponse(w http.ResponseWriter, i interface{}) {
 	fmt.Fprint(w, string(ret))
 }
 
-func sanitizedProtobufResponse(w http.ResponseWriter, response string, m proto.Message) {
-	out, err := sanitizeProtobuf(response, m)
+func sanitizedProtobufResponse(w http.ResponseWriter, m proto.Message) {
+	out, err := sanitizeProtobuf(m)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -71,26 +71,20 @@ func sanitizeJSON(s []byte) ([]byte, error) {
 	return json.MarshalIndent(i, "", "    ")
 }
 
-func sanitizeProtobuf(jsonEncodedProtobuf string, m proto.Message) ([]byte, error) {
-	ret, err := sanitizeJSON([]byte(jsonEncodedProtobuf))
-	if err != nil {
-		return nil, err
-	}
-	err = jsonpb.UnmarshalString(string(ret), m)
-	if err != nil {
-		return nil, err
-	}
+func sanitizeProtobuf(m proto.Message) ([]byte, error) {
 	marshaler := jsonpb.Marshaler{
 		EnumsAsInts:  false,
 		EmitDefaults: true,
 		Indent:       "    ",
 		OrigName:     false,
 	}
+
 	out, err := marshaler.MarshalToString(m)
 	if err != nil {
 		return nil, err
 	}
-	return []byte(out), nil
+
+	return sanitizeJSON([]byte(out))
 }
 
 func sanitize(data interface{}) {

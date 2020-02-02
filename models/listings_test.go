@@ -72,6 +72,29 @@ func TestListingIndex_GetListingSlug(t *testing.T) {
 	}
 }
 
+func TestListingIndex_GetListingCID(t *testing.T) {
+	li := ListingIndex{}
+
+	slug := "asdf"
+	li.UpdateListing(ListingMetadata{
+		Slug: slug,
+		Hash: "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+	})
+
+	c, err := cid.Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ret, err := li.GetListingCID(slug)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if ret != c {
+		t.Errorf("Returned incorrect slug. Expected %s, got %s", slug, ret)
+	}
+}
+
 func TestListingIndex_Count(t *testing.T) {
 	li := ListingIndex{}
 

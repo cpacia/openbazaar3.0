@@ -4,8 +4,8 @@ package net
 
 import (
 	"context"
-	"errors"
 	"crypto/ed25519"
+	"errors"
 	"github.com/libp2p/go-libp2p"
 	"golang.org/x/net/proxy"
 )

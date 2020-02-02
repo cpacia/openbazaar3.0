@@ -216,6 +216,16 @@ func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.SignedListing, err
 		err     error
 	)
 	err = n.repo.DB().View(func(tx database.Tx) error {
+		index, err := tx.GetListingIndex()
+		if err != nil {
+			return fmt.Errorf("%w: listing index not found", coreiface.ErrNotFound)
+		}
+
+		id, err := index.GetListingCID(slug)
+		if err != nil {
+			return fmt.Errorf("%w: listing not found", coreiface.ErrNotFound)
+		}
+
 		listing, err = tx.GetListing(slug)
 		if err != nil {
 			return fmt.Errorf("%w: listing not found", coreiface.ErrNotFound)
@@ -223,11 +233,14 @@ func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.SignedListing, err
 		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
+
+		listing.Cid = id.String()
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	if listing.Listing.Coupons != nil {
 		swapCouponHashesWithDiscountCodes(listing, coupons)
 	}
@@ -257,6 +270,7 @@ func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, erro
 		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !gorm.IsRecordNotFoundError(err) {
 			return err
 		}
+		listing.Cid = cid.String()
 		return nil
 	})
 	if err != nil {
@@ -280,7 +294,11 @@ func (n *OpenBazaarNode) GetListingBySlug(ctx context.Context, peerID peer.ID, s
 	if err != nil {
 		return nil, err
 	}
-	return n.deserializeAndValidate(listingBytes)
+	cid, err := n.cid(listingBytes)
+	if err != nil {
+		return nil, err
+	}
+	return n.deserializeAndValidate(listingBytes, cid)
 }
 
 // GetListingByCID fetches the listing from the network given its cid.
@@ -289,7 +307,7 @@ func (n *OpenBazaarNode) GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.
 	if err != nil {
 		return nil, err
 	}
-	return n.deserializeAndValidate(listingBytes)
+	return n.deserializeAndValidate(listingBytes, cid)
 }
 
 // generateListingSlug generates a slug from the title of the listing. It
@@ -936,7 +954,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 
 // deserializeAndValidate accepts a byte slice of a serialized SignedListing
 // and deserializes and validates it.
-func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte) (*pb.SignedListing, error) {
+func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte, cid cid.Cid) (*pb.SignedListing, error) {
 	signedListing := new(pb.SignedListing)
 	if err := jsonpb.UnmarshalString(string(listingBytes), signedListing); err != nil {
 		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
@@ -944,6 +962,7 @@ func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte) (*pb.Signed
 	if err := n.validateListing(signedListing); err != nil {
 		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 	}
+	signedListing.Cid = cid.String()
 	return signedListing, nil
 }
 
