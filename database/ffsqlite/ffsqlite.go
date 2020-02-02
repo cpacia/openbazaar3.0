@@ -422,6 +422,15 @@ func (t *tx) SetRating(rating *pb.Rating) error {
 	return nil
 }
 
+// SetImage saves the given image.
+func (t *tx) SetImage(img models.Image) error {
+	if !t.isForWrites {
+		return ErrReadOnly
+	}
+	t.commitCache = append(t.commitCache, img)
+	return nil
+}
+
 func (t *tx) setInterfaceType(i interface{}) error {
 	switch i.(type) {
 	case *models.Profile:
@@ -459,6 +468,12 @@ func (t *tx) setInterfaceType(i interface{}) error {
 			return nil
 		}
 		if err := t.ffdb.SetRating(i.(*pb.Rating)); err != nil {
+			return err
+		}
+	case models.Image:
+		img := i.(models.Image)
+		p := path.Join(t.ffdb.rootDir, "images", string(img.Size), img.Name)
+		if err := t.ffdb.SetImage(img.ImageBytes, p); err != nil {
 			return err
 		}
 	case deleteListing:

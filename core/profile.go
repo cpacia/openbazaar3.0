@@ -61,6 +61,7 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 	})
 	if err != nil {
 		maybeCloseDone(done)
+		return err
 	}
 	n.Publish(done)
 	return nil

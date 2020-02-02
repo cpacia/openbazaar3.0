@@ -50,6 +50,9 @@ type PublicData interface {
 
 	// SetRating saves the given rating.
 	SetRating(rating *pb.Rating) error
+
+	// SetImage saves the given image.
+	SetImage(img models.Image) error
 }
 
 // Tx represents a database transaction.  It can either by read-only or

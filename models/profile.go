@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 // Profile is a user profile that is saved in the public data directory.
 type Profile struct {
@@ -20,8 +22,8 @@ type Profile struct {
 
 	Colors ProfileColors `json:"colors"`
 
-	AvatarHashes ProfileImage `json:"avatarHashes"`
-	HeaderHashes ProfileImage `json:"headerHashes"`
+	AvatarHashes ImageHashes `json:"avatarHashes"`
+	HeaderHashes ImageHashes `json:"headerHashes"`
 
 	Stats *ProfileStats `json:"stats,omitempty"`
 
@@ -71,13 +73,31 @@ type ProfileStats struct {
 	AverageRating  float32 `json:"averageRating"`
 }
 
-// ProfileImage holds image hashes.
-type ProfileImage struct {
+// ImageHashes holds image hashes.
+type ImageHashes struct {
 	Tiny     string `json:"tiny"`
 	Small    string `json:"small"`
 	Medium   string `json:"medium"`
 	Large    string `json:"large"`
 	Original string `json:"original"`
+}
+
+// ImageSize is a string representation of the image size.
+type ImageSize string
+
+const (
+	ImageSizeTiny     ImageSize = "tiny"
+	ImageSizeSmall    ImageSize = "small"
+	ImageSizeMedium   ImageSize = "medium"
+	ImageSizeLarge    ImageSize = "large"
+	ImageSizeOriginal ImageSize = "original"
+)
+
+// Image holds the actual image and some metadata.
+type Image struct {
+	ImageBytes []byte
+	Name       string
+	Size       ImageSize
 }
 
 // ModeratorInfo is set only if the user is a moderator.

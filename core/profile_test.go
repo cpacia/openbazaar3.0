@@ -682,7 +682,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:            "Ron Swanson",
 				EscrowPublicKey: strings.Repeat("r", 66),
-				AvatarHashes: models.ProfileImage{
+				AvatarHashes: models.ImageHashes{
 					Large:    "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 					Medium:   "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 					Original: "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
@@ -697,7 +697,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:            "Ron Swanson",
 				EscrowPublicKey: strings.Repeat("r", 66),
-				AvatarHashes: models.ProfileImage{
+				AvatarHashes: models.ImageHashes{
 					Large:    "xxx",
 					Medium:   "xxx",
 					Original: "xxx",
@@ -712,7 +712,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:            "Ron Swanson",
 				EscrowPublicKey: strings.Repeat("r", 66),
-				HeaderHashes: models.ProfileImage{
+				HeaderHashes: models.ImageHashes{
 					Large:    "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 					Medium:   "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 					Original: "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
@@ -727,7 +727,7 @@ func TestOpenBazaarNode_validateProfile(t *testing.T) {
 			profile: &models.Profile{
 				Name:            "Ron Swanson",
 				EscrowPublicKey: strings.Repeat("r", 66),
-				HeaderHashes: models.ProfileImage{
+				HeaderHashes: models.ImageHashes{
 					Large:    "xxx",
 					Medium:   "xxx",
 					Original: "xxx",

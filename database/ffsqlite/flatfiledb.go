@@ -294,6 +294,14 @@ func (fdb *FlatFileDB) SetRating(rating *pb.Rating) error {
 	return ioutil.WriteFile(path.Join(fdb.rootDir, "ratings", h.B58String()[:16]+".json"), []byte(out), os.ModePerm)
 }
 
+// SetRating saves the given rating.
+func (fdb *FlatFileDB) SetImage(img []byte, path string) error {
+	fdb.mtx.Lock()
+	defer fdb.mtx.Unlock()
+
+	return ioutil.WriteFile(path, img, os.ModePerm)
+}
+
 // dataPathJoin is a helper function which joins the pathArgs to the service's
 // dataPath and returns the result
 func (fdb *FlatFileDB) dataPathJoin(pathArgs ...string) string {

@@ -44,6 +44,9 @@ type CoreIface interface {
 	GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, error)
 	GetListingBySlug(ctx context.Context, peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error)
 	GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error)
+	SetAvatarImage(base64ImageData string, done chan struct{}) (models.ImageHashes, error)
+	SetHeaderImage(base64ImageData string, done chan struct{}) (models.ImageHashes, error)
+	SetProductImage(base64ImageData string, filename string) (models.ImageHashes, error)
 	SetSelfAsModerator(ctx context.Context, modInfo *models.ModeratorInfo, done chan struct{}) error
 	RemoveSelfAsModerator(ctx context.Context, done chan<- struct{}) error
 	GetModerators(ctx context.Context) []peer.ID

@@ -324,3 +324,27 @@ func TestFlatFileDB_Rating(t *testing.T) {
 		t.Errorf("Expected overall of 5 got %d", r2.Overall)
 	}
 }
+
+func TestFlatFileDB_Images(t *testing.T) {
+	dir := path.Join(os.TempDir(), "openbazaar", "rating_test")
+	fdb, err := NewFlatFileDB(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	if err := fdb.SetImage([]byte{0x00}, path.Join(fdb.rootDir, "images", string(models.ImageSizeOriginal), "test")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make sure duplicate succeeds.
+	if err := fdb.SetImage([]byte{0x00}, path.Join(fdb.rootDir, "images", string(models.ImageSizeOriginal), "test")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check exists
+	_, err = os.Stat(path.Join(fdb.rootDir, "images", string(models.ImageSizeOriginal), "test"))
+	if os.IsNotExist(err) {
+		t.Error("File was not created")
+	}
+}

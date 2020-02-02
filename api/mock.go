@@ -41,6 +41,9 @@ type mockNode struct {
 	getMyListingByCIDFunc        func(cid cid.Cid) (*pb.SignedListing, error)
 	getListingBySlugFunc         func(ctx context.Context, peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error)
 	getListingByCIDFunc          func(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error)
+	setAvatarImageFunc           func(base64ImageData string, done chan struct{}) (models.ImageHashes, error)
+	setHeaderImageFunc           func(base64ImageData string, done chan struct{}) (models.ImageHashes, error)
+	setProductImageFunc          func(base64ImageData string, filename string) (models.ImageHashes, error)
 	setSelfAsModeratorFunc       func(ctx context.Context, modInfo *models.ModeratorInfo, done chan struct{}) error
 	removeSelfAsModeratorFunc    func(ctx context.Context, done chan<- struct{}) error
 	getModeratorsFunc            func(ctx context.Context) []peer.ID
@@ -146,6 +149,15 @@ func (m *mockNode) GetListingBySlug(ctx context.Context, peerID peer.ID, slug st
 }
 func (m *mockNode) GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error) {
 	return m.getListingByCIDFunc(ctx, cid)
+}
+func (m *mockNode) SetAvatarImage(base64ImageData string, done chan struct{}) (models.ImageHashes, error) {
+	return m.setAvatarImageFunc(base64ImageData, done)
+}
+func (m *mockNode) SetHeaderImage(base64ImageData string, done chan struct{}) (models.ImageHashes, error) {
+	return m.setHeaderImageFunc(base64ImageData, done)
+}
+func (m *mockNode) SetProductImage(base64ImageData string, filename string) (models.ImageHashes, error) {
+	return m.setProductImageFunc(base64ImageData, filename)
 }
 func (m *mockNode) SetSelfAsModerator(ctx context.Context, modInfo *models.ModeratorInfo, done chan struct{}) error {
 	return m.setSelfAsModeratorFunc(ctx, modInfo, done)

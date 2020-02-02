@@ -785,3 +785,51 @@ func TestFFSqliteDB_ratingIndex(t *testing.T) {
 		t.Errorf("Returned incorred index. Expected slug %s, got %s", index2[1].Slug, index[1].Slug)
 	}
 }
+
+func TestFFSqliteDB_Images(t *testing.T) {
+	dataDir := path.Join(os.TempDir(), "openbazaar-test", "ffsqlitedb-images")
+
+	if err := os.MkdirAll(dataDir, os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dataDir)
+
+	db, err := NewFFMemoryDB(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.Update(func(tx database.Tx) error {
+		err := tx.SetImage(models.Image{
+			ImageBytes: []byte{0x00},
+			Size:       models.ImageSizeOriginal,
+			Name:       "image1",
+		})
+		if err != nil {
+			return err
+		}
+		err = tx.SetImage(models.Image{
+			ImageBytes: []byte{0x01},
+			Size:       models.ImageSizeOriginal,
+			Name:       "image2",
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = os.Stat(path.Join(db.PublicDataPath(), "images", string(models.ImageSizeOriginal), "image1"))
+	if os.IsNotExist(err) {
+		t.Error("File was not created")
+	}
+
+	_, err = os.Stat(path.Join(db.PublicDataPath(), "images", string(models.ImageSizeOriginal), "image2"))
+	if os.IsNotExist(err) {
+		t.Error("File was not created")
+	}
+}
