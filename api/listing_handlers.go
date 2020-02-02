@@ -30,6 +30,7 @@ func (g *Gateway) handleGETListing(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		listing, err = g.node.GetListingByCID(r.Context(), id)
+		w.Header().Set("Cache-Control", "public, max-age=29030400, immutable")
 	} else if peerIDStr != "" && slug != "" { // Query by peerID/slug
 		pid, perr := peer.IDB58Decode(peerIDStr)
 		if perr != nil {
@@ -68,6 +69,7 @@ func (g *Gateway) handleGETMyListing(w http.ResponseWriter, r *http.Request) {
 		listing, err = g.node.GetMyListingBySlug(slug)
 	} else {
 		listing, err = g.node.GetMyListingByCID(cid)
+		w.Header().Set("Cache-Control", "public, max-age=29030400, immutable")
 	}
 
 	if errors.Is(err, coreiface.ErrNotFound) {

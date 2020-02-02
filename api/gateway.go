@@ -134,7 +134,13 @@ func (g *Gateway) newV1Router() *mux.Router {
 		r.HandleFunc("/v1/ob/listing", g.handlePOSTListing).Methods("POST")
 		r.HandleFunc("/v1/ob/listing", g.handlePUTListing).Methods("PUT")
 		r.HandleFunc("/v1/ob/listing/{slug}", g.handleDELETEListing).Methods("DELETE")
+		r.HandleFunc("/v1/ob/avatar", g.handlePOSTAvatar).Methods("POST")
+		r.HandleFunc("/v1/ob/header", g.handlePOSTHeader).Methods("POST")
+		r.HandleFunc("/v1/ob/image", g.handlePOSTProductImage).Methods("POST")
 	}
+	r.HandleFunc("/v1/ob/{imageID}", g.handleGETImage).Methods("GET")
+	r.HandleFunc("/v1/ob/avatar/{peerID}/{size}", g.handleGETAvatar).Methods("GET")
+	r.HandleFunc("/v1/ob/header/{peerID}/{size}", g.handleGETHeader).Methods("GET")
 	r.HandleFunc("/v1/ob/listing/{listingID}", g.handleGETListing).Methods("GET")
 	r.HandleFunc("/v1/ob/listing/{peerID}/{slug}", g.handleGETListing).Methods("GET")
 	r.HandleFunc("/v1/ob/listingindex/{peerID}", g.handleGETListingIndex).Methods("GET")

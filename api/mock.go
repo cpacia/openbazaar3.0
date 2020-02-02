@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"io"
 )
 
 type mockNode struct {
@@ -41,6 +42,9 @@ type mockNode struct {
 	getMyListingByCIDFunc        func(cid cid.Cid) (*pb.SignedListing, error)
 	getListingBySlugFunc         func(ctx context.Context, peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error)
 	getListingByCIDFunc          func(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error)
+	getImageFunc                 func(ctx context.Context, cid cid.Cid) (io.ReadSeeker, error)
+	getAvatarFunc                func(ctx context.Context, peerID peer.ID, size models.ImageSize, useCache bool) (io.ReadSeeker, error)
+	getHeaderFunc                func(ctx context.Context, peerID peer.ID, size models.ImageSize, useCache bool) (io.ReadSeeker, error)
 	setAvatarImageFunc           func(base64ImageData string, done chan struct{}) (models.ImageHashes, error)
 	setHeaderImageFunc           func(base64ImageData string, done chan struct{}) (models.ImageHashes, error)
 	setProductImageFunc          func(base64ImageData string, filename string) (models.ImageHashes, error)
@@ -149,6 +153,15 @@ func (m *mockNode) GetListingBySlug(ctx context.Context, peerID peer.ID, slug st
 }
 func (m *mockNode) GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error) {
 	return m.getListingByCIDFunc(ctx, cid)
+}
+func (m *mockNode) GetImage(ctx context.Context, cid cid.Cid) (io.ReadSeeker, error) {
+	return m.getImageFunc(ctx, cid)
+}
+func (m *mockNode) GetAvatar(ctx context.Context, peerID peer.ID, size models.ImageSize, useCache bool) (io.ReadSeeker, error) {
+	return m.getAvatarFunc(ctx, peerID, size, useCache)
+}
+func (m *mockNode) GetHeader(ctx context.Context, peerID peer.ID, size models.ImageSize, useCache bool) (io.ReadSeeker, error) {
+	return m.getHeaderFunc(ctx, peerID, size, useCache)
 }
 func (m *mockNode) SetAvatarImage(base64ImageData string, done chan struct{}) (models.ImageHashes, error) {
 	return m.setAvatarImageFunc(base64ImageData, done)

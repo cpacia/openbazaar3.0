@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"io"
 )
 
 // CoreIface enumerates the interface of the OpenBazaarNode object in the Core package.
@@ -44,6 +45,9 @@ type CoreIface interface {
 	GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, error)
 	GetListingBySlug(ctx context.Context, peerID peer.ID, slug string, useCache bool) (*pb.SignedListing, error)
 	GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.SignedListing, error)
+	GetImage(ctx context.Context, cid cid.Cid) (io.ReadSeeker, error)
+	GetAvatar(ctx context.Context, peerID peer.ID, size models.ImageSize, useCache bool) (io.ReadSeeker, error)
+	GetHeader(ctx context.Context, peerID peer.ID, size models.ImageSize, useCache bool) (io.ReadSeeker, error)
 	SetAvatarImage(base64ImageData string, done chan struct{}) (models.ImageHashes, error)
 	SetHeaderImage(base64ImageData string, done chan struct{}) (models.ImageHashes, error)
 	SetProductImage(base64ImageData string, filename string) (models.ImageHashes, error)
