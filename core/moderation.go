@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core/coreapi"
 	"github.com/ipfs/interface-go-ipfs-core/path"
@@ -146,4 +147,18 @@ func (n *OpenBazaarNode) GetModeratorsAsync(ctx context.Context) <-chan peer.ID 
 	}()
 
 	return ch
+}
+
+// SetModeratorsOnListings updates all listings with the new moderators and publishes
+// the changes.
+func (n *OpenBazaarNode) SetModeratorsOnListings(mods []peer.ID, done chan struct{}) error {
+	modStrs := make([]string, 0, len(mods))
+	for _, mod := range mods {
+		modStrs = append(modStrs, mod.Pretty())
+	}
+
+	return n.UpdateAllListings(func(listing *pb.Listing) (bool, error) {
+		listing.Moderators = modStrs
+		return true, nil
+	}, done)
 }

@@ -55,6 +55,7 @@ type CoreIface interface {
 	RemoveSelfAsModerator(ctx context.Context, done chan<- struct{}) error
 	GetModerators(ctx context.Context) []peer.ID
 	GetModeratorsAsync(ctx context.Context) <-chan peer.ID
+	SetModeratorsOnListings(mods []peer.ID, done chan struct{}) error
 	Publish(done chan<- struct{})
 	UsingTestnet() bool
 	IPFSNode() *core.IpfsNode

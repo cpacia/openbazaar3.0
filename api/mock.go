@@ -49,6 +49,7 @@ type mockNode struct {
 	setHeaderImageFunc           func(base64ImageData string, done chan struct{}) (models.ImageHashes, error)
 	setProductImageFunc          func(base64ImageData string, filename string) (models.ImageHashes, error)
 	setSelfAsModeratorFunc       func(ctx context.Context, modInfo *models.ModeratorInfo, done chan struct{}) error
+	setModeratorsOnListingsFunc  func(mods []peer.ID, done chan struct{}) error
 	removeSelfAsModeratorFunc    func(ctx context.Context, done chan<- struct{}) error
 	getModeratorsFunc            func(ctx context.Context) []peer.ID
 	getModeratorsAsyncFunc       func(ctx context.Context) <-chan peer.ID
@@ -183,6 +184,9 @@ func (m *mockNode) GetModerators(ctx context.Context) []peer.ID {
 }
 func (m *mockNode) GetModeratorsAsync(ctx context.Context) <-chan peer.ID {
 	return m.getModeratorsAsyncFunc(ctx)
+}
+func (m *mockNode) SetModeratorsOnListings(mods []peer.ID, done chan struct{}) error {
+	return m.setModeratorsOnListingsFunc(mods, done)
 }
 func (m *mockNode) Publish(done chan<- struct{}) {
 	m.publishFunc(done)
