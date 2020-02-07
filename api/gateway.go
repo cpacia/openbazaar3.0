@@ -138,7 +138,7 @@ func (g *Gateway) newV1Router() *mux.Router {
 		r.HandleFunc("/v1/ob/header", g.handlePOSTHeader).Methods("POST")
 		r.HandleFunc("/v1/ob/image", g.handlePOSTProductImage).Methods("POST")
 	}
-	r.HandleFunc("/v1/ob/{imageID}", g.handleGETImage).Methods("GET")
+	r.HandleFunc("/v1/ob/image/{imageID}", g.handleGETImage).Methods("GET")
 	r.HandleFunc("/v1/ob/avatar/{peerID}/{size}", g.handleGETAvatar).Methods("GET")
 	r.HandleFunc("/v1/ob/header/{peerID}/{size}", g.handleGETHeader).Methods("GET")
 	r.HandleFunc("/v1/ob/listing/{listingID}", g.handleGETListing).Methods("GET")
