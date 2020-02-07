@@ -67,6 +67,8 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
+	repo.SetupLogging(cfg.LogDir, cfg.LogLevel)
+
 	if err := obRepo.WriteUserAgent(cfg.UserAgentComment); err != nil {
 		return nil, err
 	}

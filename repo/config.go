@@ -182,8 +182,6 @@ func LoadConfig() (*Config, []string, error) {
 		}
 	}
 
-	setupLogging(cfg.LogDir, cfg.LogLevel)
-
 	// Warn about missing config file only after all other configuration is
 	// done.  This prevents the warning on help messages and invalid
 	// options.  Note this should go directly before the return.
@@ -191,6 +189,37 @@ func LoadConfig() (*Config, []string, error) {
 		log.Errorf("%v", configFileError)
 	}
 	return &cfg, nil, nil
+}
+
+// SetupLogging sets up logging for this node
+func SetupLogging(logDir, logLevel string) {
+	backendStdout := logging.NewLogBackend(os.Stdout, "", 0)
+	backendStdoutFormatter := logging.NewBackendFormatter(backendStdout, stdoutLogFormat)
+
+	if logDir != "" {
+		rotator := &lumberjack.Logger{
+			Filename:   path.Join(logDir, defaultLogFilename),
+			MaxSize:    10, // Megabytes
+			MaxBackups: 3,
+			MaxAge:     30, // Days
+		}
+
+		backendFile := logging.NewLogBackend(rotator, "", 0)
+		backendFileFormatter := logging.NewBackendFormatter(backendFile, fileLogFormat)
+		logging.SetBackend(backendStdoutFormatter, backendFileFormatter)
+
+		ipfslogging.LdJSONFormatter()
+		w2 := &lumberjack.Logger{
+			Filename:   path.Join(logDir, "ipfs.log"),
+			MaxSize:    10, // Megabytes
+			MaxBackups: 3,
+			MaxAge:     30, // Days
+		}
+		ipfslogging.Output(w2)()
+	} else {
+		logging.SetBackend(backendStdoutFormatter)
+	}
+	logging.SetLevel(LogLevelMap[strings.ToLower(logLevel)], "")
 }
 
 // createDefaultConfig copies the sample-bchd.conf content to the given destination path,
@@ -285,34 +314,4 @@ func cleanAndExpandPath(path string) string {
 	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
 	// but they variables can still be expanded via POSIX-style $VARIABLE.
 	return filepath.Clean(os.ExpandEnv(path))
-}
-
-func setupLogging(logDir, logLevel string) {
-	backendStdout := logging.NewLogBackend(os.Stdout, "", 0)
-	backendStdoutFormatter := logging.NewBackendFormatter(backendStdout, stdoutLogFormat)
-
-	if logDir != "" {
-		rotator := &lumberjack.Logger{
-			Filename:   path.Join(logDir, defaultLogFilename),
-			MaxSize:    10, // Megabytes
-			MaxBackups: 3,
-			MaxAge:     30, // Days
-		}
-
-		backendFile := logging.NewLogBackend(rotator, "", 0)
-		backendFileFormatter := logging.NewBackendFormatter(backendFile, fileLogFormat)
-		logging.SetBackend(backendStdoutFormatter, backendFileFormatter)
-
-		ipfslogging.LdJSONFormatter()
-		w2 := &lumberjack.Logger{
-			Filename:   path.Join(logDir, "ipfs.log"),
-			MaxSize:    10, // Megabytes
-			MaxBackups: 3,
-			MaxAge:     30, // Days
-		}
-		ipfslogging.Output(w2)()
-	} else {
-		logging.SetBackend(backendStdoutFormatter)
-	}
-	logging.SetLevel(LogLevelMap[strings.ToLower(logLevel)], "")
 }
