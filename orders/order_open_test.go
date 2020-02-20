@@ -449,6 +449,21 @@ func Test_validateOrderOpen(t *testing.T) {
 			},
 		},
 		{
+			// Unpurchaseable classified listing
+			order: func() (*pb.OrderOpen, error) {
+				order, err := factory.NewOrder()
+				if err != nil {
+					return nil, err
+				}
+				order.Listings[0].Listing.Metadata.ContractType = pb.Listing_Metadata_CLASSIFIED
+				return order, nil
+			},
+			valid: false,
+			orderID: func(order *pb.OrderOpen) (*multihash.Multihash, error) {
+				return utils.CalcOrderID(order)
+			},
+		},
+		{
 			// Listing serialization not found
 			order: func() (*pb.OrderOpen, error) {
 				order, err := factory.NewOrder()

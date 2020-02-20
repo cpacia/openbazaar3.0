@@ -2000,6 +2000,19 @@ func Test_validateListing(t *testing.T) {
 			},
 			valid: false,
 		},
+		{
+			// Classified should not have shipping set.
+			listing: factory.NewSignedListing(),
+			transform: func(sl *pb.SignedListing) {
+				sl.Listing.Metadata.ContractType = pb.Listing_Metadata_CLASSIFIED
+				sl.Listing.ShippingOptions = []*pb.Listing_ShippingOption {
+					{
+						Name: "shipping",
+					},
+				}
+			},
+			valid: false,
+		},
 	}
 
 	for i, test := range tests {

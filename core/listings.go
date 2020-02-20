@@ -621,8 +621,13 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 		return coreiface.ErrMissingField("item.title")
 	}
 	price, _ := new(big.Int).SetString(sl.Listing.Item.Price, 10)
-	if sl.Listing.Metadata.ContractType != pb.Listing_Metadata_CRYPTOCURRENCY && price.Cmp(big.NewInt(0)) == 0 {
+	if (sl.Listing.Metadata.ContractType != pb.Listing_Metadata_CRYPTOCURRENCY &&
+		sl.Listing.Metadata.ContractType != pb.Listing_Metadata_CLASSIFIED) &&
+		price.Cmp(big.NewInt(0)) == 0 {
 		return errors.New("zero price listings are not allowed")
+	}
+	if sl.Listing.Metadata.ContractType == pb.Listing_Metadata_CLASSIFIED && len(sl.Listing.ShippingOptions) > 0 {
+		return errors.New("classified listings can not have shipping")
 	}
 	if len(sl.Listing.Item.Title) > TitleMaxCharacters {
 		return coreiface.ErrTooManyCharacters{"item.title", strconv.Itoa(TitleMaxCharacters)}

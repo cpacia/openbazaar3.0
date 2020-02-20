@@ -253,6 +253,10 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 			return nil, coreiface.ErrUnknownListingVersion
 		}
 
+		if listing.Listing.Metadata.ContractType == pb.Listing_Metadata_CLASSIFIED {
+			return nil, fmt.Errorf("%w: classified listings cannot be purchased", coreiface.ErrBadRequest)
+		}
+
 		vendors[listing.Listing.VendorID.PeerID] = true
 		if len(vendors) > 1 {
 			return nil, fmt.Errorf("%w: order can only purchase items from a single vendor", coreiface.ErrBadRequest)

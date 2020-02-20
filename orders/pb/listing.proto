@@ -31,7 +31,7 @@ message Listing {
             PHYSICAL_GOOD  = 0;
             DIGITAL_GOOD   = 1;
             SERVICE        = 2;
-            CROWD_FUND     = 3;
+            CLASSIFIED     = 3;
             CRYPTOCURRENCY = 4;
         }
 

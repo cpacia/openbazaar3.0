@@ -255,6 +255,9 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		if iwallet.NewAmount(item.Quantity).Cmp(iwallet.NewAmount(0)) <= 0 {
 			return fmt.Errorf("item %d quantity must be a positive integer", i)
 		}
+		if listing.Metadata.ContractType == pb.Listing_Metadata_CLASSIFIED {
+			return fmt.Errorf("item %d classified listings cannot be purchased", i)
+		}
 
 		if listing.Metadata.EscrowTimeoutHours > escrowTimeoutHours {
 			escrowTimeoutHours = listing.Metadata.EscrowTimeoutHours
