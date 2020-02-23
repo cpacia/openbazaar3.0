@@ -46,7 +46,7 @@ func (li *ListingIndex) DeleteListing(slug string) {
 // GetListingSlug returns a listing given the slug
 func (li *ListingIndex) GetListingSlug(cid cid.Cid) (string, error) {
 	for _, lm := range *li {
-		if lm.Hash == cid.String() {
+		if lm.CID == cid.String() {
 			return lm.Slug, nil
 		}
 	}
@@ -57,7 +57,7 @@ func (li *ListingIndex) GetListingSlug(cid cid.Cid) (string, error) {
 func (li *ListingIndex) GetListingCID(slug string) (cid.Cid, error) {
 	for _, lm := range *li {
 		if lm.Slug == slug {
-			return cid.Decode(lm.Hash)
+			return cid.Decode(lm.CID)
 		}
 	}
 	return cid.Cid{}, errors.New("listing not found")
@@ -71,7 +71,7 @@ func (li *ListingIndex) Count() int {
 // ListingMetadata is the metadata for an individual listing.
 // The node's listing index is an array of these objects.
 type ListingMetadata struct {
-	Hash               string           `json:"hash"`
+	CID                string           `json:"cid"`
 	Slug               string           `json:"slug"`
 	Title              string           `json:"title"`
 	Categories         []string         `json:"categories"`
@@ -126,7 +126,7 @@ func NewListingMetadataFromListing(listing *pb.Listing, cid cid.Cid) (*ListingMe
 	cv := NewCurrencyValue(listing.Item.Price, CurrencyDefinitions[listing.Metadata.PricingCurrency.Code])
 
 	ld := &ListingMetadata{
-		Hash:         cid.String(),
+		CID:          cid.String(),
 		Slug:         listing.Slug,
 		Title:        listing.Item.Title,
 		Categories:   listing.Item.Categories,

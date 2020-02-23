@@ -178,7 +178,7 @@ func TestProfileHandlers(t *testing.T) {
 			body:       []byte(`{"name": "Ron Swanson"}`),
 			statusCode: http.StatusConflict,
 			expectedResponse: func() ([]byte, error) {
-				return []byte("profile exists. use PUT to update.\n"), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "profile exists. use PUT to update."}`)), nil
 			},
 		},
 		{

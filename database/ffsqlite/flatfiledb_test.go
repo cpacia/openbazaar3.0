@@ -201,11 +201,11 @@ func TestFlatFileDB_ListingIndex(t *testing.T) {
 	i := models.ListingIndex{
 		{
 			Slug: slug1,
-			Hash: h1,
+			CID:  h1,
 		},
 		{
 			Slug: slug2,
-			Hash: h2,
+			CID:  h2,
 		},
 	}
 	err = fdb.SetListingIndex(i)
@@ -224,11 +224,11 @@ func TestFlatFileDB_ListingIndex(t *testing.T) {
 	if index[1].Slug != slug2 {
 		t.Errorf("Incorrect index returned. Expected slug %s got %s", slug2, index[1].Slug)
 	}
-	if index[0].Hash != h1 {
-		t.Errorf("Incorrect index returned. Expected hash %s got %s", h1, index[0].Hash)
+	if index[0].CID != h1 {
+		t.Errorf("Incorrect index returned. Expected hash %s got %s", h1, index[0].CID)
 	}
-	if index[1].Hash != h2 {
-		t.Errorf("Incorrect index returned. Expected hash %s got %s", h2, index[1].Hash)
+	if index[1].CID != h2 {
+		t.Errorf("Incorrect index returned. Expected hash %s got %s", h2, index[1].CID)
 	}
 }
 

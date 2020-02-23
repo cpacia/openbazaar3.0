@@ -56,7 +56,7 @@ func TestOpenBazaarNode_CancelOrder(t *testing.T) {
 	}
 
 	purchase := factory.NewPurchase()
-	purchase.Items[0].ListingHash = index[0].Hash
+	purchase.Items[0].ListingHash = index[0].CID
 	if err := network.Nodes()[1].PingNode(context.Background(), network.Nodes()[0].Identity()); err != nil {
 		t.Fatal(err)
 	}

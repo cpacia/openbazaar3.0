@@ -24,7 +24,7 @@ func TestListingHandlers(t *testing.T) {
 					i := models.ListingIndex{}
 					i.UpdateListing(models.ListingMetadata{
 						Slug: "t-shirt",
-						Hash: "h",
+						CID:  "h",
 					})
 					return i, nil
 				}
@@ -34,7 +34,7 @@ func TestListingHandlers(t *testing.T) {
 				i := models.ListingIndex{}
 				i.UpdateListing(models.ListingMetadata{
 					Slug: "t-shirt",
-					Hash: "h",
+					CID:  "h",
 				})
 				return marshalAndSanitizeJSON(i)
 			},
@@ -52,7 +52,7 @@ func TestListingHandlers(t *testing.T) {
 					i := models.ListingIndex{}
 					i.UpdateListing(models.ListingMetadata{
 						Slug: "t-shirt",
-						Hash: "h",
+						CID:  "h",
 					})
 					return i, nil
 				}
@@ -62,7 +62,7 @@ func TestListingHandlers(t *testing.T) {
 				i := models.ListingIndex{}
 				i.UpdateListing(models.ListingMetadata{
 					Slug: "t-shirt",
-					Hash: "h",
+					CID:  "h",
 				})
 				return marshalAndSanitizeJSON(i)
 			},
@@ -80,12 +80,12 @@ func TestListingHandlers(t *testing.T) {
 					if useCache {
 						i.UpdateListing(models.ListingMetadata{
 							Slug: "t-shirt",
-							Hash: "h",
+							CID:  "h",
 						})
 					} else {
 						i.UpdateListing(models.ListingMetadata{
 							Slug: "socks",
-							Hash: "h",
+							CID:  "h",
 						})
 					}
 					return i, nil
@@ -96,7 +96,7 @@ func TestListingHandlers(t *testing.T) {
 				i := models.ListingIndex{}
 				i.UpdateListing(models.ListingMetadata{
 					Slug: "t-shirt",
-					Hash: "h",
+					CID:  "h",
 				})
 				return marshalAndSanitizeJSON(i)
 			},
@@ -111,7 +111,7 @@ func TestListingHandlers(t *testing.T) {
 					i := models.ListingIndex{}
 					i.UpdateListing(models.ListingMetadata{
 						Slug: "t-shirt",
-						Hash: "h",
+						CID:  "h",
 					})
 					return i, nil
 				}

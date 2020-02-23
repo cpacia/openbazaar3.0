@@ -55,7 +55,7 @@ func TestListingIndex_GetListingSlug(t *testing.T) {
 	slug := "asdf"
 	li.UpdateListing(ListingMetadata{
 		Slug: slug,
-		Hash: "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+		CID:  "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 	})
 
 	c, err := cid.Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
@@ -78,7 +78,7 @@ func TestListingIndex_GetListingCID(t *testing.T) {
 	slug := "asdf"
 	li.UpdateListing(ListingMetadata{
 		Slug: slug,
-		Hash: "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+		CID:  "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 	})
 
 	c, err := cid.Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
@@ -101,7 +101,7 @@ func TestListingIndex_Count(t *testing.T) {
 	slug := "asdf"
 	li.UpdateListing(ListingMetadata{
 		Slug: slug,
-		Hash: "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+		CID:  "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 	})
 
 	ret := li.Count()
@@ -117,7 +117,7 @@ func TestListingIndex_DeleteListing(t *testing.T) {
 	slug := "asdf"
 	li.UpdateListing(ListingMetadata{
 		Slug: slug,
-		Hash: "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
+		CID:  "QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub",
 	})
 
 	li.DeleteListing(slug)

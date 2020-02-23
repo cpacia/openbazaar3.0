@@ -54,7 +54,7 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 	}
 
 	purchase := factory.NewPurchase()
-	purchase.Items[0].ListingHash = index[0].Hash
+	purchase.Items[0].ListingHash = index[0].CID
 
 	// Address request direct order
 	orderID, _, _, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)

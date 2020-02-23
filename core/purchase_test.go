@@ -101,7 +101,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	// Create a purchase from the factory.
 	purchase := factory.NewPurchase()
-	purchase.Items[0].ListingHash = index[0].Hash
+	purchase.Items[0].ListingHash = index[0].CID
 
 	// Have node 1 purchase the listing from node 0.
 	_, paymentAddress, paymentAmount, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
@@ -409,7 +409,7 @@ func TestOpenBazaarNode_EstimateOrderSubtotal(t *testing.T) {
 		Moderator:    "",
 		Items: []models.PurchaseItem{
 			{
-				ListingHash: index[0].Hash,
+				ListingHash: index[0].CID,
 				Quantity:    "1",
 				Options: []models.PurchaseItemOption{
 					{
@@ -469,7 +469,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lid, err := cid.Decode(index[0].Hash)
+	lid, err := cid.Decode(index[0].CID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,7 +523,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 				Moderator:    "",
 				Items: []models.PurchaseItem{
 					{
-						ListingHash: index[0].Hash,
+						ListingHash: index[0].CID,
 						Quantity:    "1",
 						Options: []models.PurchaseItemOption{
 							{
@@ -673,7 +673,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 			purchase: &models.Purchase{
 				Items: []models.PurchaseItem{
 					{
-						ListingHash: index[0].Hash,
+						ListingHash: index[0].CID,
 						Quantity:    "1",
 						Options: []models.PurchaseItemOption{
 							{
@@ -705,7 +705,7 @@ func TestOpenBazaarNode_createOrder(t *testing.T) {
 			purchase: &models.Purchase{
 				Items: []models.PurchaseItem{
 					{
-						ListingHash: index[0].Hash,
+						ListingHash: index[0].CID,
 						Quantity:    "1",
 						Options: []models.PurchaseItemOption{
 							{
@@ -798,7 +798,7 @@ func Test_createOrderUnkownVersion(t *testing.T) {
 	purchase := &models.Purchase{
 		Items: []models.PurchaseItem{
 			{
-				ListingHash: index[0].Hash,
+				ListingHash: index[0].CID,
 				Quantity:    "1",
 				Options: []models.PurchaseItemOption{
 					{

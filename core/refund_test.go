@@ -75,7 +75,7 @@ func TestOpenBazaarNode_RefundOrder(t *testing.T) {
 	}
 
 	purchase := factory.NewPurchase()
-	purchase.Items[0].ListingHash = index[0].Hash
+	purchase.Items[0].ListingHash = index[0].CID
 
 	orderSub0, err := network.Nodes()[0].eventBus.Subscribe(&events.NewOrder{})
 	if err != nil {

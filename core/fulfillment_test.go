@@ -79,7 +79,7 @@ func TestOpenBazaarNode_FufillOrder(t *testing.T) {
 	}
 
 	purchase := factory.NewPurchase()
-	purchase.Items[0].ListingHash = index[0].Hash
+	purchase.Items[0].ListingHash = index[0].CID
 	purchase.Moderator = network.Nodes()[2].Identity().Pretty()
 
 	// Address request direct order

@@ -46,7 +46,7 @@ func TestOpenBazaarNode_SaveListing(t *testing.T) {
 		t.Errorf("Returned incorrect number of listings. Expected %d, got %d", 1, len(index))
 	}
 
-	c, err := cid.Decode(index[0].Hash)
+	c, err := cid.Decode(index[0].CID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestOpenBazaarNode_UpdateAllListings(t *testing.T) {
 
 	for _, lmd := range newIndex {
 		for _, l := range oldIndex {
-			if l.Hash == lmd.Hash {
+			if l.CID == lmd.CID {
 				t.Error("Failed to update listing hash")
 			}
 		}
@@ -228,7 +228,7 @@ func TestOpenBazaarNode_ListingsGet(t *testing.T) {
 		t.Errorf("Returned incorrect number of listings in index. Expected %d, got %d", 1, len(index))
 	}
 
-	c, err := cid.Decode(index[0].Hash)
+	c, err := cid.Decode(index[0].CID)
 	if err != nil {
 		t.Fatal(err)
 	}
