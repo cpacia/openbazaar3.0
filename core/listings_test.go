@@ -2005,7 +2005,7 @@ func Test_validateListing(t *testing.T) {
 			listing: factory.NewSignedListing(),
 			transform: func(sl *pb.SignedListing) {
 				sl.Listing.Metadata.ContractType = pb.Listing_Metadata_CLASSIFIED
-				sl.Listing.ShippingOptions = []*pb.Listing_ShippingOption {
+				sl.Listing.ShippingOptions = []*pb.Listing_ShippingOption{
 					{
 						Name: "shipping",
 					},

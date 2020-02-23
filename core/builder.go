@@ -268,12 +268,13 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	if cfg.IPFSOnly {
 		return &OpenBazaarNode{
-			repo:            obRepo,
-			ipfsNode:        ipfsNode,
-			ipfsOnlyMode:    true,
-			shutdownTorFunc: shutdownTorFunc,
-			eventBus:        events.NewBus(),
-			shutdown:        make(chan struct{}),
+			repo:                 obRepo,
+			ipfsNode:             ipfsNode,
+			ipfsOnlyMode:         true,
+			shutdownTorFunc:      shutdownTorFunc,
+			eventBus:             events.NewBus(),
+			initialBootstrapChan: make(chan struct{}),
+			shutdown:             make(chan struct{}),
 		}, nil
 	}
 

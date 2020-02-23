@@ -113,9 +113,9 @@ type OpenBazaarNode struct {
 
 // Start gets the node up and running and listens for a signal interrupt.
 func (n *OpenBazaarNode) Start() {
+	go n.bootstrapIPFS()
 	if !n.ipfsOnlyMode {
 		n.publishHandler()
-		go n.bootstrapIPFS()
 		go n.messenger.Start()
 		go n.followerTracker.Start()
 		go n.orderProcessor.Start()
