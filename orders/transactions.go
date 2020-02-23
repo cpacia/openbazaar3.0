@@ -65,12 +65,7 @@ func (op *OrderProcessor) processWalletTransaction(transaction iwallet.Transacti
 
 // processIncomingPayment processes payments into an order's payment address.
 func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models.Order, tx iwallet.Transaction) error {
-	wasFunded, err := order.IsFunded()
-	if err != nil {
-		return err
-	}
-
-	err = order.PutTransaction(tx)
+	err := order.PutTransaction(tx)
 	if models.IsDuplicateTransactionError(err) {
 		log.Debugf("Received duplicate transaction %s", tx.ID.String())
 		return nil
@@ -156,14 +151,14 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 		}
 
 	case models.RoleVendor:
-		if !wasFunded && funded {
+		if funded {
 			// TODO: mark vendor inventory downwards is not wasFunded.
 
-			dbtx.RegisterCommitHook(func() {
-				if err := op.sendRatingSignatures(dbtx, order, orderOpen); err != nil {
-					log.Errorf("Error sending rating signature message: %s", err)
-				}
+			if err := op.sendRatingSignatures(dbtx, order, orderOpen); err != nil {
+				log.Errorf("Error sending rating signature message: %s", err)
+			}
 
+			dbtx.RegisterCommitHook(func() {
 				op.bus.Emit(&events.OrderFunded{
 					BuyerHandle: orderOpen.BuyerID.Handle,
 					BuyerID:     orderOpen.BuyerID.PeerID,
