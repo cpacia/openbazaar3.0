@@ -218,7 +218,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		Permanent: true,
 		ExtraOpts: map[string]bool{
 			"mplex":  true,
-			"ipnsps": true,
+			"ipnsps": !cfg.NoIPNSPubsub,
 			"pubsub": true,
 		},
 		Routing: constructRouting,

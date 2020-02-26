@@ -72,6 +72,7 @@ type Config struct {
 	Testnet                bool     `short:"t" long:"testnet" description:"Use the test network"`
 	DisableNATPortMap      bool     `long:"noupnp" description:"Disable use of upnp."`
 	IPNSQuorum             uint     `long:"ipnsquorum" description:"The size of the IPNS quorum to use. Smaller is faster but less up-to-date." default:"2"`
+	NoIPNSPubsub           bool     `long:"noipnsps" description:"Disable use of IPNS pubsub."`
 	ExchangeRateProviders  []string `long:"exchangerateprovider" description:"API URL to use for exchange rates. Must conform to the BitcoinAverage format." default:"https://ticker.openbazaar.org/api"`
 	UseSSL                 bool     `long:"ssl" description:"Use SSL on the API"`
 	SSLCertFile            string   `long:"sslcertfile" description:"Path to the SSL certificate file"`
