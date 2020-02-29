@@ -5,6 +5,8 @@ import (
 	"errors"
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/cpacia/openbazaar3.0/version"
+	iwallet "github.com/cpacia/wallet-interface"
 	"net/http"
 )
 
@@ -47,7 +49,7 @@ func (g *Gateway) handlePutUserPreferences(w http.ResponseWriter, r *http.Reques
 		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
-	sanitizedJSONResponse(w, struct {}{})
+	sanitizedJSONResponse(w, struct{}{})
 }
 
 func (g *Gateway) handleGetUserPreferences(w http.ResponseWriter, r *http.Request) {
@@ -56,5 +58,15 @@ func (g *Gateway) handleGetUserPreferences(w http.ResponseWriter, r *http.Reques
 		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
+	prefs.UserAgent = version.UserAgent()
 	sanitizedJSONResponse(w, prefs)
+}
+
+func (g *Gateway) handleGETExchangeRates(w http.ResponseWriter, r *http.Request) {
+	rates, err := g.node.ExchangeRates().GetAllRates(iwallet.CtBitcoin, false)
+	if err != nil {
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
+		return
+	}
+	sanitizedJSONResponse(w, rates)
 }

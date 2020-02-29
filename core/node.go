@@ -209,6 +209,11 @@ func (n *OpenBazaarNode) Multiwallet() multiwallet.Multiwallet {
 	return n.multiwallet
 }
 
+// ExchangeRates returns the node's exchange rate provider.
+func (n *OpenBazaarNode) ExchangeRates() *wallet.ExchangeRateProvider {
+	return n.exchangeRates
+}
+
 // Identity returns the peer ID for this node.
 func (n *OpenBazaarNode) Identity() peer.ID {
 	return n.ipfsNode.Identity

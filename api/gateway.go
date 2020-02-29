@@ -156,6 +156,7 @@ func (g *Gateway) newV1Router() *mux.Router {
 	r.HandleFunc("/v1/ob/followers", g.handleGETFollowers).Methods("GET")
 	r.HandleFunc("/v1/ob/following/{peerID}", g.handleGETFollowing).Methods("GET")
 	r.HandleFunc("/v1/ob/following", g.handleGETFollowing).Methods("GET")
+	r.HandleFunc("/v1/ob/exchangerates", g.handleGETExchangeRates).Methods("GET")
 	return r
 }
 

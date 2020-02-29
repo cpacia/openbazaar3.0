@@ -8,6 +8,7 @@ import (
 // UserPreferences are set by the client and persisted in the database.
 type UserPreferences struct {
 	ID                 int             `json:"-" gorm:"primary_key"`
+	UserAgent          string          `json:"userAgent"`
 	PaymentDataInQR    bool            `json:"paymentDataInQR"`
 	ShowNotifications  bool            `json:"showNotifications"`
 	ShowNsfw           bool            `json:"showNsfw"`

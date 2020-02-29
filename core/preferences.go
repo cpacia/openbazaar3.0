@@ -14,7 +14,7 @@ import (
 // GetPreferences returns the saved preferences for this node.
 func (n *OpenBazaarNode) GetPreferences() (*models.UserPreferences, error) {
 	var prefs models.UserPreferences
-	err := n.repo.DB().View(func(tx database.Tx)error {
+	err := n.repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().First(&prefs).Error
 	})
 	if err != nil {

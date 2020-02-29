@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
@@ -72,6 +73,7 @@ type mockNode struct {
 	saveUserPreferencesFunc      func(prefs *models.UserPreferences, done chan struct{}) error
 	saveTransactionMetadataFunc  func(metadata *models.TransactionMetadata) error
 	getTransactionMetadataFunc   func(txid iwallet.TransactionID) (models.TransactionMetadata, error)
+	getExchangeRatesFunc         func() *wallet.ExchangeRateProvider
 }
 
 func (m *mockNode) RequestAddress(ctx context.Context, to peer.ID, coinType iwallet.CoinType) (iwallet.Address, error) {
@@ -247,4 +249,7 @@ func (m *mockNode) SavePreferences(prefs *models.UserPreferences, done chan stru
 }
 func (m *mockNode) GetPreferences() (*models.UserPreferences, error) {
 	return m.getUserPreferencesFunc()
+}
+func (m *mockNode) ExchangeRates() *wallet.ExchangeRateProvider {
+	return m.getExchangeRatesFunc()
 }

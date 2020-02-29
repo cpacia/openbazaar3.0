@@ -280,12 +280,12 @@ func (c CurrencyCode) String() string {
 
 // Currency defines the characteristics of a currency
 type Currency struct {
-	Name          string
-	Code          CurrencyCode
-	Divisibility  uint
-	CurrencyType  CurrencyType
-	Bip44Code     uint
-	BlockInterval time.Duration
+	Name          string        `json:"name"`
+	Code          CurrencyCode  `json:"code"`
+	Divisibility  uint          `json:"divisibility"`
+	CurrencyType  CurrencyType  `json:"currencyType"`
+	Bip44Code     uint          `json:"-"`
+	BlockInterval time.Duration `json:"blockInterval"`
 }
 
 // String returns a readable representation of CurrencyDefinition

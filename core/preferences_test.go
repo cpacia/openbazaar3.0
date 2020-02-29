@@ -16,7 +16,6 @@ func TestOpenBazaarNode_SavePreferences(t *testing.T) {
 	}
 	defer node.repo.DestroyRepo()
 
-
 	listing := factory.NewPhysicalListing("ron-swanson-shirt")
 
 	done := make(chan struct{})

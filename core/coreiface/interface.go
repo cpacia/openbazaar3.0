@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
@@ -75,4 +76,5 @@ type CoreIface interface {
 	PingNode(ctx context.Context, peer peer.ID) error
 	SaveTransactionMetadata(metadata *models.TransactionMetadata) error
 	GetTransactionMetadata(txid iwallet.TransactionID) (models.TransactionMetadata, error)
+	ExchangeRates() *wallet.ExchangeRateProvider
 }

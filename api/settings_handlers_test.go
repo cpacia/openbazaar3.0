@@ -5,6 +5,8 @@ import (
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/cpacia/openbazaar3.0/version"
+	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"net/http"
@@ -54,7 +56,7 @@ func TestSettingsHandlers(t *testing.T) {
 					return nil
 				}
 			},
-			body: []byte(`{"RefundPolicy": "asdf"}`),
+			body:       []byte(`{"RefundPolicy": "asdf"}`),
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
 				return []byte(`{}`), nil
@@ -69,7 +71,7 @@ func TestSettingsHandlers(t *testing.T) {
 					return coreiface.ErrBadRequest
 				}
 			},
-			body: []byte(`{"RefundPolicy": "asdf"}`),
+			body:       []byte(`{"RefundPolicy": "asdf"}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
 				return []byte(fmt.Sprintf("%s\n", `{"error": "bad request"}`)), nil
@@ -88,7 +90,30 @@ func TestSettingsHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
-				return marshalAndSanitizeJSON(&models.UserPreferences{RefundPolicy: "asdf"})
+				return marshalAndSanitizeJSON(&models.UserPreferences{RefundPolicy: "asdf", UserAgent: version.UserAgent()})
+			},
+		},
+		{
+			name:   "Get exchange rates",
+			path:   "/v1/ob/exchangerates",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getExchangeRatesFunc = func() *wallet.ExchangeRateProvider {
+					erp, _ := wallet.NewMockExchangeRates()
+					return erp
+				}
+			},
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				erp, err := wallet.NewMockExchangeRates()
+				if err != nil {
+					return nil, err
+				}
+				rates, err := erp.GetAllRates(iwallet.CtBitcoin, true)
+				if err != nil {
+					return nil, err
+				}
+				return marshalAndSanitizeJSON(rates)
 			},
 		},
 	})
