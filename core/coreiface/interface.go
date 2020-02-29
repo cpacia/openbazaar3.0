@@ -56,8 +56,11 @@ type CoreIface interface {
 	GetModerators(ctx context.Context) []peer.ID
 	GetModeratorsAsync(ctx context.Context) <-chan peer.ID
 	SetModeratorsOnListings(mods []peer.ID, done chan struct{}) error
+	GetPreferences() (*models.UserPreferences, error)
+	SavePreferences(prefs *models.UserPreferences, done chan struct{}) error
 	Publish(done chan<- struct{})
 	UsingTestnet() bool
+	UsingTorMode() bool
 	IPFSNode() *core.IpfsNode
 	Multiwallet() multiwallet.Multiwallet
 	Identity() peer.ID

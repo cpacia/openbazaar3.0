@@ -23,6 +23,7 @@ func sanitizedStringResponse(w http.ResponseWriter, response string) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprint(w, string(ret))
 }
 
@@ -38,6 +39,7 @@ func sanitizedJSONResponse(w http.ResponseWriter, i interface{}) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprint(w, string(ret))
 }
 
@@ -47,6 +49,7 @@ func sanitizedProtobufResponse(w http.ResponseWriter, m proto.Message) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprint(w, string(out))
 }
 func marshalAndSanitizeJSON(i interface{}) ([]byte, error) {

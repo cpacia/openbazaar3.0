@@ -7,6 +7,7 @@ import (
 
 // UserPreferences are set by the client and persisted in the database.
 type UserPreferences struct {
+	ID                 int             `json:"-" gorm:"primary_key"`
 	PaymentDataInQR    bool            `json:"paymentDataInQR"`
 	ShowNotifications  bool            `json:"showNotifications"`
 	ShowNsfw           bool            `json:"showNsfw"`
@@ -16,7 +17,7 @@ type UserPreferences struct {
 	TermsAndConditions string          `json:"termsAndConditions"`
 	RefundPolicy       string          `json:"refundPolicy"`
 	Blocked            json.RawMessage `json:"blockedNodes"`
-	StoreModerators    json.RawMessage `json:"storeModerators"`
+	Mods               json.RawMessage `json:"storeModerators"`
 	MisPaymentBuffer   float32         `json:"mispaymentBuffer"`
 	AutoConfirm        bool            `json:"autoConfirm"`
 	EmailNotifications string          `json:"emailNotifications"`
@@ -52,6 +53,25 @@ type prefsJSON struct {
 	PreferredCurrencies []string          `json:"preferredCurrencies"`
 }
 
+// StoreModerators returns the moderator peer IDs.
+func (prefs *UserPreferences) StoreModerators() ([]peer.ID, error) {
+	var peerIDStrs []string
+	if prefs.Mods != nil {
+		if err := json.Unmarshal(prefs.Mods, &peerIDStrs); err != nil {
+			return nil, err
+		}
+	}
+	ret := make([]peer.ID, 0, len(peerIDStrs))
+	for _, s := range peerIDStrs {
+		pid, err := peer.IDB58Decode(s)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, pid)
+	}
+	return ret, nil
+}
+
 // BlockedNodes returns the blocked peer IDs.
 func (prefs *UserPreferences) BlockedNodes() ([]peer.ID, error) {
 	var peerIDStrs []string
@@ -60,7 +80,7 @@ func (prefs *UserPreferences) BlockedNodes() ([]peer.ID, error) {
 			return nil, err
 		}
 	}
-	ret := make([]peer.ID, len(peerIDStrs))
+	ret := make([]peer.ID, 0, len(peerIDStrs))
 	for _, s := range peerIDStrs {
 		pid, err := peer.IDB58Decode(s)
 		if err != nil {
@@ -114,7 +134,7 @@ func (prefs *UserPreferences) UnmarshalJSON(b []byte) error {
 		prefs.TermsAndConditions = c0.TermsAndConditions
 		prefs.RefundPolicy = c0.RefundPolicy
 		prefs.Blocked = blockedNodes
-		prefs.StoreModerators = storeModerators
+		prefs.Mods = storeModerators
 		prefs.MisPaymentBuffer = c0.MisPaymentBuffer
 		prefs.AutoConfirm = c0.AutoConfirm
 		prefs.EmailNotifications = c0.EmailNotifications

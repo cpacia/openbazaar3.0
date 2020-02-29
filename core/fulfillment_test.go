@@ -158,28 +158,30 @@ func TestOpenBazaarNode_FufillOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
+	var order3 models.Order
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderID.String()).Last(&order).Error
+		return tx.Read().Where("id = ?", orderID.String()).Last(&order3).Error
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if order.SerializedOrderConfirmation == nil {
+	if order3.SerializedOrderConfirmation == nil {
 		t.Error("Node 0 failed to save order confirmation")
 	}
-	if !order.OrderConfirmationAcked {
+	if !order3.OrderConfirmationAcked {
 		t.Error("Node 0 failed to save order confirmation ack")
 	}
 
+	var order4 models.Order
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderID.String()).Last(&order2).Error
+		return tx.Read().Where("id = ?", orderID.String()).Last(&order4).Error
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if order2.SerializedOrderConfirmation == nil {
+	if order4.SerializedOrderConfirmation == nil {
 		t.Error("Node 1 failed to save order confirmation")
 	}
 
@@ -219,6 +221,11 @@ func TestOpenBazaarNode_FufillOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	ratingSigAck, err := network.Nodes()[0].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	wTx, err := wallet1.Begin()
 	if err != nil {
 		t.Fatal(err)
@@ -241,6 +248,13 @@ func TestOpenBazaarNode_FufillOrder(t *testing.T) {
 	select {
 	case <-fundingSub1.Out():
 		fundingSub1.Close()
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-ratingSigAck.Out():
+		ratingSigAck.Close()
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -285,32 +299,34 @@ func TestOpenBazaarNode_FufillOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
+	var order5 models.Order
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderID.String()).Last(&order).Error
+		return tx.Read().Where("id = ?", orderID.String()).Last(&order5).Error
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if order.SerializedOrderFulfillments == nil {
+	if order5.SerializedOrderFulfillments == nil {
 		t.Error("Node 0 failed to save order fulfillment")
 	}
-	if !order.OrderFulfillmentAcked {
+	if !order5.OrderFulfillmentAcked {
 		t.Error("Node 0 failed to save order fulfillment ack")
 	}
 
+	var order6 models.Order
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderID.String()).Last(&order2).Error
+		return tx.Read().Where("id = ?", orderID.String()).Last(&order6).Error
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if order2.SerializedOrderFulfillments == nil {
+	if order6.SerializedOrderFulfillments == nil {
 		t.Error("Node 1 failed to save order fulfillment")
 	}
 
-	fulfillmentMessages, err := order.OrderFulfillmentMessages()
+	fulfillmentMessages, err := order6.OrderFulfillmentMessages()
 	if err != nil {
 		t.Fatal(err)
 	}

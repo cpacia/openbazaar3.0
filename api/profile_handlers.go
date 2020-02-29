@@ -69,6 +69,7 @@ func (g *Gateway) handlePOSTProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	sanitizedJSONResponse(w, struct{}{})
 }
 
 func (g *Gateway) handlePUTProfile(w http.ResponseWriter, r *http.Request) {

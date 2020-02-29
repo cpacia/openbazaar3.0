@@ -82,6 +82,9 @@ type OpenBazaarNode struct {
 	// testnet is whether the this node is configured to use the test network.
 	testnet bool
 
+	// torOnly is whether the node is running in tor only mode.
+	torOnly bool
+
 	// publishActive is an atomic integer that represents the number of inflight
 	// publishes.
 	publishActive int32
@@ -180,6 +183,12 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 // the test network.
 func (n *OpenBazaarNode) UsingTestnet() bool {
 	return n.testnet
+}
+
+// UsingTorMode returns whether or not this node is using the tor
+// network exclusively. Dual stack returns false for this.
+func (n *OpenBazaarNode) UsingTorMode() bool {
+	return n.torOnly
 }
 
 // DestroyNode shutsdown the node and deletes the entire data directory.

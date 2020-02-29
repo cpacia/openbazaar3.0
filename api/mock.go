@@ -55,6 +55,7 @@ type mockNode struct {
 	getModeratorsAsyncFunc       func(ctx context.Context) <-chan peer.ID
 	publishFunc                  func(done chan<- struct{})
 	usingTestnetFunc             func() bool
+	usingTorFunc                 func() bool
 	ipfsNodeFunc                 func() *core.IpfsNode
 	multiwalletFunc              func() multiwallet.Multiwallet
 	identityFunc                 func() peer.ID
@@ -67,6 +68,8 @@ type mockNode struct {
 	rejectOrderFunc              func(orderID models.OrderID, reason string, done chan struct{}) error
 	refundOrderFunc              func(orderID models.OrderID, done chan struct{}) error
 	pingNodeFunc                 func(ctx context.Context, peer peer.ID) error
+	getUserPreferencesFunc       func() (*models.UserPreferences, error)
+	saveUserPreferencesFunc      func(prefs *models.UserPreferences, done chan struct{}) error
 	saveTransactionMetadataFunc  func(metadata *models.TransactionMetadata) error
 	getTransactionMetadataFunc   func(txid iwallet.TransactionID) (models.TransactionMetadata, error)
 }
@@ -194,6 +197,9 @@ func (m *mockNode) Publish(done chan<- struct{}) {
 func (m *mockNode) UsingTestnet() bool {
 	return m.usingTestnetFunc()
 }
+func (m *mockNode) UsingTorMode() bool {
+	return m.usingTorFunc()
+}
 func (m *mockNode) IPFSNode() *core.IpfsNode {
 	return m.ipfsNodeFunc()
 }
@@ -235,4 +241,10 @@ func (m *mockNode) SaveTransactionMetadata(metadata *models.TransactionMetadata)
 }
 func (m *mockNode) GetTransactionMetadata(txid iwallet.TransactionID) (models.TransactionMetadata, error) {
 	return m.getTransactionMetadataFunc(txid)
+}
+func (m *mockNode) SavePreferences(prefs *models.UserPreferences, done chan struct{}) error {
+	return m.saveUserPreferencesFunc(prefs, done)
+}
+func (m *mockNode) GetPreferences() (*models.UserPreferences, error) {
+	return m.getUserPreferencesFunc()
 }

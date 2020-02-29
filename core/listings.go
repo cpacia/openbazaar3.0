@@ -75,56 +75,13 @@ func (n *OpenBazaarNode) SaveListing(listing *pb.Listing, done chan<- struct{}) 
 // The function should update the listing point in place and return a boolean
 // expressing whether or not the listing was updated.
 func (n *OpenBazaarNode) UpdateAllListings(updateFunc func(l *pb.Listing) (bool, error), done chan<- struct{}) error {
-	listingsUpdated := false
-	err := n.repo.DB().Update(func(tx database.Tx) error {
-		index, err := tx.GetListingIndex()
-		if err != nil {
-			return err
-		}
-
-		var updatedMetadata []models.ListingMetadata
-		for _, lmd := range index {
-			signedListing, err := tx.GetListing(lmd.Slug)
-			if err != nil {
-				return err
-			}
-			listing := signedListing.Listing
-
-			updated, err := updateFunc(listing)
-			if err != nil {
-				return err
-			}
-
-			if updated {
-				cid, err := n.saveListingToDB(tx, listing)
-				if err != nil {
-					return err
-				}
-
-				newLmd, err := models.NewListingMetadataFromListing(listing, cid)
-				if err != nil {
-					return err
-				}
-
-				updatedMetadata = append(updatedMetadata, *newLmd)
-				listingsUpdated = true
-			}
-		}
-		if !listingsUpdated {
-			return nil
-		}
-
-		for _, lmd := range updatedMetadata {
-			index.UpdateListing(lmd)
-		}
-
-		// Save updated index.
-		if err := tx.SetListingIndex(index); err != nil {
-			return err
-		}
-
-		// Update profile counts
-		return n.updateAndSaveProfile(tx)
+	var (
+		listingsUpdated = false
+		err             error
+	)
+	err = n.repo.DB().Update(func(tx database.Tx) error {
+		listingsUpdated, err = n.updateAllListings(tx, updateFunc)
+		return err
 	})
 	if err != nil {
 		maybeCloseDone(done)
@@ -343,6 +300,57 @@ func (n *OpenBazaarNode) generateListingSlug(title string) (string, error) {
 		slugToTry = slugBase + strconv.Itoa(counter)
 		counter++
 	}
+}
+
+func (n *OpenBazaarNode) updateAllListings(tx database.Tx, updateFunc func(l *pb.Listing) (bool, error)) (listingsUpdated bool, _ error) {
+	index, err := tx.GetListingIndex()
+	if err != nil {
+		return false, err
+	}
+
+	var updatedMetadata []models.ListingMetadata
+	for _, lmd := range index {
+		signedListing, err := tx.GetListing(lmd.Slug)
+		if err != nil {
+			return false, err
+		}
+		listing := signedListing.Listing
+
+		updated, err := updateFunc(listing)
+		if err != nil {
+			return false, err
+		}
+
+		if updated {
+			cid, err := n.saveListingToDB(tx, listing)
+			if err != nil {
+				return false, err
+			}
+
+			newLmd, err := models.NewListingMetadataFromListing(listing, cid)
+			if err != nil {
+				return false, err
+			}
+
+			updatedMetadata = append(updatedMetadata, *newLmd)
+			listingsUpdated = true
+		}
+	}
+	if !listingsUpdated {
+		return false, nil
+	}
+
+	for _, lmd := range updatedMetadata {
+		index.UpdateListing(lmd)
+	}
+
+	// Save updated index.
+	if err := tx.SetListingIndex(index); err != nil {
+		return true, err
+	}
+
+	// Update profile counts
+	return true, n.updateAndSaveProfile(tx)
 }
 
 // saveListingToDB updates any needed fields in the listing and saves or updates the
@@ -866,9 +874,9 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 		return coreiface.ErrTooManyItems{"moderators", strconv.Itoa(MaxListItems)}
 	}
 	for _, moderator := range sl.Listing.Moderators {
-		_, err := multihash.FromB58String(moderator)
+		_, err := peer.IDB58Decode(moderator)
 		if err != nil {
-			return errors.New("moderator IDs must be multihashes")
+			return errors.New("moderator IDs must be valid")
 		}
 	}
 

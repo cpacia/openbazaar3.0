@@ -210,3 +210,7 @@ func (g *Gateway) handleGETTransactions(w http.ResponseWriter, r *http.Request) 
 
 	sanitizedJSONResponse(w, ret)
 }
+
+func (g *Gateway) handleGETCurrencies(w http.ResponseWriter, r *http.Request) {
+	sanitizedJSONResponse(w, models.CurrencyDefinitions)
+}

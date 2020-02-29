@@ -272,5 +272,15 @@ func TestWalletHandlers(t *testing.T) {
 				return []byte(fmt.Sprintf("%s\n", `{"error": "strconv.Atoi: parsing "a": invalid syntax"}`)), nil
 			},
 		},
+		{
+			name:           "Get wallet currency definitions",
+			path:           "/v1/wallet/currencies",
+			method:         http.MethodGet,
+			setNodeMethods: func(n *mockNode) {},
+			statusCode:     http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return marshalAndSanitizeJSON(models.CurrencyDefinitions)
+			},
+		},
 	})
 }

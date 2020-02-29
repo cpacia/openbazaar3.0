@@ -18,7 +18,6 @@ import (
 	"image"
 	"image/jpeg"
 	"io"
-	"os"
 	"strings"
 )
 
@@ -93,8 +92,9 @@ func (n *OpenBazaarNode) GetHeader(ctx context.Context, peerID peer.ID, size mod
 // SetAvatarImage saves the avatar image, updates the profile, and republishes
 func (n *OpenBazaarNode) SetAvatarImage(base64ImageData string, done chan struct{}) (models.ImageHashes, error) {
 	var (
-		hashes models.ImageHashes
-		err    error
+		hashes         models.ImageHashes
+		profileUpdated bool
+		err            error
 	)
 	err = n.repo.DB().Update(func(tx database.Tx) error {
 		hashes, err = n.resizeAndAddImage(tx, base64ImageData, "avatar", 60, 60)
@@ -103,30 +103,30 @@ func (n *OpenBazaarNode) SetAvatarImage(base64ImageData string, done chan struct
 		}
 
 		profile, err := tx.GetProfile()
-		if os.IsNotExist(err) {
-			return fmt.Errorf("%w: profile must be set to update avatar", coreiface.ErrBadRequest)
-		} else if err != nil {
-			return err
+		if err == nil {
+			profile.AvatarHashes = hashes
+			profileUpdated = true
+			return tx.SetProfile(profile)
 		}
-
-		profile.AvatarHashes = hashes
-
-		return tx.SetProfile(profile)
+		return nil
 	})
 	if err != nil {
 		maybeCloseDone(done)
 		return models.ImageHashes{}, err
 	}
 
-	n.Publish(done)
+	if profileUpdated {
+		n.Publish(done)
+	}
 	return hashes, nil
 }
 
 // SetHeaderImage saves the header image, updates the profile, and republishes
 func (n *OpenBazaarNode) SetHeaderImage(base64ImageData string, done chan struct{}) (models.ImageHashes, error) {
 	var (
-		hashes models.ImageHashes
-		err    error
+		hashes         models.ImageHashes
+		err            error
+		profileUpdated bool
 	)
 	err = n.repo.DB().Update(func(tx database.Tx) error {
 		hashes, err = n.resizeAndAddImage(tx, base64ImageData, "header", 315, 90)
@@ -135,22 +135,21 @@ func (n *OpenBazaarNode) SetHeaderImage(base64ImageData string, done chan struct
 		}
 
 		profile, err := tx.GetProfile()
-		if os.IsNotExist(err) {
-			return fmt.Errorf("%w: profile must be set to update header", coreiface.ErrBadRequest)
-		} else if err != nil {
-			return err
+		if err == nil {
+			profile.HeaderHashes = hashes
+			profileUpdated = true
+			return tx.SetProfile(profile)
 		}
-
-		profile.HeaderHashes = hashes
-
-		return tx.SetProfile(profile)
+		return nil
 	})
 	if err != nil {
 		maybeCloseDone(done)
 		return models.ImageHashes{}, err
 	}
 
-	n.Publish(done)
+	if profileUpdated {
+		n.Publish(done)
+	}
 	return hashes, nil
 }
 

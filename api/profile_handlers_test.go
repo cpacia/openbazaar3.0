@@ -142,7 +142,7 @@ func TestProfileHandlers(t *testing.T) {
 			body:       []byte(`{"name": "Ron Swanson"}`),
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
-				return nil, nil
+				return []byte(`{}`), nil
 			},
 		},
 		{
