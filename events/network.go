@@ -45,6 +45,12 @@ type PublishFinished struct {
 	ID int
 }
 
+// PublishingError is an event that gets pushed to the bus
+// if publishing finishes with an error.
+type PublishingError struct {
+	Err error
+}
+
 // IPFSShutdown is an event that gets pushed when the IPFS node
 // shuts down.
 type IPFSShutdown struct{}

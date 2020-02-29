@@ -33,6 +33,10 @@ type walletWrapper struct {
 	Wallet interface{} `json:"wallet"`
 }
 
+type statusWrapper struct {
+	Status interface{} `json:"status"`
+}
+
 type notifierStarted struct{}
 
 // Notifier manages translating events into notifications and
@@ -91,6 +95,17 @@ func (n *Notifier) Start() {
 		log.Errorf("Error subscribing to events: %s", err)
 	}
 
+	publishes := []interface{}{
+		&events.PublishStarted{},
+		&events.PublishFinished{},
+		&events.PublishingError{},
+	}
+
+	publishSub, err := n.bus.Subscribe(publishes)
+	if err != nil {
+		log.Errorf("Error subscribing to events: %s", err)
+	}
+
 	n.bus.Emit(&notifierStarted{})
 	for {
 		select {
@@ -128,6 +143,20 @@ func (n *Notifier) Start() {
 				i = messageReadWrapper{event}
 			case *events.ChatTyping:
 				i = messageTypingWrapper{event}
+			}
+
+			if err := n.notifyFunc(i); err != nil {
+				log.Errorf("Error sending notification: %s", err)
+			}
+		case event := <-publishSub.Out():
+			var i interface{}
+			switch event.(type) {
+			case *events.PublishStarted:
+				i = statusWrapper{"publishing"}
+			case *events.PublishFinished:
+				i = statusWrapper{"publish complete"}
+			case *events.PublishingError:
+				i = statusWrapper{"error publishing"}
 			}
 
 			if err := n.notifyFunc(i); err != nil {

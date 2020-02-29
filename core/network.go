@@ -55,12 +55,20 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 		ID: publishID,
 	})
 
+	var publishErr error
+
 	defer func() {
-		n.eventBus.Emit(&events.PublishFinished{
-			ID: publishID,
-		})
 		atomic.AddInt32(&n.publishActive, -1)
-		log.Info("Publishing complete")
+		if publishErr != nil && publishErr != context.Canceled {
+			n.eventBus.Emit(&events.PublishingError{
+				Err: publishErr,
+			})
+		} else if publishErr == nil {
+			n.eventBus.Emit(&events.PublishFinished{
+				ID: publishID,
+			})
+			log.Info("Publishing complete")
+		}
 	}()
 
 	cctx, cancel := context.WithCancel(ctx)
@@ -80,6 +88,7 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 	api, err := coreapi.NewCoreAPI(n.ipfsNode)
 	if err != nil {
 		log.Errorf("Error building core API: %s", err.Error())
+		publishErr = err
 		return
 	}
 
@@ -90,6 +99,7 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 		rp, err := api.ResolvePath(context.Background(), path.IpfsPath(currentRoot))
 		if err != nil {
 			log.Errorf("Error resolving path: %s", err.Error())
+			publishErr = err
 			return
 		}
 
@@ -102,12 +112,14 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 	stat, err := os.Lstat(n.repo.DB().PublicDataPath())
 	if err != nil {
 		log.Errorf("Error calling Lstat: %s", err.Error())
+		publishErr = err
 		return
 	}
 
 	f, err := files.NewSerialFile(n.repo.DB().PublicDataPath(), false, stat)
 	if err != nil {
 		log.Errorf("Error serializing file: %s", err.Error())
+		publishErr = err
 		return
 	}
 
@@ -117,12 +129,16 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 	pth, err := api.Unixfs().Add(cctx, files.ToDir(f), opts...)
 	if err != nil {
 		log.Errorf("Error adding root: %s", err.Error())
+		publishErr = err
 		return
 	}
 
 	// Publish
 	if err := n.ipfsNode.Namesys.PublishWithEOL(cctx, n.ipfsNode.PrivateKey, fpath.FromString(pth.Root().String()), time.Now().Add(nameValidTime)); err != nil {
-		log.Errorf("Error namesys publish: %s", err.Error())
+		if err != context.Canceled {
+			log.Errorf("Error namesys publish: %s", err.Error())
+		}
+		publishErr = err
 		return
 	}
 
@@ -144,6 +160,7 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 	graph, err := n.fetchGraph(cctx)
 	if err != nil {
 		log.Errorf("Error fetching graph: %s", err.Error())
+		publishErr = err
 		return
 	}
 
@@ -155,6 +172,7 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 	any, err := ptypes.MarshalAny(storeMsg)
 	if err != nil {
 		log.Errorf("Error marshalling store message: %s", err.Error())
+		publishErr = err
 		return
 	}
 
