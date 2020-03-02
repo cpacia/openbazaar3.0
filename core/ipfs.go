@@ -199,6 +199,7 @@ func (n *OpenBazaarNode) resolve(ctx context.Context, p peer.ID, usecache bool) 
 			return pth, nil
 		}
 	}
+
 	pth, err := n.resolveOnce(ctx, p, resolveTimeout, n.ipnsQuorum)
 	if err != nil {
 		// Resolving fail. See if we have it in the db.

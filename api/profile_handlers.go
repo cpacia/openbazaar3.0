@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
@@ -98,6 +100,7 @@ func (g *Gateway) handlePUTProfile(w http.ResponseWriter, r *http.Request) {
 
 func (g *Gateway) handlePOSTFetchProfiles(w http.ResponseWriter, r *http.Request) {
 	useCache, _ := strconv.ParseBool(r.URL.Query().Get("usecache"))
+	async, _ := strconv.ParseBool(r.URL.Query().Get("async"))
 
 	var peerIDs []string
 	if err := json.NewDecoder(r.Body).Decode(&peerIDs); err != nil {
@@ -105,35 +108,85 @@ func (g *Gateway) handlePOSTFetchProfiles(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	type profileWithAsyncID struct {
+		ID      string         `json:"id"`
+		Profile models.Profile `json:"profile"`
+	}
+
+	type profileError struct {
+		ID     string `json:"id"`
+		PeerID string `json:"peerID"`
+		Error  string `json:"error"`
+	}
+
 	var (
 		profiles     = make([]models.Profile, 0, len(peerIDs))
-		responseChan = make(chan models.Profile, 8)
+		responseChan = make(chan interface{}, 8)
 		wg           sync.WaitGroup
 	)
+
 	wg.Add(len(peerIDs))
 	go func() {
 		for _, peerIDStr := range peerIDs {
 			pid, err := peer.IDB58Decode(peerIDStr)
 			if err != nil {
+				responseChan <- profileError{
+					PeerID: peerIDStr,
+					Error:  err.Error(),
+				}
 				wg.Done()
 				continue
 			}
 			go func(p peer.ID) {
 				defer wg.Done()
 				profile, err := g.node.GetProfile(r.Context(), p, useCache)
-				if err != nil || profile == nil {
+				if err != nil {
+					responseChan <- profileError{
+						PeerID: p.Pretty(),
+						Error:  err.Error(),
+					}
 					return
 				}
-				responseChan <- *profile
+				responseChan <- profileWithAsyncID{
+					Profile: *profile,
+				}
 			}(pid)
 		}
 		wg.Wait()
 		close(responseChan)
 	}()
-	for profile := range responseChan {
-		profiles = append(profiles, profile)
-	}
 
-	// TODO: handle async response
-	sanitizedJSONResponse(w, profiles)
+	if !async {
+		for i := range responseChan {
+			switch p := i.(type) {
+			case profileWithAsyncID:
+				profiles = append(profiles, p.Profile)
+			}
+		}
+		sanitizedJSONResponse(w, profiles)
+	} else {
+		asyncID := r.URL.Query().Get("asyncID")
+		if asyncID == "" {
+			r := make([]byte, 20)
+			rand.Read(r)
+			asyncID = hex.EncodeToString(r)
+		}
+		w.WriteHeader(http.StatusAccepted)
+		sanitizedJSONResponse(w, struct {
+			ID string `json:"id"`
+		}{ID: asyncID})
+
+		go func() {
+			for i := range responseChan {
+				switch p := i.(type) {
+				case profileWithAsyncID:
+					p.ID = asyncID
+					g.NotifyWebsockets(p)
+				case profileError:
+					p.ID = asyncID
+					g.NotifyWebsockets(p)
+				}
+			}
+		}()
+	}
 }
