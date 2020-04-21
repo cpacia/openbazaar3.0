@@ -9,6 +9,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/cpacia/proxyclient"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
@@ -22,6 +23,7 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"io/ioutil"
+	"net/http"
 	"os"
 	gopath "path"
 	"strings"
@@ -241,6 +243,32 @@ func (n *OpenBazaarNode) resolveOnce(ctx context.Context, p peer.ID, timeout tim
 			cancel()
 		}
 	}()
+
+	if n.ipnsResolver != "" {
+		client := proxyclient.NewHttpClient()
+
+		req, err := http.NewRequest(http.MethodGet, n.ipnsResolver, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := client.Do(req.WithContext(ctx))
+		if err != nil {
+			return nil, err
+		}
+
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		rec := new(ipnspb.IpnsEntry)
+		if err := proto.Unmarshal(b, rec); err != nil {
+			return nil, err
+		}
+
+		return path.New(string(rec.Value)), nil
+	}
 
 	// NOTE: the Namesys.Resolve function will attempt to resolve a domain using the DNS system if a domain
 	// is passed in to this function. For privacy purposes this would blow user's anonymity if using Tor

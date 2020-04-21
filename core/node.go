@@ -42,6 +42,10 @@ type OpenBazaarNode struct {
 	// resolve faster but run the risk of getting back older records.
 	ipnsQuorum uint
 
+	// ipnsResolver is the URL of a resolver that can be queried to resolve
+	// IPNS records. If this is empty we will use the p2p network.
+	ipnsResolver string
+
 	// messenger is the primary object used to send messages to other peers.
 	// It ensures reliable delivery by persisting messages and retrying them.
 	// Generally you should always send messages using this and not the
