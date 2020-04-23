@@ -24,6 +24,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	gopath "path"
 	"strings"
@@ -247,7 +248,13 @@ func (n *OpenBazaarNode) resolveOnce(ctx context.Context, p peer.ID, timeout tim
 	if n.ipnsResolver != "" {
 		client := proxyclient.NewHttpClient()
 
-		req, err := http.NewRequest(http.MethodGet, n.ipnsResolver, nil)
+		u, err := url.Parse(n.ipnsResolver)
+		if err != nil {
+			return nil, err
+		}
+		u.Path = gopath.Join(u.Path, p.Pretty())
+
+		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -256,12 +263,10 @@ func (n *OpenBazaarNode) resolveOnce(ctx context.Context, p peer.ID, timeout tim
 		if err != nil {
 			return nil, err
 		}
-
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}
-
 		rec := new(ipnspb.IpnsEntry)
 		if err := proto.Unmarshal(b, rec); err != nil {
 			return nil, err
