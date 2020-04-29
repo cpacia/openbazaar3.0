@@ -5,7 +5,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"testing"
 	"time"
 )
@@ -17,7 +17,7 @@ func TestOpenBazaarNode_Follow(t *testing.T) {
 	}
 	defer node.repo.DestroyRepo()
 
-	p, err := peer.IDB58Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
+	p, err := peer.Decode("12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestOpenBazaarNode_Follow(t *testing.T) {
 		t.Errorf("Incorrect following peer returned. Expected %s, got %s", p.String(), following[0])
 	}
 
-	p2, err := peer.IDB58Decode("QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7")
+	p2, err := peer.Decode("12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestOpenBazaarNode_GetFollowing(t *testing.T) {
 	}
 	defer mocknet.TearDown()
 
-	p, err := peer.IDB58Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
+	p, err := peer.Decode("12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestOpenBazaarNode_GetFollowers(t *testing.T) {
 	}
 	defer mocknet.TearDown()
 
-	p, err := peer.IDB58Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
+	p, err := peer.Decode("12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestOpenBazaarNode_FollowSequence(t *testing.T) {
 	}
 	defer node.repo.DestroyRepo()
 
-	p, err := peer.IDB58Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
+	p, err := peer.Decode("12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/gorilla/mux"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"net/http"
 	"strconv"
 )
@@ -21,7 +21,7 @@ func (g *Gateway) handlePOSTSendChatMessage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	pid, err := peer.IDB58Decode(m.PeerID)
+	pid, err := peer.Decode(m.PeerID)
 	if err != nil {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
@@ -46,7 +46,7 @@ func (g *Gateway) handlePOSTSendGroupChatMessage(w http.ResponseWriter, r *http.
 	}
 
 	for _, peerID := range m.PeerIDs {
-		pid, err := peer.IDB58Decode(peerID)
+		pid, err := peer.Decode(peerID)
 		if err != nil {
 			http.Error(w, wrapError(err), http.StatusBadRequest)
 			return
@@ -70,7 +70,7 @@ func (g *Gateway) handlePOSTSendTypingMessage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	pid, err := peer.IDB58Decode(m.PeerID)
+	pid, err := peer.Decode(m.PeerID)
 	if err != nil {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
@@ -94,7 +94,7 @@ func (g *Gateway) handlePOSTSendGroupTypingMessage(w http.ResponseWriter, r *htt
 	}
 
 	for _, peerID := range m.PeerIDs {
-		pid, err := peer.IDB58Decode(peerID)
+		pid, err := peer.Decode(peerID)
 		if err != nil {
 			http.Error(w, wrapError(err), http.StatusBadRequest)
 			return
@@ -118,7 +118,7 @@ func (g *Gateway) handlePOSTMarkChatMessageAsRead(w http.ResponseWriter, r *http
 		return
 	}
 
-	pid, err := peer.IDB58Decode(m.PeerID)
+	pid, err := peer.Decode(m.PeerID)
 	if err != nil {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
@@ -157,7 +157,7 @@ func (g *Gateway) handleGETChatMessages(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-	pid, err := peer.IDB58Decode(peerIDStr)
+	pid, err := peer.Decode(peerIDStr)
 	if err != nil {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
@@ -220,7 +220,7 @@ func (g *Gateway) handleDELETEGroupChatMessages(w http.ResponseWriter, r *http.R
 func (g *Gateway) handleDELETEChatConversation(w http.ResponseWriter, r *http.Request) {
 	peerIDStr := mux.Vars(r)["peerID"]
 
-	pid, err := peer.IDB58Decode(peerIDStr)
+	pid, err := peer.Decode(peerIDStr)
 	if err != nil {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return

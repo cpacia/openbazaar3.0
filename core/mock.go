@@ -17,8 +17,8 @@ import (
 	coremock "github.com/ipfs/go-ipfs/core/mock"
 	"github.com/ipfs/go-ipfs/namesys"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
-	peer "github.com/libp2p/go-libp2p-peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peer"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"path"
 )
@@ -203,6 +203,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			ExtraOpts: map[string]bool{
 				"pubsub": true,
 			},
+			Routing: constructDHTRouting(dht.ModeAuto),
 		})
 		if err != nil {
 			return nil, err
@@ -294,7 +295,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 	}
 
 	bsinf := bootstrap.BootstrapConfigWithPeers(
-		[]peerstore.PeerInfo{
+		[]peer.AddrInfo{
 			nodes[0].ipfsNode.Peerstore.PeerInfo(nodes[0].Identity()),
 		},
 	)

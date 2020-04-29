@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"net/http"
 	"os"
 	"testing"
@@ -87,7 +87,7 @@ func TestProfileHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "length greater than remaining number of bytes in buffer"}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "failed to parse peer ID: selected encoding not supported"}`)), nil
 			},
 		},
 		{

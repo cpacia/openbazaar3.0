@@ -6,7 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"testing"
 )
 

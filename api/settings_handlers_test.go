@@ -8,7 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/version"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"net/http"
 	"testing"
 )
@@ -21,7 +21,7 @@ func TestSettingsHandlers(t *testing.T) {
 			method: http.MethodGet,
 			setNodeMethods: func(n *mockNode) {
 				n.identityFunc = func() peer.ID {
-					p, _ := peer.IDB58Decode("12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi")
+					p, _ := peer.Decode("12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi")
 					return p
 				}
 				n.usingTestnetFunc = func() bool {

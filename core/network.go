@@ -18,7 +18,7 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"math"
 	"math/rand"
 	"os"
@@ -354,7 +354,7 @@ func (n *OpenBazaarNode) syncMessages() {
 					log.Error("syncMessages unmarshal error: %s", err)
 					continue
 				}
-				recipient, err := peer.IDB58Decode(om.Recipient)
+				recipient, err := peer.Decode(om.Recipient)
 				if err != nil {
 					log.Error("syncMessages peer decode error: %s", err)
 					continue

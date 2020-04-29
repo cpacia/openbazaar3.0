@@ -210,14 +210,14 @@ func SetupLogging(logDir, logLevel string) {
 		backendFileFormatter := logging.NewBackendFormatter(backendFile, fileLogFormat)
 		logging.SetBackend(backendStdoutFormatter, backendFileFormatter)
 
-		ipfslogging.LdJSONFormatter()
+		mirrorWriter := ipfslogging.NewMirrorWriter()
 		w2 := &lumberjack.Logger{
 			Filename:   path.Join(logDir, "ipfs.log"),
 			MaxSize:    10, // Megabytes
 			MaxBackups: 3,
 			MaxAge:     30, // Days
 		}
-		ipfslogging.Output(w2)()
+		mirrorWriter.AddWriter(w2)
 	} else {
 		logging.SetBackend(backendStdoutFormatter)
 	}

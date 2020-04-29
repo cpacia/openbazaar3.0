@@ -2,7 +2,7 @@ package models
 
 import (
 	"encoding/json"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 // UserPreferences are set by the client and persisted in the database.
@@ -64,7 +64,7 @@ func (prefs *UserPreferences) StoreModerators() ([]peer.ID, error) {
 	}
 	ret := make([]peer.ID, 0, len(peerIDStrs))
 	for _, s := range peerIDStrs {
-		pid, err := peer.IDB58Decode(s)
+		pid, err := peer.Decode(s)
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +83,7 @@ func (prefs *UserPreferences) BlockedNodes() ([]peer.ID, error) {
 	}
 	ret := make([]peer.ID, 0, len(peerIDStrs))
 	for _, s := range peerIDStrs {
-		pid, err := peer.IDB58Decode(s)
+		pid, err := peer.Decode(s)
 		if err != nil {
 			return nil, err
 		}

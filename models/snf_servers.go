@@ -2,7 +2,7 @@ package models
 
 import (
 	"encoding/json"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"time"
 )
 
@@ -34,7 +34,7 @@ func (p *StoreAndForwardServers) Servers() ([]peer.ID, error) {
 	}
 	pids := make([]peer.ID, 0, len(inboxPeers))
 	for _, peerStr := range inboxPeers {
-		pid, err := peer.IDB58Decode(peerStr)
+		pid, err := peer.Decode(peerStr)
 		if err != nil {
 			return nil, err
 		}

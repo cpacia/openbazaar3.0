@@ -9,7 +9,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-cid"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"net/http"
 	"strconv"
 )
@@ -32,7 +32,7 @@ func (g *Gateway) handleGETListing(w http.ResponseWriter, r *http.Request) {
 		listing, err = g.node.GetListingByCID(r.Context(), id)
 		w.Header().Set("Cache-Control", "public, max-age=29030400, immutable")
 	} else if peerIDStr != "" && slug != "" { // Query by peerID/slug
-		pid, perr := peer.IDB58Decode(peerIDStr)
+		pid, perr := peer.Decode(peerIDStr)
 		if perr != nil {
 			http.Error(w, wrapError(fmt.Errorf("invalid peer id: %s", perr.Error())), http.StatusBadRequest)
 			return
@@ -92,7 +92,7 @@ func (g *Gateway) handleGETListingIndex(w http.ResponseWriter, r *http.Request) 
 	if peerIDStr == "" || peerIDStr == g.node.Identity().Pretty() {
 		index, err = g.node.GetMyListings()
 	} else {
-		pid, perr := peer.IDB58Decode(peerIDStr)
+		pid, perr := peer.Decode(peerIDStr)
 		if perr != nil {
 			http.Error(w, wrapError(fmt.Errorf("invalid peer id: %s", perr.Error())), http.StatusBadRequest)
 			return

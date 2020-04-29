@@ -16,7 +16,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/utils"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/ipfs/go-cid"
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"testing"
 	"time"
 )

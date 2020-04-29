@@ -10,7 +10,7 @@ import (
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"io"
 )
 

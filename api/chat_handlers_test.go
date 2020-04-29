@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/models"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"net/http"
 	"testing"
 )
@@ -53,7 +53,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "xxx", "message": "", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "failed to parse peer ID: selected encoding not supported"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -113,7 +113,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerIDs": ["xxx"], "message": "", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "failed to parse peer ID: selected encoding not supported"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -173,7 +173,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "xxx", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "failed to parse peer ID: selected encoding not supported"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -233,7 +233,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerIDs": ["xxx"], "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "failed to parse peer ID: selected encoding not supported"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -293,7 +293,7 @@ func TestChatHandlers(t *testing.T) {
 			body:       []byte(`{"peerID": "xxx", "orderID": ""}`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "failed to parse peer ID: selected encoding not supported"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -457,7 +457,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "failed to parse peer ID: selected encoding not supported"}%s`, "\n")), nil
 			},
 		},
 		{
@@ -649,7 +649,7 @@ func TestChatHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"error": "length greater than remaining number of bytes in buffer"}%s`, "\n")), nil
+				return []byte(fmt.Sprintf(`{"error": "failed to parse peer ID: selected encoding not supported"}%s`, "\n")), nil
 			},
 		},
 		{

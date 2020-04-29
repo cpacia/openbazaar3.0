@@ -12,7 +12,7 @@ import (
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"time"
 )
 
@@ -120,7 +120,7 @@ func (op *OrderProcessor) processIncomingPayment(dbtx database.Tx, order *models
 			Payload:     payload,
 		}
 
-		vendor, err := peer.IDB58Decode(orderOpen.Listings[0].Listing.VendorID.PeerID)
+		vendor, err := peer.Decode(orderOpen.Listings[0].Listing.VendorID.PeerID)
 		if err != nil {
 			return err
 		}

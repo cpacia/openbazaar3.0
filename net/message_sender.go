@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	ggio "github.com/gogo/protobuf/io"
-	inet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-peer"
+	inet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"sync"
 	"time"
 )

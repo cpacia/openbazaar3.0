@@ -8,7 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-cid"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"net/http"
 	"strconv"
 	"time"
@@ -41,7 +41,7 @@ func (g *Gateway) handleGETAvatar(w http.ResponseWriter, r *http.Request) {
 	peerIDStr := mux.Vars(r)["peerID"]
 	sizeStr := mux.Vars(r)["size"]
 
-	pid, cerr := peer.IDB58Decode(peerIDStr)
+	pid, cerr := peer.Decode(peerIDStr)
 	if cerr != nil {
 		http.Error(w, wrapError(fmt.Errorf("invalid peer id: %s", cerr.Error())), http.StatusBadRequest)
 		return
@@ -65,7 +65,7 @@ func (g *Gateway) handleGETHeader(w http.ResponseWriter, r *http.Request) {
 	peerIDStr := mux.Vars(r)["peerID"]
 	sizeStr := mux.Vars(r)["size"]
 
-	pid, cerr := peer.IDB58Decode(peerIDStr)
+	pid, cerr := peer.Decode(peerIDStr)
 	if cerr != nil {
 		http.Error(w, wrapError(fmt.Errorf("invalid peer id: %s", cerr.Error())), http.StatusBadRequest)
 		return

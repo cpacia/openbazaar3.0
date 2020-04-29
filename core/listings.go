@@ -19,8 +19,8 @@ import (
 	"github.com/ipfs/go-cid"
 	ipath "github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
-	crypto "github.com/libp2p/go-libp2p-crypto"
-	peer "github.com/libp2p/go-libp2p-peer"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/multiformats/go-multihash"
 	"math/big"
@@ -874,7 +874,7 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 		return coreiface.ErrTooManyItems{"moderators", strconv.Itoa(MaxListItems)}
 	}
 	for _, moderator := range sl.Listing.Moderators {
-		_, err := peer.IDB58Decode(moderator)
+		_, err := peer.Decode(moderator)
 		if err != nil {
 			return errors.New("moderator IDs must be valid")
 		}

@@ -7,8 +7,8 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/jinzhu/gorm"
-	host "github.com/libp2p/go-libp2p-host"
-	peer "github.com/libp2p/go-libp2p-peer"
+	host "github.com/libp2p/go-libp2p-core/host"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"os"
 	"sync"
 	"time"
@@ -81,7 +81,7 @@ func (t *FollowerTracker) Start() {
 	}
 
 	for _, follower := range followers {
-		pid, err := peer.IDB58Decode(follower)
+		pid, err := peer.Decode(follower)
 		if err != nil {
 			log.Errorf("Error unmarshalling peerID: %s", err)
 			continue
@@ -216,7 +216,7 @@ func (t *FollowerTracker) listenEvents() {
 				log.Error("Follower tracker type assertion failed on FollowNotification")
 				continue
 			}
-			pid, err := peer.IDB58Decode(notif.PeerID)
+			pid, err := peer.Decode(notif.PeerID)
 			if err != nil {
 				log.Errorf("Error unmarshalling peerID: %s", err)
 				continue
@@ -232,7 +232,7 @@ func (t *FollowerTracker) listenEvents() {
 				log.Error("Follower tracker type assertion failed on UnfollowNotification")
 				continue
 			}
-			pid, err := peer.IDB58Decode(notif.PeerID)
+			pid, err := peer.Decode(notif.PeerID)
 			if err != nil {
 				log.Error(err)
 				continue
@@ -316,7 +316,7 @@ func (t *FollowerTracker) tryConnectFollowers() {
 }
 
 func (t *FollowerTracker) tryFollower(p string) bool {
-	pid, err := peer.IDB58Decode(p)
+	pid, err := peer.Decode(p)
 	if err != nil {
 		log.Error()
 		return false

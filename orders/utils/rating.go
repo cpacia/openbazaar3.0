@@ -6,8 +6,8 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/golang/protobuf/proto"
-	crypto "github.com/libp2p/go-libp2p-crypto"
-	peer "github.com/libp2p/go-libp2p-peer"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 // ValidateRating returns an error if the rating is invalid, otherwise nil.
@@ -57,7 +57,7 @@ func ValidateRating(rating *pb.Rating) error {
 	}
 
 	// Validate vendor peerID matches pubkey
-	id, err := peer.IDB58Decode(rating.VendorID.PeerID)
+	id, err := peer.Decode(rating.VendorID.PeerID)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func ValidateRating(rating *pb.Rating) error {
 		}
 
 		// Validate buyer peerID matches pubkey
-		id, err := peer.IDB58Decode(rating.BuyerID.PeerID)
+		id, err := peer.Decode(rating.BuyerID.PeerID)
 		if err != nil {
 			return err
 		}

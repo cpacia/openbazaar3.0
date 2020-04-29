@@ -5,7 +5,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/gorilla/mux"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"net/http"
 	"strconv"
 )
@@ -29,7 +29,7 @@ func (g *Gateway) handleGETFollowers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		pid, err := peer.IDB58Decode(peerIDStr)
+		pid, err := peer.Decode(peerIDStr)
 		if err != nil {
 			http.Error(w, wrapError(err), http.StatusBadRequest)
 			return
@@ -68,7 +68,7 @@ func (g *Gateway) handleGETFollowing(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		pid, err := peer.IDB58Decode(peerIDStr)
+		pid, err := peer.Decode(peerIDStr)
 		if err != nil {
 			http.Error(w, wrapError(err), http.StatusBadRequest)
 			return
@@ -90,7 +90,7 @@ func (g *Gateway) handleGETFollowing(w http.ResponseWriter, r *http.Request) {
 
 func (g *Gateway) handlePOSTFollow(w http.ResponseWriter, r *http.Request) {
 	peerIDStr := mux.Vars(r)["peerID"]
-	pid, err := peer.IDB58Decode(peerIDStr)
+	pid, err := peer.Decode(peerIDStr)
 	if err != nil {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
@@ -107,7 +107,7 @@ func (g *Gateway) handlePOSTFollow(w http.ResponseWriter, r *http.Request) {
 
 func (g *Gateway) handlePOSTUnFollow(w http.ResponseWriter, r *http.Request) {
 	peerIDStr := mux.Vars(r)["peerID"]
-	pid, err := peer.IDB58Decode(peerIDStr)
+	pid, err := peer.Decode(peerIDStr)
 	if err != nil {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return

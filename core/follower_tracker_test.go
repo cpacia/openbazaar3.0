@@ -4,7 +4,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"testing"
 	"time"
 )
@@ -36,7 +36,7 @@ func TestFollowerTracker_ConnectDisconnect(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p, err := peer.IDB58Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
+	p, err := peer.Decode("QmfQkD8pBSBCBxWEwFSu4XaDVSWK6bjnNuaWZjMyQbyDub")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,10 +12,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/jinzhu/gorm"
-	"github.com/libp2p/go-libp2p-crypto"
-	inet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
-	protocol "github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	inet "github.com/libp2p/go-libp2p-core/network"
+	peer "github.com/libp2p/go-libp2p-core/peer"
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -278,7 +278,7 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 			}
 			servers = []peer.ID{}
 			for _, peerStr := range profile.StoreAndForwardServers {
-				pid, err := peer.IDB58Decode(peerStr)
+				pid, err := peer.Decode(peerStr)
 				if err == nil {
 					servers = append(servers, pid)
 				}
@@ -338,7 +338,7 @@ func (m *Messenger) retryAllMessages() {
 			log.Error("Error unmarshalling outgoing message: %s", err)
 			continue
 		}
-		pid, err := peer.IDB58Decode(message.Recipient)
+		pid, err := peer.Decode(message.Recipient)
 		if err != nil {
 			log.Error("Error parsing peer ID in outgoing message: %s", err)
 			continue

@@ -3,7 +3,7 @@ package net
 import (
 	"context"
 	"github.com/cpacia/openbazaar3.0/net/pb"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"testing"
 )

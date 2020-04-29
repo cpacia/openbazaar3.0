@@ -10,7 +10,7 @@ import (
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"time"
 )
 
@@ -146,7 +146,7 @@ func (o *Order) Buyer() (peer.ID, error) {
 	if err != nil {
 		return "", err
 	}
-	return peer.IDB58Decode(orderOpen.BuyerID.PeerID)
+	return peer.Decode(orderOpen.BuyerID.PeerID)
 }
 
 // Vendor returns the peer ID of the vendor for this order.
@@ -155,7 +155,7 @@ func (o *Order) Vendor() (peer.ID, error) {
 	if err != nil {
 		return "", err
 	}
-	return peer.IDB58Decode(orderOpen.Listings[0].Listing.VendorID.PeerID)
+	return peer.Decode(orderOpen.Listings[0].Listing.VendorID.PeerID)
 }
 
 // Moderator returns the peer ID of the moderator for this order.
@@ -167,7 +167,7 @@ func (o *Order) Moderator() (peer.ID, error) {
 	if orderOpen.Payment.Moderator == "" {
 		return "", errors.New("no moderator for order")
 	}
-	return peer.IDB58Decode(orderOpen.Payment.Moderator)
+	return peer.Decode(orderOpen.Payment.Moderator)
 }
 
 // Timestamp returns the timestamp at which this order was opened.

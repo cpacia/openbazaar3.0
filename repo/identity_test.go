@@ -3,7 +3,7 @@ package repo
 import (
 	"bytes"
 	"encoding/hex"
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/tyler-smith/go-bip39"
 	"testing"
 )

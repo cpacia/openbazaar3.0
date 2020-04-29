@@ -10,7 +10,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
 // CompleteOrder builds a OrderComplete message and sends it to the vendor. The ratings slice must

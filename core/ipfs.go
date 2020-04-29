@@ -21,7 +21,7 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	nameopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"io/ioutil"
 	"net/http"
 	"net/url"

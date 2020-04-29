@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/models/factory"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"testing"
 	"time"
 )
@@ -88,7 +88,7 @@ func TestOpenBazaarNode_GetModerators(t *testing.T) {
 	mods := mocknet.Nodes()[1].GetModerators(context.Background())
 
 	if len(mods) != 1 {
-		t.Errorf("Returned incorrect number of moderators. Expected %d, got %d", 1, len(mods))
+		t.Fatalf("Returned incorrect number of moderators. Expected %d, got %d", 1, len(mods))
 	}
 
 	if mods[0].Pretty() != mocknet.Nodes()[0].Identity().Pretty() {
@@ -152,7 +152,7 @@ func TestOpenBazaarNode_SetModeratorsOnListings(t *testing.T) {
 	}
 
 	modID := "12D3KooW9qYCthfQAwxnuW62ZTN8uoKBfRkt5a2bcKJWR5aDwta6"
-	pid, err := peer.IDB58Decode(modID)
+	pid, err := peer.Decode(modID)
 	if err != nil {
 		t.Fatal(err)
 	}

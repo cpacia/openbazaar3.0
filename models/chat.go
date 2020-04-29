@@ -5,7 +5,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/ptypes"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"time"
 )
 
@@ -41,7 +41,7 @@ func NewChatMessageFromProto(peerID peer.ID, msg *pb.Message) (*ChatMessage, err
 }
 
 func (cm *ChatMessage) GetPeerID() (peer.ID, error) {
-	return peer.IDB58Decode(cm.PeerID)
+	return peer.Decode(cm.PeerID)
 }
 
 func (cm *ChatMessage) ToChatEvent() *events.ChatMessage {

@@ -31,15 +31,15 @@ import (
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	"github.com/jinzhu/gorm"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-core/host"
+	inet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/opts"
-	inet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	"github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p-record"
-	"github.com/libp2p/go-libp2p-routing"
 	lcfg "github.com/libp2p/go-libp2p/config"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
@@ -52,6 +52,9 @@ import (
 	"strings"
 	"time"
 )
+
+// maxRecordAge is the maximum amount of time to keep a record in the DHT before deleting it.
+const maxRecordAge = time.Hour * 24 * 7
 
 var (
 	log             = logging.MustGetLogger("CORE")
@@ -181,9 +184,9 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	// network from mainline IPFS.
 	updateIPFSGlobalProtocolVars(cfg.Testnet)
 	if !cfg.Testnet {
-		ProtocolDHT = obnet.ProtocolKademliaMainnetTwo
+		ProtocolDHT = obnet.ProtocolPrefixMainnet
 	} else {
-		ProtocolDHT = obnet.ProtocolKademliaTestnetTwo
+		ProtocolDHT = obnet.ProtocolPrefixTestnet
 	}
 
 	constructPeerHost := func(ctx context.Context, id peer.ID, ps peerstore.Peerstore, options ...libp2p.Option) (host.Host, error) {
@@ -221,7 +224,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 			"ipnsps": !cfg.NoIPNSPubsub,
 			"pubsub": true,
 		},
-		Routing: constructRouting,
+		Routing: constructDHTRouting(dht.ModeAuto),
 		Host:    constructPeerHost,
 	}
 
@@ -234,7 +237,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	// Store and forward client and server
 	snfServers := make([]peer.ID, 0, len(cfg.StoreAndForwardServers))
 	for _, serverStr := range cfg.StoreAndForwardServers {
-		server, err := peer.IDB58Decode(serverStr)
+		server, err := peer.Decode(serverStr)
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +252,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	if cfg.EnableSNFServer {
 		snfReplicationPeers := make([]peer.ID, 0, len(cfg.SNFServerPeers))
 		for _, serverStr := range cfg.SNFServerPeers {
-			server, err := peer.IDB58Decode(serverStr)
+			server, err := peer.Decode(serverStr)
 			if err != nil {
 				return nil, err
 			}
@@ -371,7 +374,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	erp := wallet.NewExchangeRateProvider(cfg.ExchangeRateProviders)
 
 	for _, server := range cfg.StoreAndForwardServers {
-		_, err := peer.IDB58Decode(server)
+		_, err := peer.Decode(server)
 		if err != nil {
 			return nil, errors.New("invalid store and forward peer ID in config")
 		}
@@ -488,7 +491,7 @@ func (n *OpenBazaarNode) newHTTPGateway(cfg *repo.Config) (*api.Gateway, error) 
 	var opts = []corehttp.ServeOption{
 		corehttp.MetricsCollectionOption("gateway"),
 		corehttp.VersionOption(),
-		corehttp.IPNSHostnameOption(),
+		corehttp.HostnameOption(),
 		corehttp.GatewayOption(ipfsConf.Gateway.Writable, "/ipfs", "/ipns"),
 	}
 
@@ -517,28 +520,32 @@ func (n *OpenBazaarNode) newHTTPGateway(cfg *repo.Config) (*api.Gateway, error) 
 	return api.NewGateway(n, config, opts...)
 }
 
-// constructRouting behaves exactly like the default constructRouting function in the IPFS package
-// with the loan exception of setting the dhtopts.Protocols to use our custom protocol ID. By using
-// a different ID we ensure that we segregate the OpenBazaar DHT from the main IPFS DHT.
-func constructRouting(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator) (routing.IpfsRouting, error) {
-	return dht.New(
-		ctx, host,
-		dhtopts.Datastore(dstore),
-		dhtopts.Validator(validator),
-		dhtopts.Protocols(
-			ProtocolDHT,
-		),
-	)
+// constructDHTRouting behaves exactly like the default constructDHTRouting function in the IPFS package
+// but sets the ProtocolPrefix and MaxRecordAge.
+func constructDHTRouting(mode dht.ModeOpt) func(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator) (routing.Routing, error) {
+	return func(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator) (routing.Routing, error) {
+		return dual.New(
+			ctx, host,
+			dht.Concurrency(10),
+			dht.Mode(mode),
+			dht.Datastore(dstore),
+			dht.Validator(validator),
+			dht.ProtocolPrefix(ProtocolDHT),
+			dht.MaxRecordAge(maxRecordAge),
+		)
+	}
 }
 
 func updateIPFSGlobalProtocolVars(testnetEnable bool) {
 	if testnetEnable {
 		bitswap.ProtocolBitswap = obnet.ProtocolBitswapMainnetTwo
-		bitswap.ProtocolBitswapOne = obnet.ProtocolBitswapMainnetTwoDotOne
+		bitswap.ProtocolBitswapOneZero = obnet.ProtocolBitswapMainnetTwoDotOneZero
+		bitswap.ProtocolBitswapOneOne = obnet.ProtocolBitswapMainnetTwoDotOneOne
 		bitswap.ProtocolBitswapNoVers = obnet.ProtocolBitswapMainnetNoVers
 	} else {
 		bitswap.ProtocolBitswap = obnet.ProtocolBitswapTestnetTwo
-		bitswap.ProtocolBitswapOne = obnet.ProtocolBitswapTestnetTwoDotOne
+		bitswap.ProtocolBitswapOneZero = obnet.ProtocolBitswapTestnetTwoDotOneZero
+		bitswap.ProtocolBitswapOneOne = obnet.ProtocolBitswapTestnetTwoDotOneOne
 		bitswap.ProtocolBitswapNoVers = obnet.ProtocolBitswapTestnetNoVers
 	}
 }

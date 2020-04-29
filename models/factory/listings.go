@@ -7,8 +7,8 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	crypto "github.com/libp2p/go-libp2p-crypto"
-	peer "github.com/libp2p/go-libp2p-peer"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 func NewPhysicalListing(slug string) *pb.Listing {

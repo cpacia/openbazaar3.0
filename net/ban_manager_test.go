@@ -1,7 +1,7 @@
 package net
 
 import (
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"testing"
 )
 
@@ -14,7 +14,7 @@ func bannedPeers() []peer.ID {
 	peers := make([]peer.ID, 0, len(peerStrings))
 
 	for _, p := range peerStrings {
-		peer, err := peer.IDB58Decode(p)
+		peer, err := peer.Decode(p)
 		if err != nil {
 			panic(err)
 		}

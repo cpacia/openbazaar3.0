@@ -7,7 +7,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"time"
 )
 

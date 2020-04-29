@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"os"
 	"strconv"
 	"time"
@@ -339,7 +339,7 @@ func validateProfile(profile *models.Profile) error {
 		return coreiface.ErrTooManyItems{"storeAndForwardServers"}
 	}
 	for _, pid := range profile.StoreAndForwardServers {
-		_, err := peer.IDB58Decode(pid)
+		_, err := peer.Decode(pid)
 		if err != nil {
 			return errors.New("invalid snf server peerID")
 		}

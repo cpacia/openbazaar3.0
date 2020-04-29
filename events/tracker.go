@@ -1,6 +1,6 @@
 package events
 
-import peer "github.com/libp2p/go-libp2p-peer"
+import peer "github.com/libp2p/go-libp2p-core/peer"
 
 // TrackerStarted is the start event for the follower tracker.
 type TrackerStarted struct{}

@@ -12,8 +12,8 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	crypto "github.com/libp2p/go-libp2p-crypto"
-	peer "github.com/libp2p/go-libp2p-peer"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 func (op *OrderProcessor) processRatingSignaturesMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {

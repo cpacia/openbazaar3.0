@@ -1,6 +1,6 @@
 package models
 
-import peer "github.com/libp2p/go-libp2p-peer"
+import peer "github.com/libp2p/go-libp2p-core/peer"
 
 // Followers represents the nodes that are following this node.
 type Followers []string

@@ -8,7 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/gorilla/mux"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"net/http"
 	"strconv"
 	"sync"
@@ -33,7 +33,7 @@ func (g *Gateway) handleGETProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		pid, err := peer.IDB58Decode(peerIDStr)
+		pid, err := peer.Decode(peerIDStr)
 		if err != nil {
 			http.Error(w, wrapError(err), http.StatusBadRequest)
 			return
@@ -128,7 +128,7 @@ func (g *Gateway) handlePOSTFetchProfiles(w http.ResponseWriter, r *http.Request
 	wg.Add(len(peerIDs))
 	go func() {
 		for _, peerIDStr := range peerIDs {
-			pid, err := peer.IDB58Decode(peerIDStr)
+			pid, err := peer.Decode(peerIDStr)
 			if err != nil {
 				responseChan <- profileError{
 					PeerID: peerIDStr,

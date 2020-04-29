@@ -1,7 +1,7 @@
 package net
 
 import (
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"sync"
 )
 
@@ -48,7 +48,7 @@ func (bm *BanManager) GetBlockedIds() []peer.ID {
 	defer bm.RUnlock()
 	var ret []peer.ID
 	for pid := range bm.blockedIds {
-		id, err := peer.IDB58Decode(pid)
+		id, err := peer.Decode(pid)
 		if err != nil {
 			continue
 		}

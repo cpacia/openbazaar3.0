@@ -13,7 +13,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/jinzhu/gorm"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"os"
 )
 
@@ -177,7 +177,7 @@ func (n *OpenBazaarNode) GetFollowers(ctx context.Context, peerID peer.ID, useCa
 		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 	}
 	for _, f := range followers {
-		if _, err := peer.IDB58Decode(f); err != nil {
+		if _, err := peer.Decode(f); err != nil {
 			return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 		}
 	}
@@ -201,7 +201,7 @@ func (n *OpenBazaarNode) GetFollowing(ctx context.Context, peerID peer.ID, useCa
 		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 	}
 	for _, f := range following {
-		if _, err := peer.IDB58Decode(f); err != nil {
+		if _, err := peer.Decode(f); err != nil {
 			return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)
 		}
 	}

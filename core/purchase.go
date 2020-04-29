@@ -19,8 +19,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
-	crypto "github.com/libp2p/go-libp2p-crypto"
-	peer "github.com/libp2p/go-libp2p-peer"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"os"
 	"time"
 )
@@ -44,7 +44,7 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 	}
 
 	// Deserialize Vendor ID
-	vendorPeerID, err := peer.IDB58Decode(orderOpen.Listings[0].Listing.VendorID.PeerID)
+	vendorPeerID, err := peer.Decode(orderOpen.Listings[0].Listing.VendorID.PeerID)
 	if err != nil {
 		return
 	}
@@ -364,7 +364,7 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 		order.Payment.Moderator = purchase.Moderator
 		order.Payment.EscrowReleaseFee = escrowFee.String()
 
-		moderatorPeerID, err := peer.IDB58Decode(purchase.Moderator)
+		moderatorPeerID, err := peer.Decode(purchase.Moderator)
 		if err != nil {
 			return nil, err
 		}

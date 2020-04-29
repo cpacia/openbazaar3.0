@@ -2,7 +2,7 @@ package net
 
 import (
 	"github.com/cpacia/openbazaar3.0/net/pb"
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"testing"
 )
 

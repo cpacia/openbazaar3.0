@@ -3,7 +3,7 @@ package net
 import (
 	"context"
 	"github.com/cpacia/openbazaar3.0/net/pb"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"testing"
 )
@@ -46,7 +46,7 @@ func TestMessageSender(t *testing.T) {
 	}
 
 	// Make sure the context is respected on open.
-	theirPid, err := peer.IDB58Decode("QmYVXrKrKHDC9FobgmcmshCDyWwdrfwfanNQN4oxJ9Fk3h")
+	theirPid, err := peer.Decode("QmYVXrKrKHDC9FobgmcmshCDyWwdrfwfanNQN4oxJ9Fk3h")
 	if err != nil {
 		t.Fatal(err)
 	}

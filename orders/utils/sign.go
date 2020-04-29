@@ -3,7 +3,7 @@ package utils
 import (
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/proto"
-	"github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-core/crypto"
 )
 
 // SignOrderMessage puts a signature on an order message using the IPFS private

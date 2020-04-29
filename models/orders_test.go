@@ -8,7 +8,7 @@ import (
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"testing"
 	"time"
 )
@@ -895,7 +895,7 @@ func TestOrder_CanCancel(t *testing.T) {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
 
-		pid, err := peer.IDB58Decode(test.ourID)
+		pid, err := peer.Decode(test.ourID)
 		if err != nil {
 			t.Errorf("Test %d peerID decode error: %s", i, err)
 		}
@@ -1145,7 +1145,7 @@ func TestOrder_CanReject(t *testing.T) {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
 
-		pid, err := peer.IDB58Decode(test.ourID)
+		pid, err := peer.Decode(test.ourID)
 		if err != nil {
 			t.Errorf("Test %d peerID decode error: %s", i, err)
 		}
@@ -1288,7 +1288,7 @@ func TestOrder_CanRefund(t *testing.T) {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
 
-		pid, err := peer.IDB58Decode(test.ourID)
+		pid, err := peer.Decode(test.ourID)
 		if err != nil {
 			t.Errorf("Test %d peerID decode error: %s", i, err)
 		}
@@ -1503,7 +1503,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
 
-		pid, err := peer.IDB58Decode(test.ourID)
+		pid, err := peer.Decode(test.ourID)
 		if err != nil {
 			t.Errorf("Test %d peerID decode error: %s", i, err)
 		}
@@ -1712,7 +1712,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
 
-		pid, err := peer.IDB58Decode(test.ourID)
+		pid, err := peer.Decode(test.ourID)
 		if err != nil {
 			t.Errorf("Test %d peerID decode error: %s", i, err)
 		}
