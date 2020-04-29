@@ -40,7 +40,7 @@ var (
 	}
 
 	defaultMainnetBootstrapAddrs = []string{
-		"/ip4/167.172.126.176/tcp/4001/p2p/12D3KooWPZ3xBNRGx4fhRbfYAcXUhcZhTZ2LCkJ74kJXGfz9TVLT",
+		"/ip4/167.172.126.176/tcp/4001/p2p/12D3KooWHnpVyu9XDeFoAVayqr9hvc9xPqSSHtCSFLEkKgcz5Wro",
 	}
 
 	defaultTestnetBootstrapAddrs = []string{
@@ -48,7 +48,7 @@ var (
 	}
 
 	defaultMainnetSNFServers = []string{
-		"12D3KooWPZ3xBNRGx4fhRbfYAcXUhcZhTZ2LCkJ74kJXGfz9TVLT",
+		"12D3KooWHnpVyu9XDeFoAVayqr9hvc9xPqSSHtCSFLEkKgcz5Wro",
 	}
 
 	defaultTestnetSNFServers = []string{
