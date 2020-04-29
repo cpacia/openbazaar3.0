@@ -12,13 +12,17 @@ import (
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/bootstrap"
 	coremock "github.com/ipfs/go-ipfs/core/mock"
 	"github.com/ipfs/go-ipfs/namesys"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	record "github.com/libp2p/go-libp2p-record"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"path"
 )
@@ -203,7 +207,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			ExtraOpts: map[string]bool{
 				"pubsub": true,
 			},
-			Routing: constructDHTRouting(dht.ModeAuto),
+			Routing: constructMockRouting,
 		})
 		if err != nil {
 			return nil, err
@@ -347,4 +351,17 @@ func (mn *Mocknet) TearDown() error {
 		}
 	}
 	return nil
+}
+
+
+func constructMockRouting(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator) (routing.Routing, error) {
+	return dht.New(
+		ctx, host,
+		dht.Concurrency(10),
+		dht.Mode(dht.ModeServer),
+		dht.Datastore(dstore),
+		dht.Validator(validator),
+		dht.ProtocolPrefix(ProtocolDHT),
+		dht.MaxRecordAge(maxRecordAge),
+	)
 }
