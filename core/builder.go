@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	oniontransport "github.com/cpacia/go-onion-transport"
 	storeandforward "github.com/cpacia/go-store-and-forward"
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/api"
@@ -41,6 +42,7 @@ import (
 	"github.com/libp2p/go-libp2p-record"
 	lcfg "github.com/libp2p/go-libp2p/config"
 	ma "github.com/multiformats/go-multiaddr"
+	madns "github.com/multiformats/go-multiaddr-dns"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/op/go-logging"
 	"net"
@@ -102,7 +104,9 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		shutdownTorFunc = closeTor
 
 		if cfg.Tor {
+			// Very important to set the proxy on the http client as well as the DNSResover.
 			proxyclient.SetProxy(dialer)
+			madns.DefaultResolver = oniontransport.NewTorResover(obnet.TorDNSResover)
 		}
 	}
 
