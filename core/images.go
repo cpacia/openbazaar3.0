@@ -225,7 +225,8 @@ func (n *OpenBazaarNode) addResizedImage(dbtx database.Tx, img image.Image, w, h
 	newImg := imaging.Resize(img, width, height, imaging.Lanczos)
 
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, newImg, nil); err != nil {
+	q := &jpeg.Options{Quality: 100}
+	if err := jpeg.Encode(&buf, newImg, q); err != nil {
 		return cid.Cid{}, err
 	}
 

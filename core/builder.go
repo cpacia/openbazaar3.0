@@ -23,7 +23,6 @@ import (
 	"github.com/cpacia/openbazaar3.0/wallet"
 	"github.com/cpacia/proxyclient"
 	iwallet "github.com/cpacia/wallet-interface"
-	bitswap "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-datastore"
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
@@ -182,7 +181,6 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 
 	// Update the protocol IDs for Bitswap and the Kad-DHT. This is used to segregate the
 	// network from mainline IPFS.
-	updateIPFSGlobalProtocolVars(cfg.Testnet)
 	if !cfg.Testnet {
 		ProtocolDHT = obnet.ProtocolPrefixMainnet
 	} else {
@@ -533,20 +531,6 @@ func constructDHTRouting(mode dht.ModeOpt) func(ctx context.Context, host host.H
 			dht.ProtocolPrefix(ProtocolDHT),
 			dht.MaxRecordAge(maxRecordAge),
 		)
-	}
-}
-
-func updateIPFSGlobalProtocolVars(testnetEnable bool) {
-	if testnetEnable {
-		bitswap.ProtocolBitswap = obnet.ProtocolBitswapMainnetTwo
-		bitswap.ProtocolBitswapOneZero = obnet.ProtocolBitswapMainnetTwoDotOneZero
-		bitswap.ProtocolBitswapOneOne = obnet.ProtocolBitswapMainnetTwoDotOneOne
-		bitswap.ProtocolBitswapNoVers = obnet.ProtocolBitswapMainnetNoVers
-	} else {
-		bitswap.ProtocolBitswap = obnet.ProtocolBitswapTestnetTwo
-		bitswap.ProtocolBitswapOneZero = obnet.ProtocolBitswapTestnetTwoDotOneZero
-		bitswap.ProtocolBitswapOneOne = obnet.ProtocolBitswapTestnetTwoDotOneOne
-		bitswap.ProtocolBitswapNoVers = obnet.ProtocolBitswapTestnetNoVers
 	}
 }
 

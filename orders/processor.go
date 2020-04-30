@@ -3,7 +3,6 @@ package orders
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/OpenBazaar/jsonpb"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/multiwallet"
@@ -18,8 +17,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
 	"github.com/jinzhu/gorm"
-	crypto "github.com/libp2p/go-libp2p-core/crypto"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/op/go-logging"
 	"time"
 )
@@ -171,7 +170,6 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 	case npb.OrderMessage_ORDER_CONFIRMATION:
 		key = "order_confirmation_acked"
 	case npb.OrderMessage_ORDER_FULFILLMENT:
-		fmt.Println("&&&", om.ID)
 		key = "order_fulfillment_acked"
 	case npb.OrderMessage_ORDER_COMPLETE:
 		key = "order_complete_acked"

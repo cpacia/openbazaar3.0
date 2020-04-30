@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
-	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/repo"
-	bitswap "github.com/ipfs/go-bitswap/network"
 	"math/rand"
 	"os"
 	"path"
@@ -31,10 +29,6 @@ func TestNewNode(t *testing.T) {
 	}
 
 	defer node.DestroyNode()
-
-	if bitswap.ProtocolBitswap != net.ProtocolBitswapMainnetTwo {
-		t.Error("Failed to set correct bitswap protocol")
-	}
 
 	// Load our identity key from the db and set it in the config.
 	var dbIdentityKey models.Key

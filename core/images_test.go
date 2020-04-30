@@ -51,10 +51,10 @@ func TestOpenBazaarNode_SetImages(t *testing.T) {
 	}
 
 	var (
-		expectedTiny     = `Qme7gCx5QffCJDbP66d47nCpW3GmQMFdg9ojdMLrudQFQ9`
-		expectedSmall    = `QmYqmG4Q3GmqBvs2GtzSSUWeDyeY13L2isDuZWDpjq8iyF`
-		expectedMedium   = `QmX8H3a25XvKPtBe8EhtjNWBtVFCeiAGyhbbuyC4SGCdSa`
-		expectedLarge    = `QmVuSzTeuo4BGETTV9mmRzAjfWGffzWihGcQNWnkhEWaEc`
+		expectedTiny     = `QmNyXxH9KLa71QT8mgSyoq9kK8M8ns765nyVndzJD4gxeu`
+		expectedSmall    = `QmWSUorwepjpELNvJfq8abQHdXUC78eiYmCeh5uMbb6Xuq`
+		expectedMedium   = `QmdYmbKG5e7Y9f8FGRWo3CjuGJgptsSRKFBjNr8qzupqyN`
+		expectedLarge    = `QmQE8S5VbUL9bhKkTSPiTcsCBZYA4kYpboq6cyJXCzPLrf`
 		expectedOriginal = `QmZq8EGL18wA9tAwAa2EvqMW5GSEJyzkLDw21XmnkFkEVA`
 	)
 
