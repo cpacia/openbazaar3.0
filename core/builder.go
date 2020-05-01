@@ -217,6 +217,11 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	}
 
 	// New IPFS build config
+	dhtMode := dht.ModeAuto
+	if cfg.DHTClientOnly {
+		dhtMode = dht.ModeClient
+	}
+
 	ncfg := &core.BuildCfg{
 		Repo:      ipfsRepo,
 		Online:    true,
@@ -226,7 +231,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 			"ipnsps": !cfg.NoIPNSPubsub,
 			"pubsub": true,
 		},
-		Routing: constructDHTRouting(dht.ModeAuto),
+		Routing: constructDHTRouting(dhtMode),
 		Host:    constructPeerHost,
 	}
 

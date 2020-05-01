@@ -39,19 +39,19 @@ var (
 		"critical": logging.CRITICAL,
 	}
 
-	defaultMainnetBootstrapAddrs = []string{
+	DefaultMainnetBootstrapAddrs = []string{
 		"/ip4/167.172.126.176/tcp/4001/p2p/12D3KooWHnpVyu9XDeFoAVayqr9hvc9xPqSSHtCSFLEkKgcz5Wro",
 	}
 
-	defaultTestnetBootstrapAddrs = []string{
+	DefaultTestnetBootstrapAddrs = []string{
 		"",
 	}
 
-	defaultMainnetSNFServers = []string{
+	DefaultMainnetSNFServers = []string{
 		"12D3KooWHnpVyu9XDeFoAVayqr9hvc9xPqSSHtCSFLEkKgcz5Wro",
 	}
 
-	defaultTestnetSNFServers = []string{
+	DefaultTestnetSNFServers = []string{
 		"",
 	}
 )
@@ -93,6 +93,7 @@ type Config struct {
 	SNFServerPeers         []string `long:"snfpeer" description:"A list of other store-and-forward servers to replicate snf data to. This is only used when the snf server is enabled."`
 	Tor                    bool     `long:"tor" description:"Proxy all incoming and outgoing connections over the Tor network exclusively."`
 	DualStack              bool     `long:"dualstack" description:"Listen for incoming connections via Tor in addition to via the clearnet. This mode is not private."`
+	DHTClientOnly          bool     `long:"dhtclientonly" description:"Disable participating in serving data in the DHT. This should be used if your node is undialable."`
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -261,13 +262,13 @@ func createDefaultConfigFile(destinationPath string, testnet bool) error {
 				return err
 			}
 			if testnet {
-				for _, addr := range defaultTestnetBootstrapAddrs {
+				for _, addr := range DefaultTestnetBootstrapAddrs {
 					if _, err := dest.WriteString("bootstrapaddr=" + addr + "\n"); err != nil {
 						return err
 					}
 				}
 			} else {
-				for _, addr := range defaultMainnetBootstrapAddrs {
+				for _, addr := range DefaultMainnetBootstrapAddrs {
 					if _, err := dest.WriteString("bootstrapaddr=" + addr + "\n"); err != nil {
 						return err
 					}
@@ -281,13 +282,13 @@ func createDefaultConfigFile(destinationPath string, testnet bool) error {
 				return err
 			}
 			if testnet {
-				for _, addr := range defaultTestnetSNFServers {
+				for _, addr := range DefaultTestnetSNFServers {
 					if _, err := dest.WriteString("snfserver=" + addr + "\n"); err != nil {
 						return err
 					}
 				}
 			} else {
-				for _, addr := range defaultMainnetSNFServers {
+				for _, addr := range DefaultMainnetSNFServers {
 					if _, err := dest.WriteString("snfserver=" + addr + "\n"); err != nil {
 						return err
 					}
