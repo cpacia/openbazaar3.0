@@ -11,8 +11,8 @@ import (
 
 // MockDB returns an in-memory sqlite db.
 func MockDB() (database.Database, error) {
-	n := rand.Intn(100000000000000)
-	dataDir := path.Join(os.TempDir(), "openbazaar-test", strconv.Itoa(n))
+	n := rand.Uint32()
+	dataDir := path.Join(os.TempDir(), "openbazaar-test", strconv.Itoa(int(n)))
 	db, err := ffsqlite.NewFFMemoryDB(dataDir)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func MockDB() (database.Database, error) {
 // MockRepo returns a repo which uses a tmp data directory
 // and in-memory database.
 func MockRepo() (*Repo, error) {
-	n := rand.Intn(100000000000000)
-	dataDir := path.Join(os.TempDir(), "openbazaar-test", strconv.Itoa(n))
+	n := rand.Uint32()
+	dataDir := path.Join(os.TempDir(), "openbazaar-test", strconv.Itoa(int(n)))
 	return newRepo(dataDir, "", true)
 }
