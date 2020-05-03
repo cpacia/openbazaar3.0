@@ -59,8 +59,9 @@ func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *model
 		log.Errorf("ORDER_OPEN message for order %s from %s failed to validate: %s", order.ID, orderOpen.BuyerID.PeerID, err)
 		if order.Role() == models.RoleVendor {
 			reject := pb.OrderReject{
-				Type:   pb.OrderReject_VALIDATION_ERROR,
-				Reason: err.Error(),
+				Type:      pb.OrderReject_VALIDATION_ERROR,
+				Reason:    err.Error(),
+				Timestamp: ptypes.TimestampNow(),
 			}
 
 			rejectAny, err := ptypes.MarshalAny(&reject)

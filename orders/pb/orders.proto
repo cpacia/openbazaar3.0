@@ -67,8 +67,9 @@ message OrderOpen {
 }
 
 message OrderReject {
-    RejectType type        = 1;
-    string reason          = 2;
+    RejectType type                     = 1;
+    string reason                       = 2;
+    google.protobuf.Timestamp timestamp = 3;
 
     enum RejectType {
         USER_REJECT      = 0;
@@ -77,15 +78,18 @@ message OrderReject {
 }
 
 message OrderConfirmation {
-    string transactionID   = 1; // Only cancelable orders.
+    string transactionID                = 1; // Only cancelable orders.
+    google.protobuf.Timestamp timestamp = 2;
 }
 
 message OrderCancel {
-    string transactionID   = 1; // Only cancelable orders.
+    string transactionID                = 1; // Only cancelable orders.
+    google.protobuf.Timestamp timestamp = 2;
 }
 
 message RatingSignatures {
-    repeated RatingSignature sigs = 1;
+    repeated RatingSignature sigs       = 1;
+    google.protobuf.Timestamp timestamp = 2;
 }
 
 message RatingSignature {
@@ -97,6 +101,7 @@ message RatingSignature {
 message OrderFulfillment {
     repeated FulfilledItem fulfillments = 1;
     EscrowRelease releaseInfo           = 2; // Moderated orders only.
+    google.protobuf.Timestamp timestamp = 3;
 
     message FulfilledItem {
         uint32 itemIndex = 1;
@@ -129,8 +134,9 @@ message OrderFulfillment {
 }
 
 message OrderComplete {
-    repeated Rating ratings   = 1;
-    EscrowRelease releaseInfo = 2; // Moderated orders only.
+    repeated Rating ratings             = 1;
+    EscrowRelease releaseInfo           = 2; // Moderated orders only.
+    google.protobuf.Timestamp timestamp = 3;
 }
 
 message Rating {
@@ -153,7 +159,16 @@ message Rating {
 }
 
 
-message DisputeOpen {}
+message DisputeOpen {
+    Party openedBy                      = 1;
+    string reason                       = 2;
+    google.protobuf.Timestamp timestamp = 3;
+
+    enum Party {
+        BUYER  = 0;
+        VENDOR = 1;
+    }
+}
 message DisputeUpdate {}
 message DisputeClose {
     string transactionID = 1;
@@ -164,7 +179,8 @@ message Refund {
         string transactionID      = 1;
         EscrowRelease releaseInfo = 2;
     }
-    string amount = 3;
+    string amount                       = 3;
+    google.protobuf.Timestamp timestamp = 4;
 }
 
 message PaymentSent {

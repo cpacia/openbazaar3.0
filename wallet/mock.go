@@ -568,12 +568,12 @@ func (w *MockWallet) Transactions(limit int, offsetID iwallet.TransactionID) ([]
 	for _, tx := range w.transactions {
 		matches := false
 		for _, from := range tx.From {
-			if w.addrs[from.Address] {
+			if _, ok := w.addrs[from.Address]; ok {
 				matches = true
 			}
 		}
 		for _, to := range tx.To {
-			if w.addrs[to.Address] {
+			if _, ok := w.addrs[to.Address]; ok {
 				matches = true
 			}
 		}

@@ -83,7 +83,9 @@ func (n *OpenBazaarNode) CompleteOrder(orderID models.OrderID, ratings []models.
 		return err
 	}
 
-	completeMsg := new(pb.OrderComplete)
+	completeMsg := &pb.OrderComplete{
+		Timestamp: ptypes.TimestampNow(),
+	}
 
 	for i, rating := range ratings {
 		ratingPB := &pb.Rating{

@@ -51,6 +51,7 @@ func (n *OpenBazaarNode) CancelOrder(orderID models.OrderID, done chan struct{})
 
 	cancel := &pb.OrderCancel{
 		TransactionID: txid.String(),
+		Timestamp:     ptypes.TimestampNow(),
 	}
 
 	cancelAny, err := ptypes.MarshalAny(cancel)

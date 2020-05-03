@@ -28,7 +28,9 @@ func (n *OpenBazaarNode) FulfillOrder(orderID models.OrderID, fulfillments []mod
 		return err
 	}
 
-	fulfillmentMsg := new(pb.OrderFulfillment)
+	fulfillmentMsg := &pb.OrderFulfillment{
+		Timestamp: ptypes.TimestampNow(),
+	}
 
 	for _, f := range fulfillments {
 		if f.ItemIndex > len(orderOpen.Items) {

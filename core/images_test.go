@@ -154,10 +154,10 @@ func TestOpenBazaarNode_SetHeader(t *testing.T) {
 	}
 
 	var (
-		expectedTiny     = `QmNqq7Qg7Zwq2uVMnnRkXHrXypYKu61e8pcWY4yAB9JjJs`
-		expectedSmall    = `QmWCxtDvCkymaqJp4aWgg2tCpdYwjY3m2pcV45jR4ESbVF`
-		expectedMedium   = `QmapaD8Q6CGrKdaxwTM5AMr3g72eEgdQykFQLq83nqfouP`
-		expectedLarge    = `QmVYPrF1bpvxE1X4CoJHdecNxa5aV5LiRhD3EvMpk4NgGo`
+		expectedTiny     = `QmP6Sr6aiJhEHseLVi5tBSgekqTgySGp3cLdHFtEHE8oxS`
+		expectedSmall    = `QmdDjvzzJ7ifvkBPbhgxyqYTvWmKaWjgctFcHV94dDW4qG`
+		expectedMedium   = `QmTcj5UKy4EzMpFJR7GmLHPCgF8kfgabS78AfAA41xkGQ5`
+		expectedLarge    = `Qmd8smgsc57L8SXHX2Dkgq53HVrJ2XQAVqEm91nPHaDdn7`
 		expectedOriginal = `QmZq8EGL18wA9tAwAa2EvqMW5GSEJyzkLDw21XmnkFkEVA`
 	)
 
@@ -259,10 +259,10 @@ func TestOpenBazaarNode_SetProductImage(t *testing.T) {
 	}
 
 	var (
-		expectedTiny     = `QmYqmG4Q3GmqBvs2GtzSSUWeDyeY13L2isDuZWDpjq8iyF`
-		expectedSmall    = `QmX8H3a25XvKPtBe8EhtjNWBtVFCeiAGyhbbuyC4SGCdSa`
-		expectedMedium   = `QmVuSzTeuo4BGETTV9mmRzAjfWGffzWihGcQNWnkhEWaEc`
-		expectedLarge    = `QmTC2a6Fb2DFuzszbczseRtHC6Wv9wx6RpXkYY3ySu5D1X`
+		expectedTiny     = `QmWSUorwepjpELNvJfq8abQHdXUC78eiYmCeh5uMbb6Xuq`
+		expectedSmall    = `QmdYmbKG5e7Y9f8FGRWo3CjuGJgptsSRKFBjNr8qzupqyN`
+		expectedMedium   = `QmQE8S5VbUL9bhKkTSPiTcsCBZYA4kYpboq6cyJXCzPLrf`
+		expectedLarge    = `QmdFm3TnRGYNxKECQBFy6vLCPDaNT26ZUfReD64v7RVEVe`
 		expectedOriginal = `QmZq8EGL18wA9tAwAa2EvqMW5GSEJyzkLDw21XmnkFkEVA`
 	)
 

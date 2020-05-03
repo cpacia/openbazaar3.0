@@ -88,7 +88,9 @@ func (op *OrderProcessor) processRatingSignaturesMessage(dbtx database.Tx, order
 // sendRatingSignatures signs the buyer's rating keys and sends the signatures to the buyer. We want to do
 // this right after the order is funded.
 func (op *OrderProcessor) sendRatingSignatures(dbtx database.Tx, order *models.Order, orderOpen *pb.OrderOpen) error {
-	rs := new(pb.RatingSignatures)
+	rs := &pb.RatingSignatures{
+		Timestamp: ptypes.TimestampNow(),
+	}
 	for i, item := range orderOpen.Items {
 		listing, err := extractListing(item.ListingHash, orderOpen.Listings)
 		if err != nil {

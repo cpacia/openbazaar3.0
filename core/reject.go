@@ -37,8 +37,9 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 	}
 
 	reject := pb.OrderReject{
-		Type:   pb.OrderReject_USER_REJECT,
-		Reason: reason,
+		Type:      pb.OrderReject_USER_REJECT,
+		Reason:    reason,
+		Timestamp: ptypes.TimestampNow(),
 	}
 
 	rejectAny, err := ptypes.MarshalAny(&reject)

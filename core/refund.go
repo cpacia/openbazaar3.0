@@ -128,6 +128,7 @@ func (n *OpenBazaarNode) buildRefundMessage(order *models.Order, wallet iwallet.
 		refund := pb.Refund{
 			RefundInfo: &pb.Refund_TransactionID{TransactionID: txid.String()},
 			Amount:     refundTotal.String(),
+			Timestamp:  ptypes.TimestampNow(),
 		}
 
 		refundAny, err := ptypes.MarshalAny(&refund)

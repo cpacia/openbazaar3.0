@@ -263,8 +263,10 @@ func TestMockWallet_SignMultisigTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	outAddrBytes := make([]byte, 20)
-	rand.Read(outAddrBytes)
+	outAddr, err := w1.CurrentAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	outpoint := make([]byte, 36)
 	rand.Read(outpoint)
@@ -278,7 +280,7 @@ func TestMockWallet_SignMultisigTransaction(t *testing.T) {
 		},
 		To: []iwallet.SpendInfo{
 			{
-				Address: iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtMock),
+				Address: outAddr,
 				Amount:  iwallet.NewAmount(9000),
 			},
 		},
@@ -339,8 +341,10 @@ func TestMockWallet_SignMultisigAfterTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	outAddrBytes := make([]byte, 20)
-	rand.Read(outAddrBytes)
+	outAddr, err := w1.CurrentAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	outpoint := make([]byte, 36)
 	rand.Read(outpoint)
@@ -354,7 +358,7 @@ func TestMockWallet_SignMultisigAfterTimeout(t *testing.T) {
 		},
 		To: []iwallet.SpendInfo{
 			{
-				Address: iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtMock),
+				Address: outAddr,
 				Amount:  iwallet.NewAmount(9000),
 			},
 		},
@@ -400,8 +404,10 @@ func TestMockWallet_1of2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	outAddrBytes := make([]byte, 20)
-	rand.Read(outAddrBytes)
+	outAddr, err := w1.CurrentAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	outpoint := make([]byte, 36)
 	rand.Read(outpoint)
@@ -415,7 +421,7 @@ func TestMockWallet_1of2(t *testing.T) {
 		},
 		To: []iwallet.SpendInfo{
 			{
-				Address: iwallet.NewAddress(hex.EncodeToString(outAddrBytes), iwallet.CtMock),
+				Address: outAddr,
 				Amount:  iwallet.NewAmount(9000),
 			},
 		},

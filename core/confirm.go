@@ -52,7 +52,9 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 		var (
 			wTx          iwallet.Tx
 			txid         iwallet.TransactionID
-			confirmation = &pb.OrderConfirmation{}
+			confirmation = &pb.OrderConfirmation{
+				Timestamp: ptypes.TimestampNow(),
+			}
 		)
 		if orderOpen.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
 			wTx, txid, err = n.releaseFromCancelableAddress(&order)
