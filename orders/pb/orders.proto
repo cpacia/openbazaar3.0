@@ -163,15 +163,39 @@ message DisputeOpen {
     Party openedBy                      = 1;
     string reason                       = 2;
     google.protobuf.Timestamp timestamp = 3;
+    repeated bytes contract             = 4;
 
     enum Party {
         BUYER  = 0;
         VENDOR = 1;
     }
 }
-message DisputeUpdate {}
+
+message DisputeUpdate {
+    google.protobuf.Timestamp timestamp = 1;
+    repeated bytes contract             = 2;
+}
+
 message DisputeClose {
-    string transactionID = 1;
+    string verdict                      = 1;
+    ModeratedEscrowRelease releaseInfo  = 2;
+    google.protobuf.Timestamp timestamp = 3;
+
+    message ModeratedEscrowRelease {
+        repeated Signature escrowSignatures = 1;
+        repeated bytes fromIDs              = 2;
+
+        string buyerAddress                 = 3;
+        string buyerAmount                  = 4;
+
+        string vendorAddress                = 5;
+        string vendorAmount                 = 6;
+
+        string moderatorAddress             = 7;
+        string moderatorAmount              = 8;
+
+        string transactionFee               = 9;
+    }
 }
 
 message Refund {

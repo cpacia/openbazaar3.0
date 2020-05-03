@@ -20,8 +20,9 @@ message Message {
         UNFOLLOW                 = 5;
         STORE                    = 6;
         ORDER                    = 7;
-        ADDRESS_REQUEST          = 8;
-        ADDRESS_RESPONSE         = 9;
+        DISPUTE                  = 8;
+        ADDRESS_REQUEST          = 9;
+        ADDRESS_RESPONSE         = 10;
     }
 }
 

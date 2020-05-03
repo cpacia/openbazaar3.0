@@ -337,13 +337,6 @@ func TestOrderProcessor_checkForMorePayments(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := order.PutMessage(&npb.OrderMessage{
-		Signature:   []byte("abc"),
-		Message:     mustBuildAny(&pb.DisputeClose{TransactionID: fundingTxids[4].String()}),
-		MessageType: npb.OrderMessage_DISPUTE_CLOSE,
-	}); err != nil {
-		t.Fatal(err)
-	}
 
 	err = op.db.Update(func(tx database.Tx) error {
 		return tx.Save(order)

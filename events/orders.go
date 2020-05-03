@@ -112,7 +112,6 @@ type DisputeOpen struct {
 	DisputerHandle string    `json:"disputerHandle"`
 	DisputeeID     string    `json:"disputeeID"`
 	DisputeeHandle string    `json:"disputeeHandle"`
-	Buyer          string    `json:"buyer"`
 }
 
 type DisputeUpdate struct {

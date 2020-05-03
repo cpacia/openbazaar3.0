@@ -326,19 +326,6 @@ func (op *OrderProcessor) checkForMorePayments() {
 				log.Errorf("Error loading order cancel message: %s", err)
 			}
 
-			disputeClosedMsg, err := order.DisputeClosedMessage()
-			if err == nil {
-				if disputeClosedMsg.TransactionID != "" {
-					txid := iwallet.TransactionID(disputeClosedMsg.TransactionID)
-					if !knownTxsMap[txid] {
-						missingTxids = append(missingTxids, txid)
-						knownTxsMap[txid] = true
-					}
-				}
-			} else if !models.IsMessageNotExistError(err) {
-				log.Errorf("Error loading dispute closed message: %s", err)
-			}
-
 			for _, missing := range missingTxids {
 				tx, err := wallet.GetTransaction(missing)
 				if err == nil {
