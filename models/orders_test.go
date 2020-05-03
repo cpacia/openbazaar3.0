@@ -1724,6 +1724,254 @@ func TestOrder_CanConfirm(t *testing.T) {
 	}
 }
 
+func TestOrder_CanComplete(t *testing.T) {
+	tests := []struct {
+		setup       func(order *Order) error
+		ourID       string
+		canComplete bool
+	}{
+		{
+			// Success
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+						{
+							ListingHash: "123",
+						},
+					},
+				}))
+				if err != nil {
+					return err
+				}
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+					Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+						{
+							ItemIndex: 0,
+						},
+						{
+							ItemIndex: 1,
+						},
+					},
+				}))
+			},
+			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canComplete: true,
+		},
+		{
+			// Nil vendorID
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
+				return err
+			},
+			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canComplete: false,
+		},
+		{
+			// Is Vendor
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+				}))
+				return err
+			},
+			ourID:       "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+			canComplete: false,
+		},
+		{
+			// Order is nil
+			setup: func(order *Order) error {
+				return nil
+			},
+			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canComplete: false,
+		},
+		{
+			// Not fulfilled
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+						{
+							ListingHash: "123",
+						},
+					},
+				}))
+				return err
+			},
+			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canComplete: false,
+		},
+		{
+			// Completed
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+						{
+							ListingHash: "123",
+						},
+					},
+				}))
+				order.SerializedOrderComplete = []byte{0x00}
+				if err != nil {
+					return err
+				}
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+					Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+						{
+							ItemIndex: 0,
+						},
+						{
+							ItemIndex: 1,
+						},
+					},
+				}))
+			},
+			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canComplete: false,
+		},
+		{
+			// Payment Finalized
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+						{
+							ListingHash: "123",
+						},
+					},
+				}))
+				order.SerializedPaymentFinalized = []byte{0x00}
+				if err != nil {
+					return err
+				}
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+					Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+						{
+							ItemIndex: 0,
+						},
+						{
+							ItemIndex: 1,
+						},
+					},
+				}))
+			},
+			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canComplete: false,
+		},
+		{
+			// Dispute Open
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Listings: []*pb.SignedListing{
+						{
+							Listing: &pb.Listing{
+								VendorID: &pb.ID{
+									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+								},
+							},
+						},
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+						{
+							ListingHash: "123",
+						},
+					},
+				}))
+				order.SerializedDisputeOpen = []byte{0x00}
+				if err != nil {
+					return err
+				}
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+					Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+						{
+							ItemIndex: 0,
+						},
+						{
+							ItemIndex: 1,
+						},
+					},
+				}))
+			},
+			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			canComplete: false,
+		},
+	}
+
+	for i, test := range tests {
+		var order Order
+		if err := test.setup(&order); err != nil {
+			t.Errorf("Test %d setup failed: %s", i, err)
+		}
+
+		pid, err := peer.Decode(test.ourID)
+		if err != nil {
+			t.Errorf("Test %d peerID decode error: %s", i, err)
+		}
+
+		canComplete := order.CanComplete(pid)
+		if canComplete != test.canComplete {
+			t.Errorf("Got incorrect result. Expected %t, got %t", test.canComplete, canComplete)
+		}
+	}
+}
+
 func TestOrder_IsFunded(t *testing.T) {
 	tests := []struct {
 		setup    func(order *Order) error

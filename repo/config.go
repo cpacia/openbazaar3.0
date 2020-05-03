@@ -108,7 +108,7 @@ type Config struct {
 // The above results in OpenBazaar functioning properly without any config settings
 // while still allowing the user to override settings with config files and
 // command line options.  Command line options always take precedence.
-func LoadConfig() (*Config, []string, error) {
+func LoadConfig() (*Config, error) {
 	// Default config.
 	cfg := Config{
 		DataDir:    DefaultHomeDir,
@@ -124,7 +124,7 @@ func LoadConfig() (*Config, []string, error) {
 	_, err := preParser.Parse()
 	if err != nil {
 		if e, ok := err.(*flags.Error); ok && e.Type == flags.ErrHelp {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 	if cfg.DataDir != "" {
@@ -157,18 +157,18 @@ func LoadConfig() (*Config, []string, error) {
 			fmt.Fprintf(os.Stderr, "Error parsing config "+
 				"file: %v\n", err)
 			fmt.Fprintln(os.Stderr, usageMessage)
-			return nil, nil, err
+			return nil, err
 		}
 		configFileError = err
 	}
 
 	if cfg.Tor && cfg.DualStack {
-		return nil, nil, errors.New("tor and dualstack options cannot be used together")
+		return nil, errors.New("tor and dualstack options cannot be used together")
 	}
 
 	_, ok := LogLevelMap[strings.ToLower(cfg.LogLevel)]
 	if !ok {
-		return nil, nil, errors.New("invalid log level")
+		return nil, errors.New("invalid log level")
 	}
 
 	cfg.DataDir = cleanAndExpandPath(cfg.DataDir)
@@ -181,7 +181,7 @@ func LoadConfig() (*Config, []string, error) {
 		profilePort, err := strconv.Atoi(cfg.Profile)
 		if err != nil || profilePort < 1024 || profilePort > 65535 {
 			str := "%s: The profile port must be between 1024 and 65535"
-			return nil, nil, fmt.Errorf(str)
+			return nil, fmt.Errorf(str)
 		}
 	}
 
@@ -191,7 +191,7 @@ func LoadConfig() (*Config, []string, error) {
 	if configFileError != nil {
 		log.Errorf("%v", configFileError)
 	}
-	return &cfg, nil, nil
+	return &cfg, nil
 }
 
 // SetupLogging sets up logging for this node

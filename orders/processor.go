@@ -138,6 +138,7 @@ func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message
 	orderCopy := order
 	event, err = op.processMessage(dbtx, &order, peer, message)
 	if err != nil {
+		log.Errorf("Error processing order message for order %s: %s", order.ID.String(), err)
 		if err := orderCopy.PutErrorMessage(message); err != nil {
 			return nil, dbtx.Save(&orderCopy)
 		}

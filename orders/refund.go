@@ -60,7 +60,7 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 			}
 		}
 	} else if order.Role() == models.RoleBuyer && refund.GetReleaseInfo() != nil && orderOpen.Payment.Method == pb.OrderOpen_Payment_MODERATED {
-		if err := op.releaseEscrowFunds(wallet, orderOpen, refund.GetReleaseInfo()); err != nil {
+		if err := op.releaseRefundEscrowFunds(wallet, orderOpen, refund.GetReleaseInfo()); err != nil {
 			log.Errorf("Error releasing funds from escrow during refund processing: %s", err.Error())
 		}
 	}
@@ -83,18 +83,18 @@ func (op *OrderProcessor) processRefundMessage(dbtx database.Tx, order *models.O
 	return event, nil
 }
 
-func (op *OrderProcessor) releaseEscrowFunds(wallet iwallet.Wallet, orderOpen *pb.OrderOpen, releaseInfo *pb.EscrowRelease) error {
+func (op *OrderProcessor) releaseRefundEscrowFunds(wallet iwallet.Wallet, orderOpen *pb.OrderOpen, releaseInfo *pb.EscrowRelease) error {
 	escrowWallet, ok := wallet.(iwallet.Escrow)
 	if !ok {
 		return errors.New("wallet for moderated order does not support escrow")
 	}
 
 	if releaseInfo.ToAddress != orderOpen.RefundAddress {
-		return errors.New("Refund does not pay out to our refund address")
+		return errors.New("refund does not pay out to our refund address")
 	}
 	_, ok = new(big.Int).SetString(releaseInfo.ToAmount, 10)
 	if !ok {
-		return errors.New("Invalid payment amount")
+		return errors.New("invalid payment amount")
 	}
 	txn := iwallet.Transaction{
 		To: []iwallet.SpendInfo{

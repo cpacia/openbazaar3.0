@@ -1,6 +1,7 @@
 package orders
 
 import (
+	"encoding/hex"
 	"errors"
 	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/database"
@@ -9,8 +10,10 @@ import (
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/orders/utils"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"math/big"
 	"os"
 )
 
@@ -89,8 +92,12 @@ func (op *OrderProcessor) processOrderCompleteMessage(dbtx database.Tx, order *m
 		return nil, err
 	}
 
-	if order.Role() == models.RoleVendor && complete.GetReleaseInfo() != nil && orderOpen.Payment.Method == pb.OrderOpen_Payment_MODERATED {
-		if err := op.releaseEscrowFunds(wallet, orderOpen, complete.GetReleaseInfo()); err != nil {
+	if order.Role() == models.RoleVendor && complete.GetReleaseInfo() != nil && orderOpen.Payment.Method == pb.OrderOpen_Payment_MODERATED && order.SerializedDisputeOpen == nil {
+		fulfillments, err := order.OrderFulfillmentMessages()
+		if err != nil {
+			return nil, err
+		}
+		if err := op.releaseCompleteEscrowFunds(wallet, orderOpen, fulfillments, complete.GetReleaseInfo()); err != nil {
 			log.Errorf("Error releasing funds from escrow during order complete processing: %s", err.Error())
 		}
 	}
@@ -111,4 +118,65 @@ func (op *OrderProcessor) processOrderCompleteMessage(dbtx database.Tx, order *m
 		BuyerID:     orderOpen.BuyerID.PeerID,
 	}
 	return event, order.PutMessage(message)
+}
+
+func (op *OrderProcessor) releaseCompleteEscrowFunds(wallet iwallet.Wallet, orderOpen *pb.OrderOpen, fulfillments []*pb.OrderFulfillment, releaseInfo *pb.EscrowRelease) error {
+	escrowWallet, ok := wallet.(iwallet.Escrow)
+	if !ok {
+		return errors.New("wallet for moderated order does not support escrow")
+	}
+
+	payoutAddr := fulfillments[0].ReleaseInfo.ToAddress
+
+	if releaseInfo.ToAddress != payoutAddr {
+		return errors.New("escrow release does not pay out to expected vendor address")
+	}
+	_, ok = new(big.Int).SetString(releaseInfo.ToAmount, 10)
+	if !ok {
+		return errors.New("invalid payment amount")
+	}
+	txn := iwallet.Transaction{
+		To: []iwallet.SpendInfo{
+			{
+				Address: iwallet.NewAddress(releaseInfo.ToAddress, iwallet.CoinType(orderOpen.Payment.Coin)),
+				Amount:  iwallet.NewAmount(releaseInfo.ToAmount),
+			},
+		},
+	}
+
+	for _, id := range releaseInfo.FromIDs {
+		txn.From = append(txn.From, iwallet.SpendInfo{ID: id})
+	}
+
+	var buyerSigs []iwallet.EscrowSignature
+	for _, sig := range releaseInfo.EscrowSignatures {
+		buyerSigs = append(buyerSigs, iwallet.EscrowSignature{
+			Index:     int(sig.Index),
+			Signature: sig.Signature,
+		})
+	}
+
+	script, err := hex.DecodeString(orderOpen.Payment.Script)
+	if err != nil {
+		return err
+	}
+
+	fulfillmentSigs := fulfillments[0].ReleaseInfo.EscrowSignatures
+	vendorSigs := make([]iwallet.EscrowSignature, 0, len(fulfillmentSigs))
+	for _, sig := range fulfillmentSigs {
+		vendorSigs = append(vendorSigs, iwallet.EscrowSignature{
+			Index:     int(sig.Index),
+			Signature: sig.Signature,
+		})
+	}
+
+	wtx, err := wallet.Begin()
+	if err != nil {
+		return err
+	}
+	if _, err := escrowWallet.BuildAndSend(wtx, txn, [][]iwallet.EscrowSignature{buyerSigs, vendorSigs}, script); err != nil {
+		return err
+	}
+
+	return wtx.Commit()
 }

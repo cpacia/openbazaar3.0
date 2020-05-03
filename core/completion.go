@@ -4,13 +4,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
+	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/orders/utils"
+	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	crypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/crypto"
 )
 
 // CompleteOrder builds a OrderComplete message and sends it to the vendor. The ratings slice must
@@ -33,7 +37,25 @@ func (n *OpenBazaarNode) CompleteOrder(orderID models.OrderID, ratings []models.
 		return err
 	}
 
+	if !order.CanComplete(n.Identity()) {
+		return fmt.Errorf("%w: order is not in a state where it can be completed", coreiface.ErrBadRequest)
+	}
+
 	orderOpen, err := order.OrderOpenMessage()
+	if err != nil {
+		return err
+	}
+
+	fulfillments, err := order.OrderFulfillmentMessages()
+	if err != nil {
+		return err
+	}
+
+	buyer, err := order.Buyer()
+	if err != nil {
+		return err
+	}
+	vendor, err := order.Vendor()
 	if err != nil {
 		return err
 	}
@@ -106,25 +128,70 @@ func (n *OpenBazaarNode) CompleteOrder(orderID models.OrderID, ratings []models.
 				return err
 			}
 			ratingPB.BuyerSig = buyerSig
-
-			ser, err := proto.Marshal(ratingPB)
-			if err != nil {
-				return err
-			}
-
-			ratingSig, err := ratingKeys[i].Sign(ser)
-			if err != nil {
-				return err
-			}
-			ratingPB.RatingSignature = ratingSig.Serialize()
 		}
+
+		ser, err := proto.Marshal(ratingPB)
+		if err != nil {
+			return err
+		}
+
+		hashed := sha256.Sum256(ser)
+
+		ratingSig, err := ratingKeys[i].Sign(hashed[:])
+		if err != nil {
+			return err
+		}
+		ratingPB.RatingSignature = ratingSig.Serialize()
 
 		completeMsg.Ratings = append(completeMsg.Ratings, ratingPB)
 	}
 
 	if orderOpen.Payment.Method == pb.OrderOpen_Payment_MODERATED {
-		// TODO: release funds
+		wallet, err := n.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+		if err != nil {
+			return err
+		}
+
+		release, err := n.buildEscrowRelease(&order, wallet,
+			iwallet.NewAddress(fulfillments[0].ReleaseInfo.ToAddress, iwallet.CoinType(orderOpen.Payment.Coin)),
+			iwallet.NewAmount(fulfillments[0].ReleaseInfo.TransactionFee))
+		if err != nil {
+			return err
+		}
+
+		completeMsg.ReleaseInfo = release
 	}
 
-	return nil
+	return n.repo.DB().Update(func(tx database.Tx) error {
+		completeAny, err := ptypes.MarshalAny(completeMsg)
+		if err != nil {
+			return err
+		}
+
+		m := &npb.OrderMessage{
+			OrderID:     order.ID.String(),
+			MessageType: npb.OrderMessage_ORDER_COMPLETE,
+			Message:     completeAny,
+		}
+
+		if err := utils.SignOrderMessage(m, n.ipfsNode.PrivateKey); err != nil {
+			return err
+		}
+
+		payload, err := ptypes.MarshalAny(m)
+		if err != nil {
+			return err
+		}
+
+		message := newMessageWithID()
+		message.MessageType = npb.Message_ORDER
+		message.Payload = payload
+
+		_, err = n.orderProcessor.ProcessMessage(tx, buyer, m)
+		if err != nil {
+			return err
+		}
+
+		return n.messenger.ReliablySendMessage(tx, vendor, message, done)
+	})
 }

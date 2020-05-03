@@ -225,8 +225,9 @@ func (n *OpenBazaarNode) buildEscrowRelease(order *models.Order, wallet iwallet.
 	}
 
 	release := &pb.EscrowRelease{
-		ToAddress: txn.To[0].Address.String(),
-		ToAmount:  txn.To[0].Amount.String(),
+		ToAddress:      txn.To[0].Address.String(),
+		ToAmount:       txn.To[0].Amount.String(),
+		TransactionFee: escrowReleaseFee.String(),
 	}
 
 	for _, from := range txn.From {

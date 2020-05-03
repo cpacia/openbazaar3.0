@@ -796,6 +796,57 @@ func (o *Order) CanFulfill(ourPeerID peer.ID) bool {
 	return true
 }
 
+// CanComplete returns whether or not this order is in a state where the user can
+// complete the order and leave a rating.
+func (o *Order) CanComplete(ourPeerID peer.ID) bool {
+	// OrderOpen must exist.
+	orderOpen, err := o.OrderOpenMessage()
+	if err != nil {
+		return false
+	}
+
+	if len(orderOpen.Listings) == 0 ||
+		orderOpen.Listings[0].Listing == nil ||
+		orderOpen.Listings[0].Listing.VendorID == nil {
+		return false
+	}
+
+	// Only buyers can complete.
+	if orderOpen.Listings[0].Listing.VendorID.PeerID == ourPeerID.Pretty() {
+		return false
+	}
+
+	fulfilled, err := o.IsFulfilled()
+	if err != nil {
+		return false
+	}
+
+	// Order must be fulfilled
+	if !fulfilled {
+		return false
+	}
+
+	// Cannot complete if the order has been completed.
+	if o.SerializedOrderComplete != nil || o.SerializedPaymentFinalized != nil {
+		return false
+	}
+
+	// Cannot complete if a dispute is open.
+	if o.UnderActiveDispute() {
+		return false
+	}
+
+	return true
+}
+
+// IsFunded returns whether this order is fully funded or not.
+func (o *Order) UnderActiveDispute() bool {
+	if o.SerializedDisputeOpen != nil && o.SerializedDisputeClosed == nil {
+		return true
+	}
+	return false
+}
+
 // IsFunded returns whether this order is fully funded or not.
 func (o *Order) IsFunded() (bool, error) {
 	orderOpen, err := o.OrderOpenMessage()

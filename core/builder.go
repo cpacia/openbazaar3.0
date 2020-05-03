@@ -337,45 +337,8 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		return nil, err
 	}
 
-	for ct, wallet := range mw {
-		// Create wallet if not exists. This will fail if the bip44 key has been deleted
-		// from the db, however we are not yet deleting keys or the mnemonic for encryption
-		// purposes.
-		if !wallet.WalletExists() {
-			var bip44ModelKey models.Key
-			err = obRepo.DB().View(func(tx database.Tx) error {
-				return tx.Read().Where("name = ?", "bip44").First(&bip44ModelKey).Error
-			})
-			if gorm.IsRecordNotFoundError(err) {
-				return nil, fmt.Errorf("can not initialize wallet %s: seed does not exist in database", ct.CurrencyCode())
-			} else if err != nil {
-				return nil, err
-			}
-
-			bip44Key, err := hdkeychain.NewKeyFromString(string(bip44ModelKey.Value))
-			if err != nil {
-				return nil, err
-			}
-
-			def, err := models.CurrencyDefinitions.Lookup(ct.CurrencyCode())
-			if err != nil {
-				return nil, err
-			}
-
-			coinTypeKey, err := bip44Key.Child(hdkeychain.HardenedKeyStart + uint32(def.Bip44Code))
-			if err != nil {
-				return nil, err
-			}
-
-			accountKey, err := coinTypeKey.Child(hdkeychain.HardenedKeyStart + 0)
-			if err != nil {
-				return nil, err
-			}
-
-			if err := wallet.CreateWallet(*accountKey, nil, time.Now()); err != nil {
-				return nil, err
-			}
-		}
+	if err := InitializeMultiwallet(mw, obRepo.DB(), time.Now()); err != nil {
+		return nil, err
 	}
 
 	erp := wallet.NewExchangeRateProvider(cfg.ExchangeRateProviders)
@@ -525,6 +488,50 @@ func (n *OpenBazaarNode) newHTTPGateway(cfg *repo.Config) (*api.Gateway, error) 
 	}
 
 	return api.NewGateway(n, config, opts...)
+}
+
+func InitializeMultiwallet(mw multiwallet.Multiwallet, db database.Database, creationDate time.Time) error {
+	for ct, wallet := range mw {
+		// Create wallet if not exists. This will fail if the bip44 key has been deleted
+		// from the db, however we are not yet deleting keys or the mnemonic for encryption
+		// purposes.
+		if !wallet.WalletExists() {
+			var bip44ModelKey models.Key
+			err := db.View(func(tx database.Tx) error {
+				return tx.Read().Where("name = ?", "bip44").First(&bip44ModelKey).Error
+			})
+			if gorm.IsRecordNotFoundError(err) {
+				return fmt.Errorf("can not initialize wallet %s: seed does not exist in database", ct.CurrencyCode())
+			} else if err != nil {
+				return err
+			}
+
+			bip44Key, err := hdkeychain.NewKeyFromString(string(bip44ModelKey.Value))
+			if err != nil {
+				return err
+			}
+
+			def, err := models.CurrencyDefinitions.Lookup(ct.CurrencyCode())
+			if err != nil {
+				return err
+			}
+
+			coinTypeKey, err := bip44Key.Child(hdkeychain.HardenedKeyStart + uint32(def.Bip44Code))
+			if err != nil {
+				return err
+			}
+
+			accountKey, err := coinTypeKey.Child(hdkeychain.HardenedKeyStart + 0)
+			if err != nil {
+				return err
+			}
+
+			if err := wallet.CreateWallet(*accountKey, nil, creationDate); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // constructDHTRouting behaves exactly like the default constructDHTRouting function in the IPFS package

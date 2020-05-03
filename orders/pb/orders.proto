@@ -178,6 +178,7 @@ message EscrowRelease {
     repeated bytes fromIDs              = 2;
     string toAddress                    = 3;
     string toAmount                     = 4;
+    string transactionFee               = 5;
 }
 
 message Signature {

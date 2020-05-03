@@ -566,7 +566,20 @@ func (w *MockWallet) Transactions(limit int, offsetID iwallet.TransactionID) ([]
 
 	txs := make([]iwallet.Transaction, 0, len(w.transactions))
 	for _, tx := range w.transactions {
-		txs = append(txs, tx)
+		matches := false
+		for _, from := range tx.From {
+			if w.addrs[from.Address] {
+				matches = true
+			}
+		}
+		for _, to := range tx.To {
+			if w.addrs[to.Address] {
+				matches = true
+			}
+		}
+		if matches {
+			txs = append(txs, tx)
+		}
 	}
 	sorted := &txSorter{transactions: txs}
 
