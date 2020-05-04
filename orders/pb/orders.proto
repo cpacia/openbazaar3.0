@@ -163,7 +163,7 @@ message DisputeOpen {
     Party openedBy                      = 1;
     string reason                       = 2;
     google.protobuf.Timestamp timestamp = 3;
-    repeated bytes contract             = 4;
+    bytes contract                      = 4;
 
     enum Party {
         BUYER  = 0;
@@ -173,7 +173,7 @@ message DisputeOpen {
 
 message DisputeUpdate {
     google.protobuf.Timestamp timestamp = 1;
-    repeated bytes contract             = 2;
+    bytes contract                      = 2;
 }
 
 message DisputeClose {

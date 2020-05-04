@@ -20,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/op/go-logging"
+	"sort"
 	"time"
 )
 
@@ -141,6 +142,28 @@ func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message
 		log.Errorf("Error processing order message for order %s: %s", order.ID.String(), err)
 		if err := orderCopy.PutErrorMessage(message); err != nil {
 			return nil, dbtx.Save(&orderCopy)
+		}
+	}
+
+	parkedMessages, err := order.GetParkedMessages()
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(parkedMessages, func(i, j int) bool {
+		return parkedMessages[i].MessageType < parkedMessages[j].MessageType
+	})
+
+	for _, parked := range parkedMessages {
+		if proto.Equal(parked, message) {
+			continue
+		}
+		_, err = op.processMessage(dbtx, &order, peer, parked)
+		if err != nil {
+			log.Errorf("Error processing parked message for order %s: %s", order.ID.String(), err)
+			if err := order.PutErrorMessage(message); err != nil {
+				log.Errorf("Error saving errored message for order %s: %s", order.ID.String(), err)
+			}
 		}
 	}
 

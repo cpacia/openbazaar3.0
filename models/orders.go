@@ -1041,6 +1041,9 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		}
 		out["erroredMessages"] = m
 	}
+	if o.Transactions != nil {
+		out["transactions"] = o.Transactions
+	}
 
-	return json.Marshal(out)
+	return json.MarshalIndent(out, "", "    ")
 }

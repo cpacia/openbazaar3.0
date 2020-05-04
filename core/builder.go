@@ -561,6 +561,7 @@ func (n *OpenBazaarNode) registerHandlers() {
 	n.networkService.RegisterHandler(pb.Message_ADDRESS_RESPONSE, n.handleAddressResponse)
 	n.networkService.RegisterHandler(pb.Message_PING, n.handlePingMessage)
 	n.networkService.RegisterHandler(pb.Message_PONG, n.handlePongMessage)
+	n.networkService.RegisterHandler(pb.Message_DISPUTE, n.handleDisputeMessage)
 }
 
 func (n *OpenBazaarNode) listenNetworkEvents() {
