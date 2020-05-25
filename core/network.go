@@ -27,9 +27,6 @@ import (
 )
 
 const (
-	// republishInterval is the amount of time to go between republishes.
-	republishInterval = time.Hour * 36
-
 	// nameValidTime is the amount of time an IPNS record is considered valid
 	// after publish.
 	nameValidTime = time.Hour * 24 * 30
@@ -380,46 +377,17 @@ type pubCloser struct {
 	done chan<- struct{}
 }
 
-// publishHandler is a loop that runs and handles IPNS record publishes and republishes. It shoots to
-// republish 36 hours from the last publish so as to not slam the network on startup every time.
-// If a current publish is active it will be canceled and the new publish will supersede it.
-//
-// The done chan is closed once the handler is fully initialized.
+// publishHandler is a loop that runs and handles IPNS record publishes. If a new
+// publish is triggered while an existing publish is still going the existing
+// published will be canceled and the new one started.
 func (n *OpenBazaarNode) publishHandler() {
-	var lastPublish time.Time
-	err := n.repo.DB().View(func(tx database.Tx) error {
-		var event models.Event
-		if err := tx.Read().Where("name = ?", "last_publish").First(&event).Error; err != nil {
-			return err
-		}
-		lastPublish = event.Time
-		return nil
-	})
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
-		log.Error("Error loading last republish time: %s", err.Error())
-	}
-
-	tick := time.After(republishInterval - time.Since(lastPublish))
 	publishCtx, publishCancel := context.WithCancel(context.Background())
-
 	go func() {
 		for {
 			select {
-			case <-tick:
-				lastPublish = time.Now()
-				tick = time.After(republishInterval - time.Since(lastPublish))
-				err = n.repo.DB().Update(func(tx database.Tx) error {
-					return tx.Save(&models.Event{Name: "last_publish", Time: lastPublish})
-				})
-				if err != nil {
-					log.Errorf("Error saving last publish time to the db: %s", err.Error())
-				}
-				go n.Publish(nil)
 			case p := <-n.publishChan:
 				publishCancel()
 				publishCtx, publishCancel = context.WithCancel(context.Background())
-				lastPublish = time.Now()
-				tick = time.After(republishInterval - time.Since(lastPublish))
 				go n.publish(publishCtx, p.done)
 			case <-n.shutdown:
 				publishCancel()

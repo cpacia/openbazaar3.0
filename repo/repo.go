@@ -385,8 +385,7 @@ func mustDefaultConfig() *config.Config {
 	if err != nil {
 		panic(err)
 	}
-	conf.Ipns.RecordLifetime = "168h"
-	conf.Ipns.RepublishPeriod = "12h"
+	conf.Ipns.RecordLifetime = "720h"
 	conf.Discovery.MDNS.Enabled = false
 	conf.Addresses = config.Addresses{
 		Swarm: []string{
