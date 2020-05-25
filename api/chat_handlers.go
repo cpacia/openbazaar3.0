@@ -217,6 +217,7 @@ func (g *Gateway) handleDELETEGroupChatMessages(w http.ResponseWriter, r *http.R
 		return
 	}
 }
+
 func (g *Gateway) handleDELETEChatConversation(w http.ResponseWriter, r *http.Request) {
 	peerIDStr := mux.Vars(r)["peerID"]
 
