@@ -37,6 +37,10 @@ var (
 	// ErrNotFound is included in the error wrapper when the error was generated
 	// due to a requested asset not being found.
 	ErrNotFound = errors.New("not found")
+
+	// ErrNothingToPublish is an error that is returned if a publish call terminates
+	// because the public data directory has not changed since last publish.
+	ErrNothingToPublish = errors.New("nothing to publish")
 )
 
 type ErrTooManyItems []string

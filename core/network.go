@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -27,6 +28,9 @@ import (
 )
 
 const (
+	// republishInterval is the amount of time to go between republishes.
+	republishInterval = time.Hour * 36
+
 	// nameValidTime is the amount of time an IPNS record is considered valid
 	// after publish.
 	nameValidTime = time.Hour * 24 * 30
@@ -45,7 +49,6 @@ func (n *OpenBazaarNode) Publish(done chan<- struct{}) {
 
 func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 	atomic.AddInt32(&n.publishActive, 1)
-	log.Info("Publishing to IPNS...")
 
 	publishID := rand.Intn(math.MaxInt32)
 	n.eventBus.Emit(&events.PublishStarted{
@@ -56,6 +59,9 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 
 	defer func() {
 		atomic.AddInt32(&n.publishActive, -1)
+		if publishErr == coreiface.ErrNothingToPublish {
+			return
+		}
 		if publishErr != nil && publishErr != context.Canceled {
 			n.eventBus.Emit(&events.PublishingError{
 				Err: publishErr,
@@ -130,7 +136,15 @@ func (n *OpenBazaarNode) publish(ctx context.Context, done chan<- struct{}) {
 		return
 	}
 
+	// If the state has not changed since last publish then just return.
+	// The IPNS republisher is responsible for keeping our current IPNS
+	// record alive.
+	if pth.Cid() == currentRoot {
+		return
+	}
+
 	// Publish
+	log.Info("Publishing to IPNS...")
 	if err := n.ipfsNode.Namesys.PublishWithEOL(cctx, n.ipfsNode.PrivateKey, fpath.FromString(pth.Root().String()), time.Now().Add(nameValidTime)); err != nil {
 		if err != context.Canceled {
 			log.Errorf("Error namesys publish: %s", err.Error())
@@ -377,17 +391,48 @@ type pubCloser struct {
 	done chan<- struct{}
 }
 
-// publishHandler is a loop that runs and handles IPNS record publishes. If a new
-// publish is triggered while an existing publish is still going the existing
-// published will be canceled and the new one started.
+// publishHandler is a loop that runs and handles IPNS record publishes and republishes. It shoots to
+// republish 36 hours from the last publish so as to not slam the network on startup every time.
+// If a current publish is active it will be canceled and the new publish will supersede it.
+//
+// The only reason we have this republish functionality at all is to publish ratings and followers/follows
+// that do not otherwise trigger an automatic publish. So we essentially batch and publish these
+// changes every 36 hours if the user does not trigger a publish in the interim.
 func (n *OpenBazaarNode) publishHandler() {
+	var lastPublish time.Time
+	err := n.repo.DB().View(func(tx database.Tx) error {
+		var event models.Event
+		if err := tx.Read().Where("name = ?", "last_publish").First(&event).Error; err != nil {
+			return err
+		}
+		lastPublish = event.Time
+		return nil
+	})
+	if err != nil && !gorm.IsRecordNotFoundError(err) {
+		log.Error("Error loading last republish time: %s", err.Error())
+	}
+
+	tick := time.After(republishInterval - time.Since(lastPublish))
 	publishCtx, publishCancel := context.WithCancel(context.Background())
+
 	go func() {
 		for {
 			select {
+			case <-tick:
+				lastPublish = time.Now()
+				tick = time.After(republishInterval - time.Since(lastPublish))
+				err = n.repo.DB().Update(func(tx database.Tx) error {
+					return tx.Save(&models.Event{Name: "last_publish", Time: lastPublish})
+				})
+				if err != nil {
+					log.Errorf("Error saving last publish time to the db: %s", err.Error())
+				}
+				go n.Publish(nil)
 			case p := <-n.publishChan:
 				publishCancel()
 				publishCtx, publishCancel = context.WithCancel(context.Background())
+				lastPublish = time.Now()
+				tick = time.After(republishInterval - time.Since(lastPublish))
 				go n.publish(publishCtx, p.done)
 			case <-n.shutdown:
 				publishCancel()
