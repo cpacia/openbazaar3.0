@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models/factory"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
@@ -293,12 +294,18 @@ func Test_generateListingSlug(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		slug, err := node.generateListingSlug(test.title)
+		err := node.repo.DB().View(func(dbtx database.Tx) error {
+			slug, err := node.generateListingSlug(dbtx, test.title)
+			if err != nil {
+				return err
+			}
+			if slug != test.expected {
+				t.Errorf("Expected slug %s, got %s", test.expected, slug)
+			}
+			return nil
+		})
 		if err != nil {
-			t.Fatal(err)
-		}
-		if slug != test.expected {
-			t.Errorf("Expected slug %s, got %s", test.expected, slug)
+			t.Error(err)
 		}
 	}
 }

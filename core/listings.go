@@ -270,7 +270,7 @@ func (n *OpenBazaarNode) GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.
 // generateListingSlug generates a slug from the title of the listing. It
 // makes sure the slug is not used by any other listing. If it is it will
 // add an integer to the end of the slug and increment if necessary.
-func (n *OpenBazaarNode) generateListingSlug(title string) (string, error) {
+func (n *OpenBazaarNode) generateListingSlug(dbtx database.Tx, title string) (string, error) {
 	title = strings.Replace(title, "/", "", -1)
 	counter := 1
 
@@ -291,11 +291,16 @@ func (n *OpenBazaarNode) generateListingSlug(title string) (string, error) {
 
 	slugToTry := slugBase
 	for {
-		_, err := n.GetMyListingBySlug(slugToTry)
-		if errors.Is(err, coreiface.ErrNotFound) {
+		index, err := dbtx.GetListingIndex()
+		if os.IsNotExist(err) {
 			return slugToTry, nil
 		} else if err != nil {
 			return "", err
+		}
+
+		_, err = index.GetListingCID(slugToTry)
+		if err != nil {
+			return slugToTry, nil
 		}
 		slugToTry = slugBase + strconv.Itoa(counter)
 		counter++
@@ -370,7 +375,7 @@ func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) 
 	// If slug is not set create a new one.
 	if listing.Slug == "" {
 		var err error
-		listing.Slug, err = n.generateListingSlug(listing.Item.Title)
+		listing.Slug, err = n.generateListingSlug(dbtx, listing.Item.Title)
 		if err != nil {
 			return cid.Cid{}, err
 		}
