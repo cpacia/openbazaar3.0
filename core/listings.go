@@ -361,6 +361,10 @@ func (n *OpenBazaarNode) updateAllListings(tx database.Tx, updateFunc func(l *pb
 // saveListingToDB updates any needed fields in the listing and saves or updates the
 // listing on disk and the coupon database table.
 func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) (cid.Cid, error) {
+	if listing.Item == nil {
+		return cid.Cid{}, fmt.Errorf("%w: no item in listing", coreiface.ErrBadRequest)
+	}
+
 	// Set the escrow timeout.
 	if n.UsingTestnet() {
 		// Testnet should be set to one hour unless otherwise
@@ -394,9 +398,6 @@ func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) 
 	}
 
 	// Sanitize a few critical fields
-	if listing.Item == nil {
-		return cid.Cid{}, fmt.Errorf("%w: no item in listing", coreiface.ErrBadRequest)
-	}
 	sanitizer := bluemonday.UGCPolicy()
 	for _, opt := range listing.Item.Options {
 		opt.Name = sanitizer.Sanitize(opt.Name)
@@ -501,7 +502,6 @@ func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) 
 		return cid.Cid{}, err
 	}
 
-	// Update listing index
 	return n.cid([]byte(ser))
 }
 

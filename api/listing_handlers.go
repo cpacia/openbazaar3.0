@@ -117,6 +117,7 @@ func (g *Gateway) handlePOSTListing(w http.ResponseWriter, r *http.Request) {
 
 	if err := jsonpb.Unmarshal(r.Body, listing); err != nil {
 		http.Error(w, wrapError(fmt.Errorf("error unmarshaling listing: %s", err.Error())), http.StatusBadRequest)
+		return
 	}
 
 	if _, err := g.node.GetMyListingBySlug(listing.Slug); !errors.Is(err, coreiface.ErrNotFound) {
