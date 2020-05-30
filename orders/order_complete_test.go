@@ -91,7 +91,8 @@ func TestOrderProcessor_processOrderCompleteMessage(t *testing.T) {
 		tinyImageHash  = "bbbb"
 	)
 
-	buyerSig, err := buyerPriv.Sign(ratingKeys[0].PubKey().SerializeCompressed())
+	hashedRatingKey := sha256.Sum256(ratingKeys[0].PubKey().SerializeCompressed())
+	buyerSig, err := buyerPriv.Sign(hashedRatingKey[:])
 	if err != nil {
 		t.Fatal(err)
 	}
