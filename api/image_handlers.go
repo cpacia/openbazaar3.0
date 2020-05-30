@@ -136,21 +136,29 @@ func (g *Gateway) handlePOSTProductImage(w http.ResponseWriter, r *http.Request)
 		Image    string `json:"image"`
 		Filename string `json:"filename"`
 	}
+	var data []ImgData
+
 	decoder := json.NewDecoder(r.Body)
-	data := new(ImgData)
+
 	if err := decoder.Decode(&data); err != nil {
 		http.Error(w, wrapError(err), http.StatusBadRequest)
 		return
 	}
 
-	hashes, err := g.node.SetProductImage(data.Image, data.Filename)
-	if errors.Is(err, coreiface.ErrBadRequest) {
-		http.Error(w, wrapError(err), http.StatusBadRequest)
-		return
-	} else if err != nil {
-		http.Error(w, wrapError(err), http.StatusInternalServerError)
-		return
+	var imgs []models.ImageHashes
+
+	for _, img := range data {
+		hashes, err := g.node.SetProductImage(img.Image, img.Filename)
+		if errors.Is(err, coreiface.ErrBadRequest) {
+			http.Error(w, wrapError(err), http.StatusBadRequest)
+			return
+		} else if err != nil {
+			http.Error(w, wrapError(err), http.StatusInternalServerError)
+			return
+		}
+		imgs = append(imgs, hashes)
 	}
 
-	sanitizedJSONResponse(w, hashes)
+
+	sanitizedJSONResponse(w, imgs)
 }

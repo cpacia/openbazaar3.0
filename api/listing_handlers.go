@@ -134,6 +134,16 @@ func (g *Gateway) handlePOSTListing(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	
+	type slugResponse struct {
+		Slug string `json:"slug"`
+	}
+
+	slug := slugResponse{
+		Slug: listing.Slug,
+	}
+
+	sanitizedJSONResponse(w, &slug)
 }
 
 func (g *Gateway) handlePUTListing(w http.ResponseWriter, r *http.Request) {
@@ -157,6 +167,16 @@ func (g *Gateway) handlePUTListing(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	type slugResponse struct {
+		Slug string `json:"slug"`
+	}
+
+	slug := slugResponse{
+		Slug: listing.Slug,
+	}
+
+	sanitizedJSONResponse(w, &slug)
 }
 
 func (g *Gateway) handleDELETEListing(w http.ResponseWriter, r *http.Request) {
