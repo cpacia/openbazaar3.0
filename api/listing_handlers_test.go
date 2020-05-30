@@ -400,7 +400,10 @@ func TestListingHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
-				return nil, nil
+				resp := struct {
+					Slug string `json:"slug"`
+				}{}
+				return marshalAndSanitizeJSON(resp)
 			},
 		},
 		{
@@ -490,7 +493,10 @@ func TestListingHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
-				return nil, nil
+				resp := struct {
+					Slug string `json:"slug"`
+				}{}
+				return marshalAndSanitizeJSON(resp)
 			},
 		},
 		{

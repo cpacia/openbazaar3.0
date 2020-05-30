@@ -326,7 +326,7 @@ func TestImageHandlers(t *testing.T) {
 		},
 		{
 			name:   "Post image",
-			path:   "/v1/ob/image",
+			path:   "/v1/ob/images",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
 				n.setProductImageFunc = func(b64ImageData string, filename string) (models.ImageHashes, error) {
@@ -341,18 +341,20 @@ func TestImageHandlers(t *testing.T) {
 					}, nil
 				}
 			},
-			body:       []byte(`{"image": "aa", "filename": "image.jpg"}`),
+			body:       []byte(`[{"image": "aa", "filename": "image.jpg"}]`),
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
-				r := models.ImageHashes{
-					Small: "QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7",
+				r := []models.ImageHashes{
+					{
+						Small: "QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7",
+					},
 				}
 				return marshalAndSanitizeJSON(r)
 			},
 		},
 		{
 			name:   "Post image bad data",
-			path:   "/v1/ob/image",
+			path:   "/v1/ob/images",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
 				n.setProductImageFunc = func(b64ImageData string, filename string) (models.ImageHashes, error) {
@@ -369,14 +371,14 @@ func TestImageHandlers(t *testing.T) {
 		},
 		{
 			name:   "Post image bad request",
-			path:   "/v1/ob/image",
+			path:   "/v1/ob/images",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
 				n.setProductImageFunc = func(b64ImageData string, filename string) (models.ImageHashes, error) {
 					return models.ImageHashes{}, coreiface.ErrBadRequest
 				}
 			},
-			body:       []byte(`{"image": "aa", "filename": "image.jpg"}`),
+			body:       []byte(`[{"image": "aa", "filename": "image.jpg"}]`),
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
 				return []byte(fmt.Sprintf("%s\n", `{"error": "bad request"}`)), nil
@@ -384,14 +386,14 @@ func TestImageHandlers(t *testing.T) {
 		},
 		{
 			name:   "Post image internal error",
-			path:   "/v1/ob/image",
+			path:   "/v1/ob/images",
 			method: http.MethodPost,
 			setNodeMethods: func(n *mockNode) {
 				n.setProductImageFunc = func(b64ImageData string, filename string) (models.ImageHashes, error) {
 					return models.ImageHashes{}, coreiface.ErrInternalServer
 				}
 			},
-			body:       []byte(`{"image": "aa", "filename": "image.jpg"}`),
+			body:       []byte(`[{"image": "aa", "filename": "image.jpg"}]`),
 			statusCode: http.StatusInternalServerError,
 			expectedResponse: func() ([]byte, error) {
 				return []byte(fmt.Sprintf("%s\n", `{"error": "internal server error"}`)), nil

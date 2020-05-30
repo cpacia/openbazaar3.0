@@ -134,16 +134,12 @@ func (g *Gateway) handlePOSTListing(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	
-	type slugResponse struct {
+
+	sanitizedJSONResponse(w, &struct {
 		Slug string `json:"slug"`
-	}
-
-	slug := slugResponse{
+	}{
 		Slug: listing.Slug,
-	}
-
-	sanitizedJSONResponse(w, &slug)
+	})
 }
 
 func (g *Gateway) handlePUTListing(w http.ResponseWriter, r *http.Request) {
@@ -151,6 +147,7 @@ func (g *Gateway) handlePUTListing(w http.ResponseWriter, r *http.Request) {
 
 	if err := jsonpb.Unmarshal(r.Body, listing); err != nil {
 		http.Error(w, wrapError(fmt.Errorf("error unmarshaling listing: %s", err.Error())), http.StatusBadRequest)
+		return
 	}
 
 	if _, err := g.node.GetMyListingBySlug(listing.Slug); errors.Is(err, coreiface.ErrNotFound) {
@@ -168,15 +165,11 @@ func (g *Gateway) handlePUTListing(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	type slugResponse struct {
+	sanitizedJSONResponse(w, &struct {
 		Slug string `json:"slug"`
-	}
-
-	slug := slugResponse{
+	}{
 		Slug: listing.Slug,
-	}
-
-	sanitizedJSONResponse(w, &slug)
+	})
 }
 
 func (g *Gateway) handleDELETEListing(w http.ResponseWriter, r *http.Request) {
