@@ -74,7 +74,8 @@ func ValidateRating(rating *pb.Rating) error {
 		if err != nil {
 			return err
 		}
-		valid, err = buyerKey.Verify(rating.VendorSig.RatingKey, rating.BuyerSig)
+		ratingSigHash := sha256.Sum256(rating.VendorSig.RatingKey)
+		valid, err = buyerKey.Verify(ratingSigHash[:], rating.BuyerSig)
 		if !valid || err != nil {
 			return errors.New("invalid buyer signature")
 		}

@@ -77,6 +77,11 @@ type CoreIface interface {
 	GetMyProfile() (*models.Profile, error)
 	GetProfile(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)
 
+	// Ratings
+	GetMyRatings() (models.RatingIndex, error)
+	GetRatings(ctx context.Context, peerID peer.ID, useCache bool) (models.RatingIndex, error)
+	GetRating(ctx context.Context, cid cid.Cid) (*pb.Rating, error)
+
 	// Preferences
 	GetPreferences() (*models.UserPreferences, error)
 	SavePreferences(prefs *models.UserPreferences, done chan struct{}) error

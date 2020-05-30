@@ -64,6 +64,9 @@ type mockNode struct {
 	setProfileFunc               func(profile *models.Profile, done chan<- struct{}) error
 	getMyProfileFunc             func() (*models.Profile, error)
 	getProfileFunc               func(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error)
+	getMyRatingsFunc             func() (models.RatingIndex, error)
+	getRatingsFunc               func(ctx context.Context, peerID peer.ID, useCache bool) (models.RatingIndex, error)
+	getRatingFunc                func(ctx context.Context, cid cid.Cid) (*pb.Rating, error)
 	purchaseFunc                 func(ctx context.Context, purchase *models.Purchase) (orderID models.OrderID, paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error)
 	estimateOrderSubtotalFunc    func(ctx context.Context, purchase *models.Purchase) (*models.CurrencyValue, error)
 	rejectOrderFunc              func(orderID models.OrderID, reason string, done chan struct{}) error
@@ -222,6 +225,15 @@ func (m *mockNode) GetMyProfile() (*models.Profile, error) {
 }
 func (m *mockNode) GetProfile(ctx context.Context, peerID peer.ID, useCache bool) (*models.Profile, error) {
 	return m.getProfileFunc(ctx, peerID, useCache)
+}
+func (m *mockNode) GetMyRatings() (models.RatingIndex, error) {
+	return m.getMyRatingsFunc()
+}
+func (m *mockNode) GetRatings(ctx context.Context, peerID peer.ID, useCache bool) (models.RatingIndex, error) {
+	return m.getRatingsFunc(ctx, peerID, useCache)
+}
+func (m *mockNode) GetRating(ctx context.Context, cid cid.Cid) (*pb.Rating, error) {
+	return m.getRatingFunc(ctx, cid)
 }
 func (m *mockNode) PurchaseListing(ctx context.Context, purchase *models.Purchase) (orderID models.OrderID, paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error) {
 	return m.purchaseFunc(ctx, purchase)

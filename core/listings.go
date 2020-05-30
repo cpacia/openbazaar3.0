@@ -255,7 +255,7 @@ func (n *OpenBazaarNode) GetListingBySlug(ctx context.Context, peerID peer.ID, s
 	if err != nil {
 		return nil, err
 	}
-	return n.deserializeAndValidate(listingBytes, cid)
+	return n.deserializeAndValidateListing(listingBytes, cid)
 }
 
 // GetListingByCID fetches the listing from the network given its cid.
@@ -264,7 +264,7 @@ func (n *OpenBazaarNode) GetListingByCID(ctx context.Context, cid cid.Cid) (*pb.
 	if err != nil {
 		return nil, err
 	}
-	return n.deserializeAndValidate(listingBytes, cid)
+	return n.deserializeAndValidateListing(listingBytes, cid)
 }
 
 // generateListingSlug generates a slug from the title of the listing. It
@@ -970,9 +970,9 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	return nil
 }
 
-// deserializeAndValidate accepts a byte slice of a serialized SignedListing
+// deserializeAndValidateListing accepts a byte slice of a serialized SignedListing
 // and deserializes and validates it.
-func (n *OpenBazaarNode) deserializeAndValidate(listingBytes []byte, cid cid.Cid) (*pb.SignedListing, error) {
+func (n *OpenBazaarNode) deserializeAndValidateListing(listingBytes []byte, cid cid.Cid) (*pb.SignedListing, error) {
 	signedListing := new(pb.SignedListing)
 	if err := jsonpb.UnmarshalString(string(listingBytes), signedListing); err != nil {
 		return nil, fmt.Errorf("%w: %s", coreiface.ErrNotFound, err)

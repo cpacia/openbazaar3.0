@@ -125,7 +125,8 @@ func (n *OpenBazaarNode) CompleteOrder(orderID models.OrderID, ratings []models.
 				Sig:    sig.Serialize(),
 			}
 
-			buyerSig, err := n.ipfsNode.PrivateKey.Sign(ratingPB.VendorSig.RatingKey)
+			ratingSigHash := sha256.Sum256(ratingPB.VendorSig.RatingKey)
+			buyerSig, err := n.ipfsNode.PrivateKey.Sign(ratingSigHash[:])
 			if err != nil {
 				return err
 			}

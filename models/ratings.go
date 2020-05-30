@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/ipfs/go-cid"
 )
@@ -27,6 +28,9 @@ func (ri *RatingIndex) AddRating(rating *pb.Rating, cid cid.Cid) error {
 		if id == cid.String() {
 			return nil // Already exists
 		}
+	}
+	if rating.VendorSig == nil {
+		return errors.New("vendor sig is nil")
 	}
 
 	total := float64(ratingInfo.Count) * ratingInfo.Average

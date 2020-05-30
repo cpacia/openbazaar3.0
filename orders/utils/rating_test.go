@@ -65,7 +65,8 @@ func TestValidateRating(t *testing.T) {
 	}
 	vendorSig.VendorSignature = sig
 
-	buyerSig, err := buyerPriv.Sign(ratingKey.PubKey().SerializeCompressed())
+	ratingSigHash := sha256.Sum256(ratingKey.PubKey().SerializeCompressed())
+	buyerSig, err := buyerPriv.Sign(ratingSigHash[:])
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -947,7 +947,8 @@ type OrderFulfillment_FulfilledItem_CryptocurrencyDelivery_ struct {
 	CryptocurrencyDelivery *OrderFulfillment_FulfilledItem_CryptocurrencyDelivery `protobuf:"bytes,5,opt,name=cryptocurrencyDelivery,proto3,oneof"`
 }
 
-func (*OrderFulfillment_FulfilledItem_PhysicalDelivery_) isOrderFulfillment_FulfilledItem_Delivery() {}
+func (*OrderFulfillment_FulfilledItem_PhysicalDelivery_) isOrderFulfillment_FulfilledItem_Delivery() {
+}
 
 func (*OrderFulfillment_FulfilledItem_DigitalDelivery_) isOrderFulfillment_FulfilledItem_Delivery() {}
 
