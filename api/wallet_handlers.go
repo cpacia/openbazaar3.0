@@ -75,7 +75,7 @@ func (g *Gateway) handleGETBalance(w http.ResponseWriter, r *http.Request) {
 }
 
 type walletAddressResponse struct {
-	Address string `json:"Address"`
+	Address string `json:"address"`
 }
 
 func (g *Gateway) handleGETAddress(w http.ResponseWriter, r *http.Request) {
