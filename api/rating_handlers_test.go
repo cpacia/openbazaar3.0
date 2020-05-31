@@ -386,6 +386,36 @@ func TestRatingHandlers(t *testing.T) {
 			},
 		},
 		{
+			name:   "Get my ratings",
+			path:   "/v1/ob/ratings/12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi/tshirt",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.identityFunc = func() peer.ID {
+					pid, _ := peer.Decode("12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi")
+					return pid
+				}
+				n.getMyRatingsFunc = func() (models.RatingIndex, error) {
+					var ratingIndex models.RatingIndex
+					ratingIndex = append(ratingIndex, models.RatingInfo{
+						Slug: "tshirt",
+						Ratings: []string{
+							"QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7",
+							"QmTvGbPiS1PaE7AAn4gEszNiYMgdrbMXwLkGnLKYSADs8K",
+						},
+					})
+					return ratingIndex, nil
+				}
+			},
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				ret := []string{
+					"QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7",
+					"QmTvGbPiS1PaE7AAn4gEszNiYMgdrbMXwLkGnLKYSADs8K",
+				}
+				return marshalAndSanitizeJSON(ret)
+			},
+		},
+		{
 			name:   "Get ratings use cache",
 			path:   "/v1/ob/ratings/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN/tshirt?usecache=true",
 			method: http.MethodGet,
@@ -434,20 +464,6 @@ func TestRatingHandlers(t *testing.T) {
 			statusCode: http.StatusBadRequest,
 			expectedResponse: func() ([]byte, error) {
 				return []byte(fmt.Sprintf("%s\n", `{"error": "invalid peer id: failed to parse peer ID: selected encoding not supported"}`)), nil
-			},
-		},
-		{
-			name:   "Get ratings not found",
-			path:   "/v1/ob/ratings/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN/tshirt",
-			method: http.MethodGet,
-			setNodeMethods: func(n *mockNode) {
-				n.getRatingsFunc = func(ctx context.Context, pid peer.ID, useCache bool) (models.RatingIndex, error) {
-					return nil, coreiface.ErrNotFound
-				}
-			},
-			statusCode: http.StatusNotFound,
-			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "not found"}`)), nil
 			},
 		},
 		{

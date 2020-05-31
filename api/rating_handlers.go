@@ -78,9 +78,14 @@ func (g *Gateway) handleGETRatings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, wrapError(fmt.Errorf("invalid peer id: %s", err.Error())), http.StatusBadRequest)
 		return
 	}
-	index, err := g.node.GetRatings(r.Context(), pid, useCache)
+	var index models.RatingIndex
+	if pid == g.node.Identity() {
+		index, err = g.node.GetMyRatings()
+	} else {
+		index, err = g.node.GetRatings(r.Context(), pid, useCache)
+	}
 	if errors.Is(err, coreiface.ErrNotFound) {
-		http.Error(w, wrapError(err), http.StatusNotFound)
+		sanitizedJSONResponse(w, []string{})
 		return
 	} else if err != nil {
 		http.Error(w, wrapError(err), http.StatusInternalServerError)
