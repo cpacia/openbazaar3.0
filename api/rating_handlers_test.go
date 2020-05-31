@@ -359,5 +359,110 @@ func TestRatingHandlers(t *testing.T) {
 				return []byte(`[]`), nil
 			},
 		},
+		{
+			name:   "Get ratings",
+			path:   "/v1/ob/ratings/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN/tshirt",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getRatingsFunc = func(ctx context.Context, pid peer.ID, useCache bool) (models.RatingIndex, error) {
+					var ratingIndex models.RatingIndex
+					ratingIndex = append(ratingIndex, models.RatingInfo{
+						Slug: "tshirt",
+						Ratings: []string{
+							"QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7",
+							"QmTvGbPiS1PaE7AAn4gEszNiYMgdrbMXwLkGnLKYSADs8K",
+						},
+					})
+					return ratingIndex, nil
+				}
+			},
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				ret := []string{
+					"QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7",
+					"QmTvGbPiS1PaE7AAn4gEszNiYMgdrbMXwLkGnLKYSADs8K",
+				}
+				return marshalAndSanitizeJSON(ret)
+			},
+		},
+		{
+			name:   "Get ratings use cache",
+			path:   "/v1/ob/ratings/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN/tshirt?usecache=true",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getRatingsFunc = func(ctx context.Context, pid peer.ID, useCache bool) (models.RatingIndex, error) {
+					if useCache != true {
+						return nil, errors.New("use cache not selected")
+					}
+					var ratingIndex models.RatingIndex
+					ratingIndex = append(ratingIndex, models.RatingInfo{
+						Slug: "tshirt",
+						Ratings: []string{
+							"QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7",
+							"QmTvGbPiS1PaE7AAn4gEszNiYMgdrbMXwLkGnLKYSADs8K",
+						},
+					})
+					return ratingIndex, nil
+				}
+			},
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				ret := []string{
+					"QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7",
+					"QmTvGbPiS1PaE7AAn4gEszNiYMgdrbMXwLkGnLKYSADs8K",
+				}
+				return marshalAndSanitizeJSON(ret)
+			},
+		},
+		{
+			name:   "Get ratings invalid peerID",
+			path:   "/v1/ob/ratings/adfaf/tshirt",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getRatingsFunc = func(ctx context.Context, pid peer.ID, useCache bool) (models.RatingIndex, error) {
+					var ratingIndex models.RatingIndex
+					ratingIndex = append(ratingIndex, models.RatingInfo{
+						Slug: "tshirt",
+						Ratings: []string{
+							"QmcUDmZK8PsPYWw5FRHKNZFjszm2K6e68BQSTpnJYUsML7",
+							"QmTvGbPiS1PaE7AAn4gEszNiYMgdrbMXwLkGnLKYSADs8K",
+						},
+					})
+					return ratingIndex, nil
+				}
+			},
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(fmt.Sprintf("%s\n", `{"error": "invalid peer id: failed to parse peer ID: selected encoding not supported"}`)), nil
+			},
+		},
+		{
+			name:   "Get ratings not found",
+			path:   "/v1/ob/ratings/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN/tshirt",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getRatingsFunc = func(ctx context.Context, pid peer.ID, useCache bool) (models.RatingIndex, error) {
+					return nil, coreiface.ErrNotFound
+				}
+			},
+			statusCode: http.StatusNotFound,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(fmt.Sprintf("%s\n", `{"error": "not found"}`)), nil
+			},
+		},
+		{
+			name:   "Get ratings internal error",
+			path:   "/v1/ob/ratings/12D3KooWLbTBv97L6jvaLkdSRpqhCX3w7PyPDWU7kwJsKJyztAUN/tshirt",
+			method: http.MethodGet,
+			setNodeMethods: func(n *mockNode) {
+				n.getRatingsFunc = func(ctx context.Context, pid peer.ID, useCache bool) (models.RatingIndex, error) {
+					return nil, errors.New("internal")
+				}
+			},
+			statusCode: http.StatusInternalServerError,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(fmt.Sprintf("%s\n", `{"error": "internal"}`)), nil
+			},
+		},
 	})
 }

@@ -49,6 +49,24 @@ func (ri *RatingIndex) AddRating(rating *pb.Rating, cid cid.Cid) error {
 	return nil
 }
 
+// GetRatingCIDs returns the rating CIDs for the rating with the given slug.
+func (ri *RatingIndex) GetRatingCIDs(slug string) ([]cid.Cid, error) {
+	var cids []cid.Cid
+	for _, r := range *ri {
+		if r.Slug == slug {
+			for _, idStr := range r.Ratings {
+				id, err := cid.Decode(idStr)
+				if err != nil {
+					return nil, err
+				}
+				cids = append(cids, id)
+			}
+			return cids, nil
+		}
+	}
+	return nil, nil
+}
+
 // RatingInfo stores info about the ratings for each listing.
 type RatingInfo struct {
 	Slug    string   `json:"slug"`

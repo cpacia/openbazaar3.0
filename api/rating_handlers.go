@@ -68,6 +68,37 @@ func (g *Gateway) handleGETRating(w http.ResponseWriter, r *http.Request) {
 	sanitizedProtobufResponse(w, rating)
 }
 
+func (g *Gateway) handleGETRatings(w http.ResponseWriter, r *http.Request) {
+	peerIDStr := mux.Vars(r)["peerID"]
+	slug := mux.Vars(r)["slug"]
+	useCache, _ := strconv.ParseBool(r.URL.Query().Get("usecache"))
+
+	pid, err := peer.Decode(peerIDStr)
+	if err != nil {
+		http.Error(w, wrapError(fmt.Errorf("invalid peer id: %s", err.Error())), http.StatusBadRequest)
+		return
+	}
+	index, err := g.node.GetRatings(r.Context(), pid, useCache)
+	if errors.Is(err, coreiface.ErrNotFound) {
+		http.Error(w, wrapError(err), http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
+		return
+	}
+	ratings, err := index.GetRatingCIDs(slug)
+	if err != nil {
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
+		return
+	}
+	ret := make([]string, len(ratings))
+	for i, r := range ratings {
+		ret[i] = r.String()
+	}
+
+	sanitizedJSONResponse(w, ret)
+}
+
 func (g *Gateway) handlePOSTFetchRatings(w http.ResponseWriter, r *http.Request) {
 	async, _ := strconv.ParseBool(r.URL.Query().Get("async"))
 

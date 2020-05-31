@@ -155,6 +155,7 @@ func (g *Gateway) newV1Router() *mux.Router {
 	r.HandleFunc("/v1/ob/ratingindex/{peerID}", g.handleGETRatingIndex).Methods("GET")
 	r.HandleFunc("/v1/ob/ratingindex", g.handleGETRatingIndex).Methods("GET")
 	r.HandleFunc("/v1/ob/rating/{ratingID}", g.handleGETRating).Methods("GET")
+	r.HandleFunc("/v1/ob/ratings/{peerID}/{slug}", g.handleGETRatings).Methods("GET")
 	r.HandleFunc("/v1/ob/fetchratings", g.handlePOSTFetchRatings).Methods("POST")
 	r.HandleFunc("/v1/ob/followers/{peerID}", g.handleGETFollowers).Methods("GET")
 	r.HandleFunc("/v1/ob/followers", g.handleGETFollowers).Methods("GET")
