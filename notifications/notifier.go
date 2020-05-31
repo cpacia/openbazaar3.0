@@ -106,6 +106,18 @@ func (n *Notifier) Start() {
 		log.Errorf("Error subscribing to events: %s", err)
 	}
 
+	wallet := []interface{}{
+		&events.BlockReceived{},
+		&events.TransactionReceived{},
+		&events.SpendFromPaymentAddress{},
+		&events.WalletUpdate{},
+	}
+
+	walletSub, err := n.bus.Subscribe(wallet)
+	if err != nil {
+		log.Errorf("Error subscribing to events: %s", err)
+	}
+
 	n.bus.Emit(&notifierStarted{})
 	for {
 		select {
@@ -162,7 +174,47 @@ func (n *Notifier) Start() {
 			if err := n.notifyFunc(i); err != nil {
 				log.Errorf("Error sending notification: %s", err)
 			}
+		case event := <-walletSub.Out():
+			var b interface{}
+			switch event.(type) {
+			case *events.BlockReceived:
+				b = struct {
+					Block interface{} `json:"block"`
+				}{
+					Block: event,
+				}
+			case *events.TransactionReceived:
+				b = struct {
+					Transaction interface{} `json:"transaction"`
+				}{
+					Transaction: event,
+				}
+			case *events.SpendFromPaymentAddress:
+				b = struct {
+					Transaction interface{} `json:"transaction"`
+				}{
+					Transaction: event,
+				}
+			case *events.WalletUpdate:
+				b = struct {
+					WalletUpdate interface{} `json:"walletUpdate"`
+				}{
+					WalletUpdate: event,
+				}
+				if err := n.notifyFunc(b); err != nil {
+					log.Errorf("Error sending notification: %s", err)
+				}
+				continue
+			}
+
+			if err := n.notifyFunc(walletWrapper{b}); err != nil {
+				log.Errorf("Error sending notification: %s", err)
+			}
 		case <-n.shutdown:
+			notificationSub.Close()
+			publishSub.Close()
+			chatSub.Close()
+			walletSub.Close()
 			return
 		}
 	}

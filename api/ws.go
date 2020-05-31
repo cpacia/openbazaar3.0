@@ -20,7 +20,9 @@ func (c *connection) reader() {
 	for {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
-			log.Errorf("Websocket read error: %s", err.Error())
+			if !websocket.IsUnexpectedCloseError(err) {
+				log.Errorf("Websocket read error: %s", err.Error())
+			}
 			break
 		}
 

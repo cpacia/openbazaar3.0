@@ -127,7 +127,10 @@ func (n *OpenBazaarNode) Start() {
 		go n.followerTracker.Start()
 		go n.orderProcessor.Start()
 		go n.syncMessages()
-		go n.multiwallet.Start()
+		go func() {
+			n.multiwallet.Start()
+			n.listenWalletEvents()
+		}()
 		go n.gateway.Serve()
 		go n.notifier.Start()
 		if err := n.removeDisabledCoinsFromListings(); err != nil && !os.IsNotExist(err) {

@@ -591,6 +591,60 @@ func (n *OpenBazaarNode) listenNetworkEvents() {
 	n.ipfsNode.PeerHost.Network().Notify(notifier)
 }
 
+func (n *OpenBazaarNode) listenWalletEvents() {
+	blockChan := make(chan struct{})
+	for ct, w := range n.multiwallet {
+		go func(cointype iwallet.CoinType, wallet iwallet.Wallet) {
+			blockSub := wallet.SubscribeBlocks()
+			txSub := wallet.SubscribeTransactions()
+			for {
+				select {
+				case <-n.shutdown:
+					return
+				case bi := <-blockSub:
+					n.eventBus.Emit(&events.BlockReceived{
+						BlockInfo:    bi,
+						CurrencyCode: cointype.CurrencyCode(),
+					})
+					blockChan <- struct{}{}
+				case tx := <-txSub:
+					n.eventBus.Emit(&events.TransactionReceived{
+						Transaction:  tx,
+						CurrencyCode: cointype.CurrencyCode(),
+					})
+				}
+			}
+		}(ct, w)
+	}
+	go func() {
+		for {
+			select {
+			case <-n.shutdown:
+				return
+			case <- blockChan:
+				update := make(events.WalletUpdate)
+				for ct, w := range n.multiwallet {
+					bi, err := w.BlockchainInfo()
+					if err != nil {
+						log.Errorf("Error querying %s wallet for blockchain info: %s", ct.CurrencyCode(), err)
+					}
+					unconfirmed, confirmed, err := w.Balance()
+					if err != nil {
+						log.Errorf("Error querying %s wallet for balance: %s", ct.CurrencyCode(), err)
+					}
+
+					update[ct.CurrencyCode()] = events.WalletInfo{
+						ChainHeight: bi.Height,
+						ConfirmedBalance: confirmed,
+						UnconfirmedBalance: unconfirmed,
+					}
+				}
+				n.eventBus.Emit(&update)
+			}
+		}
+	}()
+}
+
 // newMessageWithID returns a new *pb.Message with a random
 // message ID.
 func newMessageWithID() *pb.Message {
