@@ -612,21 +612,23 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 			return coreiface.ErrTooManyCharacters{"metadata.acceptedcurrencies", strconv.Itoa(WordMaxCharacters)}
 		}
 	}
-	if sl.Listing.Metadata.PricingCurrency == nil {
+	if sl.Listing.Metadata.Format != pb.Listing_Metadata_MARKET_PRICE && sl.Listing.Metadata.PricingCurrency == nil {
 		return coreiface.ErrMissingField("metadata.pricingcurrency")
 	}
-	if sl.Listing.Metadata.PricingCurrency.Code == "" {
-		return coreiface.ErrMissingField("metadata.pricingcurrency.code")
-	}
-	if len(sl.Listing.Metadata.PricingCurrency.Code) > WordMaxCharacters {
-		return coreiface.ErrTooManyCharacters{"metadata.pricingcurrency.code", strconv.Itoa(WordMaxCharacters)}
-	}
-	def, err := models.CurrencyDefinitions.Lookup(sl.Listing.Metadata.PricingCurrency.Code)
-	if err != nil {
-		return errors.New("unknown pricing currency")
-	}
-	if sl.Listing.Metadata.PricingCurrency.Divisibility != uint32(def.Divisibility) {
-		return errors.New("divisibility differs from expected value")
+	if sl.Listing.Metadata.PricingCurrency != nil {
+		if sl.Listing.Metadata.PricingCurrency.Code == "" {
+			return coreiface.ErrMissingField("metadata.pricingcurrency.code")
+		}
+		if len(sl.Listing.Metadata.PricingCurrency.Code) > WordMaxCharacters {
+			return coreiface.ErrTooManyCharacters{"metadata.pricingcurrency.code", strconv.Itoa(WordMaxCharacters)}
+		}
+		def, err := models.CurrencyDefinitions.Lookup(sl.Listing.Metadata.PricingCurrency.Code)
+		if err != nil {
+			return errors.New("unknown pricing currency")
+		}
+		if sl.Listing.Metadata.PricingCurrency.Divisibility != uint32(def.Divisibility) {
+			return errors.New("divisibility differs from expected value")
+		}
 	}
 
 	// Item
