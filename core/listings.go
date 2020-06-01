@@ -812,9 +812,11 @@ func (n *OpenBazaarNode) validateListing(sl *pb.SignedListing) (err error) {
 	if len(sl.Listing.Item.Price) > SentenceMaxCharacters {
 		return coreiface.ErrTooManyCharacters{"item.price", strconv.Itoa(SentenceMaxCharacters)}
 	}
-	_, ok := new(big.Int).SetString(sl.Listing.Item.Price, 10)
-	if !ok {
-		return errors.New("invalid item price")
+	if sl.Listing.Metadata.Format != pb.Listing_Metadata_MARKET_PRICE {
+		_, ok := new(big.Int).SetString(sl.Listing.Item.Price, 10)
+		if !ok {
+			return errors.New("invalid item price")
+		}
 	}
 
 	// Taxes
