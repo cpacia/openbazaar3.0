@@ -326,11 +326,14 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		enabledWallets[i] = iwallet.CoinType(strings.ToUpper(ew))
 	}
 
+	erp := wallet.NewExchangeRateProvider(cfg.ExchangeRateProviders)
+
 	opts := []multiwallet.Option{
 		multiwallet.DataDir(cfg.DataDir),
 		multiwallet.LogDir(cfg.LogDir),
 		multiwallet.Wallets(enabledWallets),
 		multiwallet.LogLevel(repo.LogLevelMap[strings.ToLower(cfg.LogLevel)]),
+		multiwallet.ExchangeRateProvider(erp),
 	}
 	mw, err := multiwallet.NewMultiwallet(opts...)
 	if err != nil {
@@ -340,8 +343,6 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 	if err := InitializeMultiwallet(mw, obRepo.DB(), time.Now()); err != nil {
 		return nil, err
 	}
-
-	erp := wallet.NewExchangeRateProvider(cfg.ExchangeRateProviders)
 
 	for _, server := range cfg.StoreAndForwardServers {
 		_, err := peer.Decode(server)
@@ -621,7 +622,7 @@ func (n *OpenBazaarNode) listenWalletEvents() {
 			select {
 			case <-n.shutdown:
 				return
-			case <- blockChan:
+			case <-blockChan:
 				update := make(events.WalletUpdate)
 				for ct, w := range n.multiwallet {
 					bi, err := w.BlockchainInfo()
@@ -634,8 +635,8 @@ func (n *OpenBazaarNode) listenWalletEvents() {
 					}
 
 					update[ct.CurrencyCode()] = events.WalletInfo{
-						ChainHeight: bi.Height,
-						ConfirmedBalance: confirmed,
+						ChainHeight:        bi.Height,
+						ConfirmedBalance:   confirmed,
 						UnconfirmedBalance: unconfirmed,
 					}
 				}

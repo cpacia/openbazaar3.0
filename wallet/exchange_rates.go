@@ -76,6 +76,11 @@ func (e *ExchangeRateProvider) GetRate(base models.CurrencyCode, to models.Curre
 	return amount, nil
 }
 
+// GetUSDRate returns the USD exchange rate for the given coin.
+func (e *ExchangeRateProvider) GetUSDRate(coinType iwallet.CoinType) (iwallet.Amount, error) {
+	return e.GetRate(models.CurrencyCode(coinType.CurrencyCode()), models.CurrencyCode("USD"), false)
+}
+
 // GetAllRates returns a map of all exchange rates for the provided base currency.
 func (e *ExchangeRateProvider) GetAllRates(base models.CurrencyCode, breakCache bool) (map[models.CurrencyCode]iwallet.Amount, error) {
 	e.mtx.Lock()
