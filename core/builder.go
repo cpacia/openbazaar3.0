@@ -334,6 +334,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		multiwallet.Wallets(enabledWallets),
 		multiwallet.LogLevel(repo.LogLevelMap[strings.ToLower(cfg.LogLevel)]),
 		multiwallet.ExchangeRateProvider(erp),
+		multiwallet.Testnet(cfg.Testnet),
 	}
 	mw, err := multiwallet.NewMultiwallet(opts...)
 	if err != nil {
