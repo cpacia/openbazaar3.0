@@ -64,7 +64,7 @@ func runAPITests(t *testing.T, tests apiTests) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if !bytes.Equal(response, expected) {
+		if expected != nil && !bytes.Equal(response, expected) {
 			t.Errorf("%s: Expected response %s, got %s", test.name, string(expected), string(response))
 			continue
 		}

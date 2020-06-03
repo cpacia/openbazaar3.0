@@ -282,5 +282,197 @@ func TestWalletHandlers(t *testing.T) {
 				return marshalAndSanitizeJSON(models.CurrencyDefinitions)
 			},
 		},
+		{
+			name:   "Post spend",
+			path:   "/v1/wallet/spend",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.multiwalletFunc = func() multiwallet.Multiwallet {
+					w := wallet.NewMockWallet()
+					w.Start()
+					bus := events.NewBus()
+					w.SetEventBus(bus)
+					sub, _ := bus.Subscribe(&events.TransactionReceived{})
+					txn := w.GenerateTransaction(iwallet.NewAmount(100000))
+					txn.Timestamp = time.Unix(111111, 0)
+					txn.ID = "12345678"
+					w.IngestTransaction(txn)
+					<-sub.Out()
+
+					mw := multiwallet.Multiwallet{
+						"MCK": w,
+					}
+					return mw
+				}
+				n.saveTransactionMetadataFunc = func(md *models.TransactionMetadata) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"coinType":"MCK","address":"de92e54c8a52742be470bdf21f00420828888542","amount":"10000","feeLevel":"economic","memo":"abcd"}`),
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return nil, nil
+			},
+		},
+		{
+			name:   "Post spend custom fee",
+			path:   "/v1/wallet/spend",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.multiwalletFunc = func() multiwallet.Multiwallet {
+					w := wallet.NewMockWallet()
+					w.Start()
+					bus := events.NewBus()
+					w.SetEventBus(bus)
+					sub, _ := bus.Subscribe(&events.TransactionReceived{})
+					txn := w.GenerateTransaction(iwallet.NewAmount(100000))
+					txn.Timestamp = time.Unix(111111, 0)
+					txn.ID = "12345678"
+					w.IngestTransaction(txn)
+					<-sub.Out()
+
+					mw := multiwallet.Multiwallet{
+						"MCK": w,
+					}
+					return mw
+				}
+				n.saveTransactionMetadataFunc = func(md *models.TransactionMetadata) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"coinType":"MCK","address":"de92e54c8a52742be470bdf21f00420828888542","amount":"10000","feeLevel":"10","memo":"abcd"}`),
+			statusCode: http.StatusOK,
+			expectedResponse: func() ([]byte, error) {
+				return nil, nil
+			},
+		},
+		{
+			name:   "Post spend unknown coin",
+			path:   "/v1/wallet/spend",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.multiwalletFunc = func() multiwallet.Multiwallet {
+					w := wallet.NewMockWallet()
+					w.Start()
+					bus := events.NewBus()
+					w.SetEventBus(bus)
+					sub, _ := bus.Subscribe(&events.TransactionReceived{})
+					txn := w.GenerateTransaction(iwallet.NewAmount(100000))
+					txn.Timestamp = time.Unix(111111, 0)
+					txn.ID = "12345678"
+					w.IngestTransaction(txn)
+					<-sub.Out()
+
+					mw := multiwallet.Multiwallet{
+						"MCK": w,
+					}
+					return mw
+				}
+				n.saveTransactionMetadataFunc = func(md *models.TransactionMetadata) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"coinType":"BTC","address":"de92e54c8a52742be470bdf21f00420828888542","amount":"10000","feeLevel":"10","memo":"abcd"}`),
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(fmt.Sprintf("%s\n", `{"error": "multiwallet does not contain an implementation for the given coin"}`)), nil
+			},
+		},
+		{
+			name:   "Post spend invalid JSON",
+			path:   "/v1/wallet/spend",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.multiwalletFunc = func() multiwallet.Multiwallet {
+					w := wallet.NewMockWallet()
+					w.Start()
+					bus := events.NewBus()
+					w.SetEventBus(bus)
+					sub, _ := bus.Subscribe(&events.TransactionReceived{})
+					txn := w.GenerateTransaction(iwallet.NewAmount(100000))
+					txn.Timestamp = time.Unix(111111, 0)
+					txn.ID = "12345678"
+					w.IngestTransaction(txn)
+					<-sub.Out()
+
+					mw := multiwallet.Multiwallet{
+						"MCK": w,
+					}
+					return mw
+				}
+				n.saveTransactionMetadataFunc = func(md *models.TransactionMetadata) error {
+					return nil
+				}
+			},
+			body:       []byte(`"coinType":"BTC","address":"de92e54c8a52742be470bdf21f00420828888542","amount":"10000","feeLevel":"10","memo":"abcd"}`),
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(fmt.Sprintf("%s\n", `{"error": "json: cannot unmarshal string into Go value of type api.Spend"}`)), nil
+			},
+		},
+		{
+			name:   "Post spend zero amount",
+			path:   "/v1/wallet/spend",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.multiwalletFunc = func() multiwallet.Multiwallet {
+					w := wallet.NewMockWallet()
+					w.Start()
+					bus := events.NewBus()
+					w.SetEventBus(bus)
+					sub, _ := bus.Subscribe(&events.TransactionReceived{})
+					txn := w.GenerateTransaction(iwallet.NewAmount(100000))
+					txn.Timestamp = time.Unix(111111, 0)
+					txn.ID = "12345678"
+					w.IngestTransaction(txn)
+					<-sub.Out()
+
+					mw := multiwallet.Multiwallet{
+						"MCK": w,
+					}
+					return mw
+				}
+				n.saveTransactionMetadataFunc = func(md *models.TransactionMetadata) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"coinType":"MCK","address":"de92e54c8a52742be470bdf21f00420828888542","amount":"0","feeLevel":"10","memo":"abcd"}`),
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(fmt.Sprintf("%s\n", `{"error": "cannot send zero amount"}`)), nil
+			},
+		},
+		{
+			name:   "Post spend invalid custom fee",
+			path:   "/v1/wallet/spend",
+			method: http.MethodPost,
+			setNodeMethods: func(n *mockNode) {
+				n.multiwalletFunc = func() multiwallet.Multiwallet {
+					w := wallet.NewMockWallet()
+					w.Start()
+					bus := events.NewBus()
+					w.SetEventBus(bus)
+					sub, _ := bus.Subscribe(&events.TransactionReceived{})
+					txn := w.GenerateTransaction(iwallet.NewAmount(100000))
+					txn.Timestamp = time.Unix(111111, 0)
+					txn.ID = "12345678"
+					w.IngestTransaction(txn)
+					<-sub.Out()
+
+					mw := multiwallet.Multiwallet{
+						"MCK": w,
+					}
+					return mw
+				}
+				n.saveTransactionMetadataFunc = func(md *models.TransactionMetadata) error {
+					return nil
+				}
+			},
+			body:       []byte(`{"coinType":"MCK","address":"de92e54c8a52742be470bdf21f00420828888542","amount":"10000","feeLevel":"asdfadsf","memo":"abcd"}`),
+			statusCode: http.StatusBadRequest,
+			expectedResponse: func() ([]byte, error) {
+				return []byte(fmt.Sprintf("%s\n", `{"error": "invalid custom fee"}`)), nil
+			},
+		},
 	})
 }

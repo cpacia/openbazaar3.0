@@ -1,12 +1,15 @@
 package api
 
 import (
+	"encoding/json"
+	"errors"
 	"github.com/cpacia/openbazaar3.0/models"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -213,4 +216,87 @@ func (g *Gateway) handleGETTransactions(w http.ResponseWriter, r *http.Request) 
 
 func (g *Gateway) handleGETCurrencies(w http.ResponseWriter, r *http.Request) {
 	sanitizedJSONResponse(w, models.CurrencyDefinitions)
+}
+
+func (g *Gateway) handlePOSTSpend(w http.ResponseWriter, r *http.Request) {
+	type Spend struct {
+		CoinType string `json:"coinType"`
+		Address  string `json:"address"`
+		Amount   string `json:"amount"`
+		FeeLevel string `json:"feeLevel"`
+		Memo     string `json:"memo"`
+	}
+
+	var spendData Spend
+	if err := json.NewDecoder(r.Body).Decode(&spendData); err != nil {
+		http.Error(w, wrapError(err), http.StatusBadRequest)
+		return
+	}
+
+	mw := g.node.Multiwallet()
+	wallet, err := mw.WalletForCurrencyCode(spendData.CoinType)
+	if err != nil {
+		http.Error(w, wrapError(err), http.StatusBadRequest)
+		return
+	}
+
+	addr := iwallet.NewAddress(spendData.Address, iwallet.CoinType(spendData.CoinType))
+	amt := iwallet.NewAmount(spendData.Amount)
+	if amt.Cmp(iwallet.NewAmount(0)) == 0 {
+		http.Error(w, wrapError(errors.New("cannot send zero amount")), http.StatusBadRequest)
+		return
+	}
+
+	var feeLevel iwallet.FeeLevel
+	switch strings.ToUpper(spendData.FeeLevel) {
+	case "PRIORITY":
+		feeLevel = iwallet.FlPriority
+	case "NORMAL":
+		feeLevel = iwallet.FlNormal
+	case "ECONOMIC":
+		feeLevel = iwallet.FlEconomic
+	case "SUPER_ECONOMIC":
+		feeLevel = iwallet.FLSuperEconomic
+	default:
+		customFee, err := strconv.Atoi(spendData.FeeLevel)
+		if err != nil {
+			http.Error(w, wrapError(errors.New("invalid custom fee")), http.StatusBadRequest)
+			return
+		}
+		feeLevel = iwallet.FeeLevel(customFee)
+	}
+
+	wtx, err := wallet.Begin()
+	if err != nil {
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
+		return
+	}
+
+	txid, err := wallet.Spend(wtx, addr, amt, feeLevel)
+	if err != nil {
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
+		return
+	}
+
+	if err := wtx.Commit(); err != nil {
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
+		return
+	}
+
+	md := models.TransactionMetadata{
+		Txid:           txid,
+		PaymentAddress: addr.String(),
+		Memo:           spendData.Memo,
+	}
+
+	if err := g.node.SaveTransactionMetadata(&md); err != nil {
+		http.Error(w, wrapError(err), http.StatusInternalServerError)
+		return
+	}
+
+	sanitizedJSONResponse(w, struct {
+		Txid string `json:"txid"`
+	}{
+		Txid: txid.String(),
+	})
 }
