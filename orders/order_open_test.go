@@ -19,8 +19,8 @@ import (
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	crypto "github.com/libp2p/go-libp2p-core/crypto"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multihash"
 	"reflect"
 	"testing"
@@ -382,13 +382,18 @@ func TestCalculateOrderTotal(t *testing.T) {
 			t.Errorf("Error transforming listing in test %d: %s", i, err)
 			continue
 		}
-		total, err := CalculateOrderTotal(order, erp)
+		totals, err := CalculateOrderTotal(order, erp)
 		if err != nil {
 			t.Errorf("Error calculating total for test %d: %s", i, err)
 			continue
 		}
-		if total.Cmp(test.expectedTotal) != 0 {
-			t.Errorf("Incorrect order total for test %d. Expected %s, got %s", i, test.expectedTotal, total)
+		if totals.Total.Cmp(test.expectedTotal) != 0 {
+			t.Errorf("Incorrect order total for test %d. Expected %s, got %s", i, test.expectedTotal, totals.Total)
+		}
+
+		calculatedTotal := totals.Subtotal.Add(totals.Shipping).Add(totals.Discounts).Add(totals.Taxes)
+		if calculatedTotal.Cmp(totals.Total) != 0 {
+			t.Errorf("Incorrect calculated total for test %d. Expected %s, got %s", i, totals.Total, calculatedTotal)
 		}
 	}
 }

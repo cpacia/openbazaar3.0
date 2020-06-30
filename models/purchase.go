@@ -1,5 +1,7 @@
 package models
 
+import iwallet "github.com/cpacia/wallet-interface"
+
 // PurchaseItemOption is the item option selection.
 type PurchaseItemOption struct {
 	Name  string `json:"name"`
@@ -38,4 +40,13 @@ type Purchase struct {
 	AlternateContactInfo string         `json:"alternateContactInfo"`
 	RefundAddress        *string        `json:"refundAddress"` //optional, can be left out of json
 	PaymentCoin          string         `json:"paymentCoin"`
+}
+
+// OrderTotals represents a breakdown of the various charges of the order.
+type OrderTotals struct {
+	Subtotal  iwallet.Amount `json:"subtotal"`
+	Shipping  iwallet.Amount `json:"shipping"`
+	Discounts iwallet.Amount `json:"discounts"`
+	Taxes     iwallet.Amount `json:"taxes"`
+	Total     iwallet.Amount `json:"total"`
 }

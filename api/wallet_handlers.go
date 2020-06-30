@@ -293,7 +293,7 @@ func (g *Gateway) handlePOSTSpend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, wrapError(err), http.StatusInternalServerError)
 		return
 	}
-	
+
 	sanitizedJSONResponse(w, struct {
 		Txid string `json:"txid"`
 	}{

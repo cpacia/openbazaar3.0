@@ -470,10 +470,10 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 
 // CalculateOrderTotal calculates and returns the total for the order with all
 // the provided options.
-func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) (iwallet.Amount, error) {
+func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) (models.OrderTotals, error) {
 	var (
-		orderTotal    iwallet.Amount
-		physicalGoods = make(map[string]*pb.Listing)
+		orderTotal, subTotal, taxesTotal, discountsTotal iwallet.Amount
+		physicalGoods                                    = make(map[string]*pb.Listing)
 	)
 
 	// Calculate the price of each item
@@ -486,12 +486,12 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 		)
 
 		if itemQuantity.Cmp(iwallet.NewAmount(0)) <= 0 {
-			return orderTotal, fmt.Errorf("item %d quantity is not a positive integer", i)
+			return models.OrderTotals{}, fmt.Errorf("item %d quantity is not a positive integer", i)
 		}
 
 		listing, err := extractListing(item.ListingHash, order.Listings)
 		if err != nil {
-			return orderTotal, fmt.Errorf("listing not found in contract for item %s", item.ListingHash)
+			return models.OrderTotals{}, fmt.Errorf("listing not found in contract for item %s", item.ListingHash)
 		}
 
 		if listing.Metadata.ContractType == pb.Listing_Metadata_PHYSICAL_GOOD {
@@ -500,17 +500,17 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 
 		pricingCurrency, err := models.CurrencyDefinitions.Lookup(listing.Metadata.PricingCurrency.Code)
 		if err != nil {
-			return orderTotal, err
+			return models.OrderTotals{}, err
 		}
 		paymentCurrency, err := models.CurrencyDefinitions.Lookup(order.Payment.Coin)
 		if err != nil {
-			return orderTotal, err
+			return models.OrderTotals{}, err
 		}
 
 		if listing.Metadata.Format == pb.Listing_Metadata_MARKET_PRICE {
 			cryptoListingCurrency, err := models.CurrencyDefinitions.Lookup(listing.Item.CryptoListingCurrencyCode)
 			if err != nil {
-				return orderTotal, err
+				return models.OrderTotals{}, err
 			}
 			// To calculate the market price we just use the exchange rate between
 			// the two coins. However in this case we use the item quantity being
@@ -519,7 +519,7 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 			price := models.NewCurrencyValue(item.Quantity, cryptoListingCurrency)
 			itemTotal, err = convertCurrencyAmount(price, paymentCurrency, erp)
 			if err != nil {
-				return orderTotal, err
+				return models.OrderTotals{}, err
 			}
 
 			// Now we add or subtract the price modifier.
@@ -535,28 +535,29 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 			price := models.NewCurrencyValue(listing.Item.Price, pricingCurrency)
 			itemTotal, err = convertCurrencyAmount(price, paymentCurrency, erp)
 			if err != nil {
-				return orderTotal, err
+				return models.OrderTotals{}, err
 			}
 		}
 
 		// Add or subtract any surcharge on the selected sku
 		sku, err := getSelectedSku(listing, item.Options)
 		if err != nil {
-			return orderTotal, err
+			return models.OrderTotals{}, err
 		}
 		surcharge := iwallet.NewAmount(sku.Surcharge)
 		surchargeValue := models.NewCurrencyValue(surcharge.String(), pricingCurrency)
 		convertedSurcharge, err := convertCurrencyAmount(surchargeValue, paymentCurrency, erp)
 		if err != nil {
-			return orderTotal, err
+			return models.OrderTotals{}, err
 		}
-		itemTotal.Add(convertedSurcharge)
+		itemTotal = itemTotal.Add(convertedSurcharge)
+		subTotal = subTotal.Add(itemTotal.Mul(itemQuantity))
 
 		// Subtract any coupons
 		for _, couponCode := range item.CouponCodes {
 			couponHash, err := utils.MultihashSha256([]byte(couponCode))
 			if err != nil {
-				return orderTotal, err
+				return models.OrderTotals{}, err
 			}
 			for _, vendorCoupon := range listing.Coupons {
 				if couponCode == vendorCoupon.GetDiscountCode() || couponHash.B58String() == vendorCoupon.GetHash() {
@@ -564,14 +565,16 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 						price := models.NewCurrencyValue(discount, pricingCurrency)
 						discountAmount, err := convertCurrencyAmount(price, paymentCurrency, erp)
 						if err != nil {
-							return orderTotal, err
+							return models.OrderTotals{}, err
 						}
 						itemTotal = itemTotal.Sub(discountAmount)
+						discountsTotal = discountsTotal.Sub(discountAmount)
 					} else if discount := vendorCoupon.GetPercentDiscount(); discount > 0 {
 						f, _ := new(big.Float).SetString(itemTotal.String())
 						f.Mul(f, big.NewFloat(float64(-discount/100)))
 						discountAmount, _ := f.Int(nil)
 						itemTotal = itemTotal.Add(iwallet.NewAmount(discountAmount))
+						discountsTotal = discountsTotal.Add(iwallet.NewAmount(discountAmount))
 					}
 				}
 			}
@@ -584,10 +587,12 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 					f.Mul(f, big.NewFloat(float64(tax.Percentage/100)))
 					govTheft, _ := f.Int(nil)
 					itemTotal = itemTotal.Add(iwallet.NewAmount(govTheft))
+					taxesTotal = taxesTotal.Add(iwallet.NewAmount(govTheft))
 					break
 				}
 			}
 		}
+		taxesTotal = taxesTotal.Mul(itemQuantity)
 
 		// Multiply the item total by the quantity being purchased
 		// In the case of a crypto listing, itemQuantity was set to
@@ -601,11 +606,17 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 	// Add in shipping
 	shippingTotal, err := calculateShippingTotalForListings(order, physicalGoods, erp)
 	if err != nil {
-		return orderTotal, err
+		return models.OrderTotals{}, err
 	}
 	orderTotal = orderTotal.Add(shippingTotal)
 
-	return orderTotal, nil
+	return models.OrderTotals{
+		Subtotal:  subTotal,
+		Shipping:  shippingTotal,
+		Discounts: discountsTotal,
+		Taxes:     taxesTotal,
+		Total:     orderTotal,
+	}, nil
 }
 
 func calculateShippingTotalForListings(order *pb.OrderOpen, listings map[string]*pb.Listing, erp *wallet.ExchangeRateProvider) (iwallet.Amount, error) {

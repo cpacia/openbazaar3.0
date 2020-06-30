@@ -68,7 +68,7 @@ type mockNode struct {
 	getRatingsFunc               func(ctx context.Context, peerID peer.ID, useCache bool) (models.RatingIndex, error)
 	getRatingFunc                func(ctx context.Context, cid cid.Cid) (*pb.Rating, error)
 	purchaseFunc                 func(ctx context.Context, purchase *models.Purchase) (orderID models.OrderID, paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error)
-	estimateOrderSubtotalFunc    func(ctx context.Context, purchase *models.Purchase) (*models.CurrencyValue, error)
+	estimateOrderTotalFunc       func(ctx context.Context, purchase *models.Purchase) (models.OrderTotals, error)
 	rejectOrderFunc              func(orderID models.OrderID, reason string, done chan struct{}) error
 	refundOrderFunc              func(orderID models.OrderID, done chan struct{}) error
 	pingNodeFunc                 func(ctx context.Context, peer peer.ID) error
@@ -238,8 +238,8 @@ func (m *mockNode) GetRating(ctx context.Context, cid cid.Cid) (*pb.Rating, erro
 func (m *mockNode) PurchaseListing(ctx context.Context, purchase *models.Purchase) (orderID models.OrderID, paymentAddress iwallet.Address, paymentAmount models.CurrencyValue, err error) {
 	return m.purchaseFunc(ctx, purchase)
 }
-func (m *mockNode) EstimateOrderSubtotal(ctx context.Context, purchase *models.Purchase) (*models.CurrencyValue, error) {
-	return m.estimateOrderSubtotalFunc(ctx, purchase)
+func (m *mockNode) EstimateOrderTotal(ctx context.Context, purchase *models.Purchase) (models.OrderTotals, error) {
+	return m.estimateOrderTotalFunc(ctx, purchase)
 }
 func (m *mockNode) RejectOrder(orderID models.OrderID, reason string, done chan struct{}) error {
 	return m.rejectOrderFunc(orderID, reason, done)

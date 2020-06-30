@@ -170,20 +170,19 @@ func (n *OpenBazaarNode) PurchaseListing(ctx context.Context, purchase *models.P
 	return models.OrderID(order.OrderID), paymentAddress, paymentAmount, nil
 }
 
-// EstimateOrderSubtotal estimates the total for the order given the provided
+// EstimateOrderTotal estimates the total for the order given the provided
 // purchase details. This is only an estimate because it may be based on the
 // current exchange rates which may change by the time the order is placed.
-func (n *OpenBazaarNode) EstimateOrderSubtotal(ctx context.Context, purchase *models.Purchase) (*models.CurrencyValue, error) {
+func (n *OpenBazaarNode) EstimateOrderTotal(ctx context.Context, purchase *models.Purchase) (models.OrderTotals, error) {
 	orderOpen, err := n.createOrder(ctx, purchase)
 	if err != nil {
-		return nil, err
+		return models.OrderTotals{}, err
 	}
-	currency, err := models.CurrencyDefinitions.Lookup(orderOpen.Payment.Coin)
+	totals, err := orders.CalculateOrderTotal(orderOpen, n.exchangeRates)
 	if err != nil {
-		return nil, err
+		return models.OrderTotals{}, err
 	}
-	cv := models.NewCurrencyValue(orderOpen.Payment.Amount, currency)
-	return cv, nil
+	return totals, nil
 }
 
 // createOrder builds and returns an order from the given purchase data. The payment
@@ -425,11 +424,11 @@ func (n *OpenBazaarNode) createOrder(ctx context.Context, purchase *models.Purch
 	order.Payment.Chaincode = hex.EncodeToString(chaincode)
 	order.Payment.Coin = normalizeCurrencyCode(purchase.PaymentCoin)
 
-	total, err := orders.CalculateOrderTotal(order, n.exchangeRates)
+	totals, err := orders.CalculateOrderTotal(order, n.exchangeRates)
 	if err != nil {
 		return nil, err
 	}
-	order.Payment.Amount = total.String()
+	order.Payment.Amount = totals.Total.String()
 
 	ratingKeys, err := utils.GenerateRatingPublicKeys(n.ratingMasterKey.PubKey(), len(order.Items), chaincode)
 	if err != nil {

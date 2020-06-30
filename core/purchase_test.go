@@ -432,16 +432,13 @@ func TestOpenBazaarNode_EstimateOrderSubtotal(t *testing.T) {
 		PaymentCoin:          "MCK",
 	}
 
-	val, err := network.Nodes()[1].EstimateOrderSubtotal(context.Background(), purchase)
+	val, err := network.Nodes()[1].EstimateOrderTotal(context.Background(), purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if val.Currency.Code.String() != purchase.PaymentCoin {
-		t.Errorf("Incorrect currency code: Expected %s, got %s", purchase.PaymentCoin, val.Currency.Code.String())
-	}
 	expectedAmount := 4992221
-	if val.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
-		t.Errorf("Returned incorrect amount: Expected %d, got %s", expectedAmount, val.Amount)
+	if val.Total.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
+		t.Errorf("Returned incorrect amount: Expected %d, got %s", expectedAmount, val.Total)
 	}
 }
 
