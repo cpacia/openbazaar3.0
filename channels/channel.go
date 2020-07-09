@@ -399,6 +399,7 @@ func (c *Channel) bootstrapState() {
 	respChan := make(chan []cid.Cid)
 	var wg sync.WaitGroup
 	wg.Add(max)
+	log.Debugf("Bootstrapping channel %s with %d peers", c.topic, max)
 	go func() {
 		for _, p := range peers[:max] {
 			go func(pid peer.ID) {

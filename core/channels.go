@@ -82,7 +82,7 @@ func (n *OpenBazaarNode) handleChannelRequest(from peer.ID, message *pb.Message)
 
 	var channelRec models.Channel
 	err := n.repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("topic=?", req.Topic).Error
+		return tx.Read().Where("topic=?", req.Topic).First(&channelRec).Error
 	})
 	if err != nil {
 		return err

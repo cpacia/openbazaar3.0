@@ -255,7 +255,6 @@ func TestChannelHandlers(t *testing.T) {
 			expectedResponse: func() ([]byte, error) {
 				return []byte(fmt.Sprintf(`{"error": "cid too short"}%s`, "\n")), nil
 			},
-
 		},
 		{
 			name:   "Get channel messages error",

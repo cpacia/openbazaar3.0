@@ -92,6 +92,7 @@ func (n *Notifier) Start() {
 		&events.ChatMessage{},
 		&events.ChatRead{},
 		&events.ChatTyping{},
+		&events.ChannelMessage{},
 	}
 
 	chatSub, err := n.bus.Subscribe(chats)
