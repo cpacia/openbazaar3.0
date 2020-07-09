@@ -17,6 +17,10 @@ type notificationWrapper struct {
 	Notification interface{} `json:"notification"`
 }
 
+type channelMessageWrapper struct {
+	ChannelMessage interface{} `json:"channelMessage"`
+}
+
 type chatMessageWrapper struct {
 	ChatMessage interface{} `json:"chatMessage"`
 }
@@ -149,6 +153,8 @@ func (n *Notifier) Start() {
 		case event := <-chatSub.Out():
 			var i interface{}
 			switch event.(type) {
+			case *events.ChannelMessage:
+				i = channelMessageWrapper{event}
 			case *events.ChatMessage:
 				i = chatMessageWrapper{event}
 			case *events.ChatRead:

@@ -142,6 +142,11 @@ func (g *Gateway) newV1Router() *mux.Router {
 		r.HandleFunc("/v1/wallet/currencies", g.handleGETCurrencies).Methods("GET")
 		r.HandleFunc("/v1/ob/preferences", g.handlePutUserPreferences).Methods("PUT")
 		r.HandleFunc("/v1/ob/preferences", g.handleGetUserPreferences).Methods("GET")
+		r.HandleFunc("/v1/ob/channelmessage", g.handlePOSTPublishChannelMessage).Methods("POST")
+		r.HandleFunc("/v1/ob/openchannel/{topic}", g.handlePOSTOpenChannel).Methods("POST")
+		r.HandleFunc("/v1/ob/closechannel/{topic}", g.handlePOSTCloseChannel).Methods("POST")
+		r.HandleFunc("/v1/ob/channels", g.handleGETListChannels).Methods("GET")
+		r.HandleFunc("/v1/ob/channelmessages/{topic}", g.handleGETChannelMessages).Methods("GET")
 	}
 	r.HandleFunc("/v1/ob/image/{imageID}", g.handleGETImage).Methods("GET")
 	r.HandleFunc("/v1/ob/avatar/{peerID}/{size}", g.handleGETAvatar).Methods("GET")

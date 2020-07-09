@@ -82,6 +82,13 @@ type CoreIface interface {
 	GetRatings(ctx context.Context, peerID peer.ID, useCache bool) (models.RatingIndex, error)
 	GetRating(ctx context.Context, cid cid.Cid) (*pb.Rating, error)
 
+	// Channels
+	OpenChannel(topic string) error
+	CloseChannel(topic string) error
+	ListChannels() []string
+	PublishChannelMessage(ctx context.Context, topic, message string) error
+	GetChannelMessages(ctx context.Context, topic string, from *cid.Cid, limit int) ([]models.ChannelMessage, error)
+
 	// Preferences
 	GetPreferences() (*models.UserPreferences, error)
 	SavePreferences(prefs *models.UserPreferences, done chan struct{}) error

@@ -165,6 +165,9 @@ func (n *OpenBazaarNode) Stop(force bool) error {
 		if n.notifier != nil {
 			n.notifier.Stop()
 		}
+		for _, channel := range n.channels {
+			channel.Close()
+		}
 	}
 	if n.shutdownTorFunc != nil {
 		n.shutdownTorFunc()

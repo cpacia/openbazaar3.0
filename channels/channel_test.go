@@ -179,4 +179,21 @@ func TestChannels(t *testing.T) {
 	if msgs[1].Message != "test" {
 		t.Errorf("Expected message %s, got %s", "test", msgs[1].Message)
 	}
+
+	msgs, err = channel1.Messages(context.Background(), nil, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(msgs) != 2 {
+		t.Errorf("Expected 2 messages got %d", len(msgs))
+	}
+
+	if msgs[0].Message != "test2" {
+		t.Errorf("Expected message %s, got %s", "test2", msgs[0].Message)
+	}
+
+	if msgs[1].Message != "test" {
+		t.Errorf("Expected message %s, got %s", "test", msgs[1].Message)
+	}
 }

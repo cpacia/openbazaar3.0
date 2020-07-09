@@ -41,6 +41,15 @@ func (n *OpenBazaarNode) CloseChannel(topic string) error {
 	return nil
 }
 
+// ListChannels returns the list of open channels.
+func (n *OpenBazaarNode) ListChannels() []string {
+	ret := make([]string, 0, len(n.channels))
+	for ch := range n.channels {
+		ret = append(ret, ch)
+	}
+	return ret
+}
+
 // PublishChannelMessage publishes a message to the given channel.
 func (n *OpenBazaarNode) PublishChannelMessage(ctx context.Context, topic, message string) error {
 	ch, ok := n.channels[topic]
