@@ -23,7 +23,17 @@ func (b *basicBus) Emit(event interface{}) {
 	if !ok {
 		return
 	}
+
+notify:
 	for _, sub := range sinks {
+		if sub.match != nil {
+			val := reflect.Indirect(reflect.ValueOf(event))
+			for field, value := range sub.match {
+				if val.FieldByName(field).String() != value {
+					continue notify
+				}
+			}
+		}
 		sub.ch <- event
 	}
 }
@@ -54,9 +64,10 @@ func NewBus() Bus {
 }
 
 type sub struct {
-	ch   chan interface{}
-	typs []reflect.Type
-	drop func(typ reflect.Type, s *sub)
+	ch    chan interface{}
+	typs  []reflect.Type
+	drop  func(typ reflect.Type, s *sub)
+	match map[string]string
 }
 
 func (s *sub) Out() <-chan interface{} {
@@ -120,6 +131,7 @@ func (b *basicBus) Subscribe(evtTypes interface{}, opts ...SubscriptionOpt) (_ S
 		cur = append(cur, out)
 		b.subs[typ] = cur
 		out.typs = append(out.typs, typ)
+		out.match = settings.matchFieldValues
 	}
 
 	return out, nil

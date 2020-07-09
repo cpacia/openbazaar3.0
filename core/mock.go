@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/multiwallet"
+	"github.com/cpacia/openbazaar3.0/channels"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -120,6 +121,7 @@ func MockNode() (*OpenBazaarNode, error) {
 		multiwallet:          mw,
 		followerTracker:      tracker,
 		exchangeRates:        erp,
+		channels:             make(map[string]*channels.Channel),
 		initialBootstrapChan: make(chan struct{}),
 		publishChan:          make(chan pubCloser),
 	}
@@ -261,6 +263,7 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			multiwallet:          mw,
 			followerTracker:      tracker,
 			exchangeRates:        erp,
+			channels:             make(map[string]*channels.Channel),
 			initialBootstrapChan: make(chan struct{}),
 			publishChan:          make(chan pubCloser),
 		}

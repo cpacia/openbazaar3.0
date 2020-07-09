@@ -1,6 +1,9 @@
 package events
 
-import "time"
+import (
+	"github.com/ipfs/go-cid"
+	"time"
+)
 
 type Follow struct {
 	Notification
@@ -62,4 +65,22 @@ type AddressRequestResponse struct {
 	PeerID  string `json:"peerID"`
 	Address string `json:"address"`
 	Coin    string `json:"coin"`
+}
+
+type ChannelMessage struct {
+	PeerID    string    `json:"peerID"`
+	Topic     string    `json:"topic"`
+	Timestamp time.Time `json:"timestamp"`
+	Message   string    `json:"message"`
+	Cid       string    `json:"cid"`
+}
+
+type ChannelRequestResponse struct {
+	PeerID string    `json:"peerID"`
+	Topic  string    `json:"topic"`
+	Cids   []cid.Cid `json:"cids"`
+}
+
+type ChannelBootstrapped struct {
+	Topic string
 }

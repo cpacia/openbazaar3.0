@@ -475,6 +475,7 @@ func autoMigrateDatabase(db database.Database) error {
 		&models.UserPreferences{},
 		&models.StoreAndForwardServers{},
 		&models.Case{},
+		&models.Channel{},
 	}
 
 	return db.Update(func(tx database.Tx) error {

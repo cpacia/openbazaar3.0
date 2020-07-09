@@ -13,6 +13,7 @@ import (
 	storeandforward "github.com/cpacia/go-store-and-forward"
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/api"
+	"github.com/cpacia/openbazaar3.0/channels"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -369,6 +370,7 @@ func NewNode(ctx context.Context, cfg *repo.Config) (*OpenBazaarNode, error) {
 		testnet:                cfg.Testnet,
 		torOnly:                cfg.Tor,
 		storeAndForwardServers: cfg.StoreAndForwardServers,
+		channels:               make(map[string]*channels.Channel),
 		shutdownTorFunc:        shutdownTorFunc,
 		publishChan:            make(chan pubCloser),
 		initialBootstrapChan:   make(chan struct{}),
@@ -564,6 +566,8 @@ func (n *OpenBazaarNode) registerHandlers() {
 	n.networkService.RegisterHandler(pb.Message_PING, n.handlePingMessage)
 	n.networkService.RegisterHandler(pb.Message_PONG, n.handlePongMessage)
 	n.networkService.RegisterHandler(pb.Message_DISPUTE, n.handleDisputeMessage)
+	n.networkService.RegisterHandler(pb.Message_CHANNEL_REQUEST, n.handleChannelRequest)
+	n.networkService.RegisterHandler(pb.Message_CHANNEL_RESPONSE, n.handleChannelResponse)
 }
 
 func (n *OpenBazaarNode) listenNetworkEvents() {

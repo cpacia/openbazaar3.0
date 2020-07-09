@@ -4,6 +4,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/api"
+	"github.com/cpacia/openbazaar3.0/channels"
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
@@ -106,6 +107,9 @@ type OpenBazaarNode struct {
 
 	// boostrapPeers holds the peers we use to bootstrap the node.
 	boostrapPeers []peer.ID
+
+	// channels holds active chat channels
+	channels map[string]*channels.Channel
 
 	// shutdownTorFunc is used to shutdown the embedded Tor client.
 	shutdownTorFunc func() error

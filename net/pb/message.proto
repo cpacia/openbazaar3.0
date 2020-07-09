@@ -23,6 +23,8 @@ message Message {
         DISPUTE                  = 8;
         ADDRESS_REQUEST          = 9;
         ADDRESS_RESPONSE         = 10;
+        CHANNEL_REQUEST          = 11;
+        CHANNEL_RESPONSE         = 12;
     }
 }
 
@@ -85,6 +87,16 @@ message AddressResponseMessage {
     string address = 1;
     string coin    = 2;
 }
+
+message ChannelRequestMessage {
+    string topic = 1;
+}
+
+message ChannelResponseMessage {
+    string topic        = 1;
+    repeated bytes cids = 2;
+}
+
 
 message Envelope {
     bytes senderPubkey = 1;
