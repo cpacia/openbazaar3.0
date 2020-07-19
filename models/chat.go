@@ -82,18 +82,30 @@ type Channel struct {
 }
 
 func (c *Channel) GetHead() ([]cid.Cid, error) {
-	var ret []cid.Cid
 	if len(c.Head) == 0 {
-		return ret, nil
+		return nil, nil
 	}
-	if err := json.Unmarshal(c.Head, &ret); err != nil {
+	var s []string
+	if err := json.Unmarshal(c.Head, &s); err != nil {
 		return nil, err
+	}
+	ret := make([]cid.Cid, 0, len(s))
+	for _, cidStr := range s {
+		id, err := cid.Decode(cidStr)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, id)
 	}
 	return ret, nil
 }
 
 func (c *Channel) SetHead(ids []cid.Cid) error {
-	out, err := json.MarshalIndent(ids, "", "    ")
+	s := make([]string, 0, len(ids))
+	for _, id := range ids {
+		s = append(s, id.String())
+	}
+	out, err := json.MarshalIndent(s, "", "    ")
 	if err != nil {
 		return err
 	}
@@ -117,12 +129,12 @@ func (c *Channel) UpdateHead(nd ipld.Node) error {
 		}
 	}
 
-	newState := make([]cid.Cid, 0, len(idMap)+1)
+	newState := make([]string, 0, len(idMap)+1)
 	if !idMap[nd.Cid()] {
-		newState = append(newState, nd.Cid())
+		newState = append(newState, nd.Cid().String())
 	}
 	for id := range idMap {
-		newState = append(newState, id)
+		newState = append(newState, id.String())
 		if len(idMap) >= 49 {
 			break
 		}

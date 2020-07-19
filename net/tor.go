@@ -1,4 +1,4 @@
-// +build !notor
+// +build tor
 
 package net
 
@@ -17,8 +17,8 @@ import (
 
 // SetupTor is a constructor that initializes the embedded Tor client. The reason we have it here in this package
 // rather than core/builder.go is because we want to be able to control whether or not to build the tor C library
-// using build tags. This file is the default and will build the tor C library. If the `notor` build tag is used
-// it will not build the Tor client and will error if the config options try to enable it.
+// using build tags. This file is not the default and the build tag needs to be used to use Tor. If the `tor` build
+// tag is not used it will not build the Tor client and will error if the config options try to enable it.
 func SetupTor(ctx context.Context, key ed25519.PrivateKey, dataDir string, dualstackMode bool) (string, proxy.Dialer, libp2p.Option, func() error, error) {
 	embeddedTorClient, err := tor.Start(nil, &tor.StartConf{
 		ProcessCreator:  libtor.Creator,

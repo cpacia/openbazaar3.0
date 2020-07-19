@@ -134,12 +134,10 @@ func (c *Channel) Publish(ctx context.Context, message string) error {
 		if err != nil {
 			return err
 		}
-		if len(links) > 0 {
-			for i, link := range links {
-				pth, err = c.object.AddLink(ctx, pth, "previousMessage"+strconv.Itoa(i), path.IpldPath(link))
-				if err != nil {
-					return err
-				}
+		for i, link := range links {
+			pth, err = c.object.AddLink(ctx, pth, "previousMessage"+strconv.Itoa(i), path.IpldPath(link))
+			if err != nil {
+				return err
 			}
 		}
 	}
