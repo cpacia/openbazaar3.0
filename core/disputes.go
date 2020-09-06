@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/database"
+	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
@@ -14,6 +15,15 @@ import (
 )
 
 func (n *OpenBazaarNode) OpenDispute(orderID models.OrderID, reason string, done chan struct{}) error {
+	done1, done2 := make(chan struct{}), make(chan struct{})
+	go func() {
+		if done != nil {
+			<-done1
+			<-done2
+			close(done)
+		}
+	}()
+
 	var order models.Order
 	err := n.repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Where("id = ?", orderID.String()).Find(&order).Error
@@ -24,16 +34,16 @@ func (n *OpenBazaarNode) OpenDispute(orderID models.OrderID, reason string, done
 
 	// FIXME: check can dispute here
 
-	orderOpen, err := order.OrderOpenMessage()
-	if err != nil {
-		return err
-	}
-
 	buyer, err := order.Buyer()
 	if err != nil {
 		return err
 	}
 	vendor, err := order.Vendor()
+	if err != nil {
+		return err
+	}
+
+	moderator, err := order.Moderator()
 	if err != nil {
 		return err
 	}
@@ -59,11 +69,6 @@ func (n *OpenBazaarNode) OpenDispute(orderID models.OrderID, reason string, done
 		OpenedBy:  role,
 		Reason:    reason,
 		Contract:  serializedContract,
-	}
-
-	moderatorID, err := peer.Decode(orderOpen.Payment.Moderator)
-	if err != nil {
-		return err
 	}
 
 	return n.repo.DB().Update(func(tx database.Tx) error {
@@ -96,7 +101,7 @@ func (n *OpenBazaarNode) OpenDispute(orderID models.OrderID, reason string, done
 			return err
 		}
 
-		if err := n.messenger.ReliablySendMessage(tx, to, message1, done); err != nil {
+		if err := n.messenger.ReliablySendMessage(tx, to, message1, done1); err != nil {
 			return err
 		}
 
@@ -104,11 +109,7 @@ func (n *OpenBazaarNode) OpenDispute(orderID models.OrderID, reason string, done
 		message2.MessageType = npb.Message_DISPUTE
 		message2.Payload = payload
 
-		if err := n.messenger.ReliablySendMessage(tx, moderatorID, message2, done); err != nil {
-			return err
-		}
-
-		return nil
+		return n.messenger.ReliablySendMessage(tx, moderator, message2, done2)
 	})
 }
 
@@ -137,23 +138,62 @@ func (n *OpenBazaarNode) handleDisputeMessage(from peer.ID, message *npb.Message
 			return err
 		}
 
-		// TODO: validate dispute open
+		// TODO: validate dispute open (openedBy == peer)
 
 		return n.repo.DB().Update(func(dbtx database.Tx) error {
+			dbtx.RegisterCommitHook(func() {
+				// TODO: add details
+				n.eventBus.Emit(&events.CaseOpen{})
+				log.Infof("Received new case. ID: %s", order.OrderID)
+			})
+
 			var disputeCase models.Case
 			err := dbtx.Read().Where("id = ?", order.OrderID).First(&disputeCase).Error
 			if err != nil && !gorm.IsRecordNotFoundError(err) {
 				return err
 			}
 
-			if !gorm.IsRecordNotFoundError(err) {
-				return fmt.Errorf("duplicate DISPUTE_OPEN for order %s", order.OrderID)
+			disputeCase.ID = models.OrderID(order.OrderID)
+
+			if disputeCase.SerializedDisputeOpen != nil {
+				return fmt.Errorf("received duplicate DISPUTE_OPEN message from %s", from.Pretty())
 			}
 
-			return disputeCase.PutDisputeOpen(disputeOpen)
+			err = disputeCase.PutDisputeOpen(disputeOpen)
+			if err != nil {
+				return err
+			}
+			return dbtx.Save(&disputeCase)
 		})
 	case npb.OrderMessage_DISPUTE_UPDATE:
+		disputeUpdate := new(pb.DisputeUpdate)
+		if err := ptypes.UnmarshalAny(order.Message, disputeUpdate); err != nil {
+			return err
+		}
 
+		return n.repo.DB().Update(func(dbtx database.Tx) error {
+			dbtx.RegisterCommitHook(func() {
+				// TODO: add details
+				n.eventBus.Emit(&events.CaseUpdate{})
+				log.Infof("Received case update for case %s", order.OrderID)
+			})
+
+			var disputeCase models.Case
+			err := dbtx.Read().Where("id = ?", order.OrderID).First(&disputeCase).Error
+			if err != nil && !gorm.IsRecordNotFoundError(err) {
+				return err
+			}
+
+			disputeCase.ID = models.OrderID(order.OrderID)
+
+			// TODO: validate the correct peer sent us this message.
+
+			err = disputeCase.PutDisputeUpdate(disputeUpdate)
+			if err != nil {
+				return err
+			}
+			return dbtx.Save(&disputeCase)
+		})
 	}
 	return nil
 }

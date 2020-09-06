@@ -3,7 +3,7 @@ package orders
 import (
 	"bytes"
 	"errors"
-	"github.com/OpenBazaar/jsonpb"
+	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cpacia/multiwallet"
 	"github.com/cpacia/openbazaar3.0/database"
@@ -13,6 +13,7 @@ import (
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/wallet"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
@@ -198,7 +199,11 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 	case npb.OrderMessage_ORDER_COMPLETE:
 		key = "order_complete_acked"
 	case npb.OrderMessage_DISPUTE_OPEN:
-		key = "dispute_open_acked"
+		if message.MessageType == npb.Message_DISPUTE {
+			key = "dispute_open_moderator_acked"
+		} else {
+			key = "dispute_open_other_party_acked"
+		}
 	case npb.OrderMessage_DISPUTE_UPDATE:
 		key = "dispute_update_acked"
 	case npb.OrderMessage_DISPUTE_CLOSE:
@@ -212,7 +217,7 @@ func (op *OrderProcessor) ProcessACK(tx database.Tx, om *models.OutgoingMessage)
 	case npb.OrderMessage_PAYMENT_FINALIZED:
 		key = "payment_finalized_acked"
 	default:
-		return errors.New("unknown order message type")
+		return fmt.Errorf("unknown order message type")
 	}
 	return tx.Update(key, true, map[string]interface{}{"id = ?": orderMessage.OrderID}, &models.Order{})
 }
@@ -242,6 +247,9 @@ func (op *OrderProcessor) processMessage(dbtx database.Tx, order *models.Order, 
 		event, err = op.processOrderFulfillmentMessage(dbtx, order, peer, message)
 	case npb.OrderMessage_ORDER_COMPLETE:
 		event, err = op.processOrderCompleteMessage(dbtx, order, peer, message)
+	case npb.OrderMessage_DISPUTE_OPEN:
+		event, err = op.processDisputeOpenMessage(dbtx, order, peer, message)
+
 	default:
 		return nil, errors.New("unknown order message type")
 	}

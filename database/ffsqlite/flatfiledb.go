@@ -2,10 +2,10 @@ package ffsqlite
 
 import (
 	"encoding/json"
-	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/orders/utils"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"os"

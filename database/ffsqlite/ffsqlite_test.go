@@ -2,11 +2,11 @@ package ffsqlite
 
 import (
 	"errors"
-	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/orders/utils"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/jinzhu/gorm"
 	"io/ioutil"

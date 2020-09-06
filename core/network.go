@@ -225,7 +225,7 @@ func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) err
 		if err := tx.Read().Where("id = ?", ack.AckedMessageID).First(&outgoingMessage).Error; err != nil {
 			return err
 		}
-		if outgoingMessage.MessageType == pb.Message_ORDER.String() {
+		if outgoingMessage.MessageType == pb.Message_ORDER.String() || outgoingMessage.MessageType == pb.Message_DISPUTE.String() {
 			if err := n.orderProcessor.ProcessACK(tx, &outgoingMessage); err != nil {
 				return err
 			}

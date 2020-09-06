@@ -540,8 +540,8 @@ func InitializeMultiwallet(mw multiwallet.Multiwallet, db database.Database, cre
 
 // constructDHTRouting behaves exactly like the default constructDHTRouting function in the IPFS package
 // but sets the ProtocolPrefix and MaxRecordAge.
-func constructDHTRouting(mode dht.ModeOpt) func(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator) (routing.Routing, error) {
-	return func(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator) (routing.Routing, error) {
+func constructDHTRouting(mode dht.ModeOpt) func(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator, addrs ...peer.AddrInfo) (routing.Routing, error) {
+	return func(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator, addrs ...peer.AddrInfo) (routing.Routing, error) {
 		return dual.New(
 			ctx, host,
 			dht.Concurrency(10),
@@ -568,6 +568,7 @@ func (n *OpenBazaarNode) registerHandlers() {
 	n.networkService.RegisterHandler(pb.Message_DISPUTE, n.handleDisputeMessage)
 	n.networkService.RegisterHandler(pb.Message_CHANNEL_REQUEST, n.handleChannelRequest)
 	n.networkService.RegisterHandler(pb.Message_CHANNEL_RESPONSE, n.handleChannelResponse)
+	n.networkService.RegisterHandler(pb.Message_DISPUTE, n.handleDisputeMessage)
 }
 
 func (n *OpenBazaarNode) listenNetworkEvents() {

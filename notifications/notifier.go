@@ -75,7 +75,8 @@ func (n *Notifier) Start() {
 		&events.OrderFulfillment{},
 		&events.OrderCompletion{},
 		&events.DisputeOpen{},
-		&events.DisputeUpdate{},
+		&events.CaseOpen{},
+		&events.CaseUpdate{},
 		&events.DisputeClose{},
 		&events.DisputeAccepted{},
 		&events.VendorFinalizedPayment{},
@@ -268,8 +269,11 @@ func convertToNotification(event interface{}) string {
 	case *events.DisputeOpen:
 		e.Typ = "DisputeOpen"
 		e.ID = id
-	case *events.DisputeUpdate:
-		e.Typ = "DisputeUpdate"
+	case *events.CaseOpen:
+		e.Typ = "CaseOpen"
+		e.ID = id
+	case *events.CaseUpdate:
+		e.Typ = "CaseUpdate"
 		e.ID = id
 	case *events.DisputeClose:
 		e.Typ = "DisputeClose"

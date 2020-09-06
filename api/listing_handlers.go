@@ -3,10 +3,10 @@ package api
 import (
 	"errors"
 	"fmt"
-	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-cid"
 	peer "github.com/libp2p/go-libp2p-core/peer"

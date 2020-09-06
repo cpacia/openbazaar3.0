@@ -103,7 +103,8 @@ func TestOrderProcessor_processDisputeOpenMessage(t *testing.T) {
 			},
 		},
 		Payment: &pb.OrderOpen_Payment{
-			Coin: iwallet.CtMock,
+			Coin:      iwallet.CtMock,
+			Moderator: "12D3KooWHnpVyu9XDeFoAVayqr9hvc9xPqSSHtCSFLEkKgcz5Wro",
 		},
 	}
 

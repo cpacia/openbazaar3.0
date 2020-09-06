@@ -356,7 +356,7 @@ func (mn *Mocknet) TearDown() error {
 	return nil
 }
 
-func constructMockRouting(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator) (routing.Routing, error) {
+func constructMockRouting(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator, addrs ...peer.AddrInfo) (routing.Routing, error) {
 	return dht.New(
 		ctx, host,
 		dht.Concurrency(10),

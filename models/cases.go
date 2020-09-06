@@ -2,8 +2,9 @@ package models
 
 import (
 	"encoding/json"
-	"github.com/OpenBazaar/jsonpb"
+	"errors"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/golang/protobuf/jsonpb"
 )
 
 type Case struct {
@@ -14,6 +15,8 @@ type Case struct {
 
 	SerializedDisputeOpen  json.RawMessage
 	SerializedDisputeClose json.RawMessage
+
+	ParkedUpdate json.RawMessage
 }
 
 func (c *Case) DisuteOpenMessage() (*pb.DisputeOpen, error) {
@@ -25,6 +28,14 @@ func (c *Case) DisuteOpenMessage() (*pb.DisputeOpen, error) {
 		return nil, err
 	}
 	return disputeOpen, nil
+}
+
+func (c *Case) OpenedBy() (pb.DisputeOpen_Party, error) {
+	do, err := c.DisuteOpenMessage()
+	if err != nil {
+		return pb.DisputeOpen_BUYER, err
+	}
+	return do.OpenedBy, nil
 }
 
 func (c *Case) PutDisputeOpen(disputeOpen *pb.DisputeOpen) error {
@@ -41,18 +52,39 @@ func (c *Case) PutDisputeOpen(disputeOpen *pb.DisputeOpen) error {
 	}
 
 	c.SerializedDisputeOpen = []byte(out)
+
+	if c.ParkedUpdate != nil {
+		if disputeOpen.OpenedBy == pb.DisputeOpen_BUYER {
+			c.VendorContract = c.ParkedUpdate
+			c.ParkedUpdate = nil
+		} else {
+			c.BuyerContract = c.ParkedUpdate
+			c.ParkedUpdate = nil
+		}
+	}
 	return nil
 }
 
 func (c *Case) PutDisputeUpdate(disputeUpdate *pb.DisputeUpdate) error {
 	disputeOpen, err := c.DisuteOpenMessage()
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
 		return err
 	}
 
+	if errors.Is(err, ErrMessageDoesNotExist) {
+		c.ParkedUpdate = disputeUpdate.Contract
+		return nil
+	}
+
 	if disputeOpen.OpenedBy == pb.DisputeOpen_BUYER {
+		if c.VendorContract != nil {
+			return errors.New("DISPUTE_UPDATE already exists")
+		}
 		c.VendorContract = disputeUpdate.Contract
 	} else {
+		if c.BuyerContract != nil {
+			return errors.New("DISPUTE_UPDATE already exists")
+		}
 		c.BuyerContract = disputeUpdate.Contract
 	}
 

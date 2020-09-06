@@ -1,16 +1,20 @@
 package orders
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
+	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-func (op *OrderProcessor) processDisputeOpenMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
+func (op *OrderProcessor) processDisputeOpenMessage(dbtx database.Tx, order *models.Order, pid peer.ID, message *npb.OrderMessage) (interface{}, error) {
 	disputeOpen := new(pb.DisputeOpen)
 	if err := ptypes.UnmarshalAny(message.Message, disputeOpen); err != nil {
 		return nil, err
@@ -54,6 +58,10 @@ func (op *OrderProcessor) processDisputeOpenMessage(dbtx database.Tx, order *mod
 		return nil, err
 	}
 
+	if orderOpen.Payment.Moderator == "" || orderOpen.Payment.Method != pb.OrderOpen_Payment_MODERATED {
+		return nil, errors.New("dispute opened processed for non-moderated order")
+	}
+
 	var (
 		disputer       = orderOpen.BuyerID.PeerID
 		disputerHandle = orderOpen.BuyerID.Handle
@@ -84,6 +92,59 @@ func (op *OrderProcessor) processDisputeOpenMessage(dbtx database.Tx, order *mod
 
 		log.Infof("Processed own DISPUTE_OPEN for orderID: %s", order.ID)
 	} else {
+		serializedContract, err := order.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+
+		update := pb.DisputeUpdate{
+			Timestamp: ptypes.TimestampNow(),
+			Contract:  serializedContract,
+		}
+
+		updateAny, err := ptypes.MarshalAny(&update)
+		if err != nil {
+			return nil, err
+		}
+
+		resp := npb.OrderMessage{
+			OrderID:     order.ID.String(),
+			MessageType: npb.OrderMessage_DISPUTE_UPDATE,
+			Message:     updateAny,
+		}
+
+		if err := utils.SignOrderMessage(&resp, op.identityPrivateKey); err != nil {
+			return nil, err
+		}
+
+		payload, err := ptypes.MarshalAny(&resp)
+		if err != nil {
+			return nil, err
+		}
+
+		messageID := make([]byte, 20)
+		if _, err := rand.Read(messageID); err != nil {
+			return nil, err
+		}
+
+		msg := npb.Message{
+			MessageType: npb.Message_DISPUTE,
+			MessageID:   hex.EncodeToString(messageID),
+			Payload:     payload,
+		}
+
+		moderator, err := peer.Decode(orderOpen.Payment.Moderator)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := order.PutMessage(&resp); err != nil {
+			return nil, err
+		}
+
+		if err := op.messenger.ReliablySendMessage(dbtx, moderator, &msg, nil); err != nil {
+			return nil, err
+		}
 		log.Infof("Received DISPUTE_OPEN message for order %s", order.ID)
 	}
 

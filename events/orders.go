@@ -114,7 +114,17 @@ type DisputeOpen struct {
 	DisputeeHandle string    `json:"disputeeHandle"`
 }
 
-type DisputeUpdate struct {
+type CaseOpen struct {
+	Notification
+	OrderID        string    `json:"orderID"`
+	Thumbnail      Thumbnail `json:"thumbnail"`
+	DisputerID     string    `json:"disputerID"`
+	DisputerHandle string    `json:"disputerHandle"`
+	DisputeeID     string    `json:"disputeeID"`
+	DisputeeHandle string    `json:"disputeeHandle"`
+}
+
+type CaseUpdate struct {
 	Notification
 	OrderID        string    `json:"orderId"`
 	Thumbnail      Thumbnail `json:"thumbnail"`

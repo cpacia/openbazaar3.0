@@ -4,10 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/OpenBazaar/jsonpb"
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	peer "github.com/libp2p/go-libp2p-core/peer"
@@ -101,9 +101,10 @@ type Order struct {
 	OrderCompleteSignature  string
 	OrderCompleteAcked      bool
 
-	SerializedDisputeOpen json.RawMessage
-	DisputeOpenSignature  string
-	DisputeOpenAcked      bool
+	SerializedDisputeOpen      json.RawMessage
+	DisputeOpenSignature       string
+	DisputeOpenOtherPartyAcked bool
+	DisputeOpenModeratorAcked  bool
 
 	SerializedDisputeUpdate json.RawMessage
 	DisputeUpdateSignature  string

@@ -3,7 +3,6 @@ package orders
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/OpenBazaar/jsonpb"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -11,6 +10,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/orders/utils"
 	iwallet "github.com/cpacia/wallet-interface"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"math/big"
