@@ -11,11 +11,11 @@ import (
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/jinzhu/gorm"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"gorm.io/gorm"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -255,7 +255,7 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 		// using the offline system.
 		var record models.StoreAndForwardServers
 		dberr := m.db.View(func(tx database.Tx) error {
-			if err := tx.Read().Where("peer_id=?", peerID.Pretty()).Find(&record).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			if err := tx.Read().Where("peer_id=?", peerID.Pretty()).Find(&record).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
 			return nil
@@ -295,15 +295,15 @@ func (m *Messenger) trySendMessage(peerID peer.ID, message *pb.Message, done cha
 		var wg sync.WaitGroup
 		wg.Add(len(servers))
 		for _, server := range servers {
-			go func() {
+			go func(svr peer.ID) {
 				defer wg.Done()
-				err := m.snfClient.SendMessage(context.Background(), peerID, server, nil, cipherText, []byte(message.MessageType.String()))
+				err := m.snfClient.SendMessage(context.Background(), peerID, svr, nil, cipherText, []byte(message.MessageType.String()))
 				if err != nil {
-					log.Warningf("Error pushing offline message %s to server %s: %s", message.MessageID, server.Pretty(), err)
+					log.Warningf("Error pushing offline message %s to server %s: %s", message.MessageID, svr.Pretty(), err)
 					return
 				}
 				atomic.AddUint32(&successes, 1)
-			}()
+			}(server)
 		}
 		wg.Wait()
 		log.Debugf("Message %s sent to %d of %d servers", message.MessageID, successes, len(servers))

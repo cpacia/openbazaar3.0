@@ -12,8 +12,8 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"gorm.io/gorm"
 	"os"
 )
 
@@ -35,7 +35,7 @@ func (n *OpenBazaarNode) FollowNode(peerID peer.ID, done chan<- struct{}) error 
 		}
 
 		var seq models.FollowSequence
-		if err := tx.Read().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		seq.Num++
@@ -95,7 +95,7 @@ func (n *OpenBazaarNode) UnfollowNode(peerID peer.ID, done chan<- struct{}) erro
 		}
 
 		var seq models.FollowSequence
-		if err := tx.Read().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Where("peer_id = ?", peerID.Pretty()).First(&seq).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		seq.PeerID = peerID.Pretty()

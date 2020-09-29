@@ -6,8 +6,10 @@ import (
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite" // Import sqlite dialect
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"log"
 	"os"
 	"path"
 	"sync"
@@ -15,6 +17,13 @@ import (
 
 const (
 	dbName = "openbazaar.db"
+)
+
+var silentLogger = logger.New(
+	log.New(os.Stdout, "\r\n", log.LstdFlags),
+	logger.Config{
+		LogLevel: logger.Silent,
+	},
 )
 
 var ErrReadOnly = errors.New("tx is read only")
@@ -29,7 +38,10 @@ type DB struct {
 
 // NewFFSqliteDB instantiates a new db which satisfies the Database interface.
 func NewFFSqliteDB(dataDir string) (database.Database, error) {
-	db, err := gorm.Open("sqlite3", path.Join(dataDir, dbName))
+	db, err := gorm.Open(sqlite.Open(path.Join(dataDir, dbName)), &gorm.Config{
+		Logger:            silentLogger,
+		AllowGlobalUpdate: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +55,10 @@ func NewFFSqliteDB(dataDir string) (database.Database, error) {
 // NewFFSqliteDB instantiates a new db which satisfies the Database interface.
 // The sqlite db will be held in memory.
 func NewFFMemoryDB(dataDir string) (database.Database, error) {
-	db, err := gorm.Open("sqlite3", ":memory:")
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		Logger:            silentLogger,
+		AllowGlobalUpdate: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +119,7 @@ func (fdb *DB) Close() error {
 	fdb.mtx.Lock()
 	defer fdb.mtx.Unlock()
 
-	return fdb.db.Close()
+	return nil
 }
 
 type tx struct {
@@ -197,6 +212,7 @@ func (t *tx) Save(model interface{}) error {
 	if !t.isForWrites {
 		return ErrReadOnly
 	}
+
 	return t.dbtx.Save(model).Error
 }
 
@@ -240,7 +256,7 @@ func (t *tx) Migrate(model interface{}) error {
 	if !t.isForWrites {
 		return ErrReadOnly
 	}
-	return t.dbtx.AutoMigrate(model).Error
+	return t.dbtx.AutoMigrate(model)
 }
 
 // RegisterCommitHook registers a callback that is invoked whenever a commit completes
@@ -432,52 +448,52 @@ func (t *tx) SetImage(img models.Image) error {
 }
 
 func (t *tx) setInterfaceType(i interface{}) error {
-	switch i.(type) {
+	switch i := i.(type) {
 	case *models.Profile:
-		if i.(*models.Profile) == nil {
+		if i == nil {
 			return nil
 		}
-		if err := t.ffdb.SetProfile(i.(*models.Profile)); err != nil {
+		if err := t.ffdb.SetProfile(i); err != nil {
 			return err
 		}
 	case models.Followers:
-		if err := t.ffdb.SetFollowers(i.(models.Followers)); err != nil {
+		if err := t.ffdb.SetFollowers(i); err != nil {
 			return err
 		}
 	case models.Following:
-		if err := t.ffdb.SetFollowing(i.(models.Following)); err != nil {
+		if err := t.ffdb.SetFollowing(i); err != nil {
 			return err
 		}
 	case *pb.SignedListing:
-		if i.(*pb.SignedListing) == nil {
+		if i == nil {
 			return nil
 		}
-		if err := t.ffdb.SetListing(i.(*pb.SignedListing)); err != nil {
+		if err := t.ffdb.SetListing(i); err != nil {
 			return err
 		}
 	case models.ListingIndex:
-		if err := t.ffdb.SetListingIndex(i.(models.ListingIndex)); err != nil {
+		if err := t.ffdb.SetListingIndex(i); err != nil {
 			return err
 		}
 	case models.RatingIndex:
-		if err := t.ffdb.SetRatingIndex(i.(models.RatingIndex)); err != nil {
+		if err := t.ffdb.SetRatingIndex(i); err != nil {
 			return err
 		}
 	case *pb.Rating:
-		if i.(*pb.Rating) == nil {
+		if i == nil {
 			return nil
 		}
-		if err := t.ffdb.SetRating(i.(*pb.Rating)); err != nil {
+		if err := t.ffdb.SetRating(i); err != nil {
 			return err
 		}
 	case models.Image:
-		img := i.(models.Image)
+		img := i
 		p := path.Join(t.ffdb.rootDir, "images", string(img.Size), img.Name)
 		if err := t.ffdb.SetImage(img.ImageBytes, p); err != nil {
 			return err
 		}
 	case deleteListing:
-		if err := t.ffdb.DeleteListing(string(i.(deleteListing))); err != nil {
+		if err := t.ffdb.DeleteListing(string(i)); err != nil {
 			return err
 		}
 	}

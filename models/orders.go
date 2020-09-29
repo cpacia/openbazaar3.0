@@ -10,7 +10,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"time"
 )
 
@@ -68,7 +68,7 @@ type Order struct {
 
 	PaymentAddress string `gorm:"index"`
 
-	Transactions json.RawMessage
+	Transactions []byte
 
 	MyRole string
 
@@ -77,54 +77,54 @@ type Order struct {
 	LastCheckForPayments time.Time
 	RescanPerformed      bool
 
-	SerializedOrderOpen json.RawMessage
+	SerializedOrderOpen []byte
 	OrderOpenSignature  string
 	OrderOpenAcked      bool
 
-	SerializedOrderReject json.RawMessage
+	SerializedOrderReject []byte
 	OrderRejectSignature  string
 	OrderRejectAcked      bool
 
-	SerializedOrderCancel json.RawMessage
+	SerializedOrderCancel []byte
 	OrderCancelSignature  string
 	OrderCancelAcked      bool
 
-	SerializedOrderConfirmation json.RawMessage
+	SerializedOrderConfirmation []byte
 	OrderConfirmationSignature  string
 	OrderConfirmationAcked      bool
 
-	SerializedRatingSignatures json.RawMessage
+	SerializedRatingSignatures []byte
 	RatingSignaturesSignature  string
 	RatingSignaturesAcked      bool
 
-	SerializedOrderComplete json.RawMessage
+	SerializedOrderComplete []byte
 	OrderCompleteSignature  string
 	OrderCompleteAcked      bool
 
-	SerializedDisputeOpen      json.RawMessage
+	SerializedDisputeOpen      []byte
 	DisputeOpenSignature       string
 	DisputeOpenOtherPartyAcked bool
 	DisputeOpenModeratorAcked  bool
 
-	SerializedDisputeUpdate json.RawMessage
+	SerializedDisputeUpdate []byte
 	DisputeUpdateSignature  string
 	DisputeUpdateAcked      bool
 
-	SerializedDisputeClosed json.RawMessage
+	SerializedDisputeClosed []byte
 	DisputeClosedSignature  string
 	DisputeClosedAcked      bool
 
-	SerializedPaymentFinalized json.RawMessage
+	SerializedPaymentFinalized []byte
 	PaymentFinalizedSignature  string
 	PaymentFinalizedAcked      bool
 
-	SerializedOrderFulfillments json.RawMessage
+	SerializedOrderFulfillments []byte
 	OrderFulfillmentAcked       bool
 
-	SerializedRefunds json.RawMessage
+	SerializedRefunds []byte
 	RefundAcked       bool
 
-	SerializedPaymentSent json.RawMessage
+	SerializedPaymentSent []byte
 	PaymentSentAcked      bool
 
 	ParkedMessages  []byte
@@ -942,35 +942,43 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 	}
 	if o.SerializedOrderReject != nil {
 		out["orderReject"] = o.SerializedOrderReject
-		out["orderRejectAcked"] = o.OrderOpenAcked
+		out["orderRejectAcked"] = o.OrderRejectAcked
 	}
 	if o.SerializedOrderCancel != nil {
 		out["orderCancel"] = o.SerializedOrderCancel
-		out["orderCancelAcked"] = o.OrderOpenAcked
+		out["orderCancelAcked"] = o.OrderCancelAcked
 	}
 	if o.SerializedOrderConfirmation != nil {
 		out["orderConfirmation"] = o.SerializedOrderConfirmation
-		out["orderConfirmationAcked"] = o.OrderOpenAcked
+		out["orderConfirmationAcked"] = o.OrderConfirmationAcked
 	}
 	if o.SerializedOrderComplete != nil {
 		out["orderComplete"] = o.SerializedOrderComplete
-		out["orderCompleteAcked"] = o.OrderOpenAcked
+		out["orderCompleteAcked"] = o.OrderCompleteAcked
 	}
 	if o.SerializedDisputeOpen != nil {
 		out["disputeOpen"] = o.SerializedDisputeOpen
-		out["disputeOpenAcked"] = o.OrderOpenAcked
+		do, err := o.DisputeOpenMessage()
+		if err != nil {
+			return nil, err
+		}
+		if do.OpenedBy == pb.DisputeOpen_BUYER && o.Role() == RoleBuyer ||
+			do.OpenedBy == pb.DisputeOpen_VENDOR && o.Role() == RoleVendor {
+			out["disputeOpenOtherPartyAcked"] = o.DisputeOpenOtherPartyAcked
+			out["disputeOpenModeratorAcked"] = o.DisputeOpenModeratorAcked
+		}
 	}
 	if o.SerializedDisputeClosed != nil {
 		out["disputeClosed"] = o.SerializedDisputeClosed
-		out["disputeClosedAcked"] = o.OrderOpenAcked
+		out["disputeClosedAcked"] = o.DisputeClosedAcked
 	}
 	if o.SerializedDisputeUpdate != nil {
 		out["disputeUpdate"] = o.SerializedDisputeUpdate
-		out["disputeUpdateAcked"] = o.OrderOpenAcked
+		out["disputeUpdateAcked"] = o.DisputeUpdateAcked
 	}
 	if o.SerializedPaymentFinalized != nil {
-		out["orderOpen"] = o.SerializedOrderOpen
-		out["paymentFinalizedAcked"] = o.OrderOpenAcked
+		out["paymentFinalized"] = o.SerializedPaymentFinalized
+		out["paymentFinalizedAcked"] = o.PaymentFinalizedAcked
 	}
 	if o.SerializedOrderFulfillments != nil {
 		fulfillmentList := new(pb.FulfillmentList)
@@ -1048,3 +1056,246 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 
 	return json.MarshalIndent(out, "", "    ")
 }
+
+/*
+// UnmarshalJSON provides custom JSON unmarshalling for the order model. It requires the data to be
+// in the format provided by MarshalJSON.
+func (o *Order) UnmarshalJSON(data []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch x := r.(type) {
+			case string:
+				err = errors.New(x)
+			case error:
+				err = x
+			default:
+				err = errors.New("unknown panic")
+			}
+		}
+	}()
+
+	var in map[string]interface{}
+	if err := json.Unmarshal(data, &in); err != nil {
+		return err
+	}
+
+	o.ID = OrderID(in["orderID"].(string))
+	o.MyRole = in["role"].(string)
+
+	if _, ok := in["orderOpen"]; ok {
+		out, err := json.MarshalIndent(in["orderOpen"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		o.SerializedOrderOpen = out
+		o.OrderOpenAcked = in["orderOpenAcked"].(bool)
+	}
+
+	if _, ok := in["orderReject"]; ok {
+		out, err := json.MarshalIndent(in["orderReject"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		o.SerializedOrderReject = out
+		o.OrderRejectAcked = in["orderRejectAcked"].(bool)
+	}
+
+	if _, ok := in["orderCancel"]; ok {
+		out, err := json.MarshalIndent(in["orderCancel"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		o.SerializedOrderCancel = out
+		o.OrderCancelAcked = in["orderCancelAcked"].(bool)
+	}
+
+	if _, ok := in["orderConfirmation"]; ok {
+		out, err := json.MarshalIndent(in["orderConfirmation"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		o.SerializedOrderConfirmation = out
+		o.OrderConfirmationAcked = in["orderConfirmationAcked"].(bool)
+	}
+
+	if _, ok := in["orderComplete"]; ok {
+		out, err := json.MarshalIndent(in["orderComplete"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		o.SerializedOrderComplete = out
+		o.OrderCompleteAcked = in["orderCompleteAcked"].(bool)
+	}
+
+	if _, ok := in["disputeOpen"]; ok {
+		out, err := json.MarshalIndent(in["disputeOpen"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		o.SerializedOrderOpen = out
+		if _, ok := in["disputeOpenOtherPartyAcked"]; ok {
+			o.DisputeOpenOtherPartyAcked = in["disputeOpenOtherPartyAcked"].(bool)
+		}
+		if _, ok := in["disputeOpenModeratorAcked"]; ok {
+			o.DisputeOpenModeratorAcked = in["disputeOpenModeratorAcked"].(bool)
+		}
+	}
+
+	if _, ok := in["disputeClosed"]; ok {
+		out, err := json.MarshalIndent(in["disputeClosed"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		o.SerializedDisputeClosed = out
+		o.DisputeClosedAcked = in["disputeClosedAcked"].(bool)
+	}
+
+	if _, ok := in["disputeUpdate"]; ok {
+		out, err := json.MarshalIndent(in["disputeUpdate"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		o.SerializedDisputeUpdate = out
+		o.DisputeUpdateAcked = in["disputeUpdateAcked"].(bool)
+	}
+
+	if _, ok := in["paymentFinalized"]; ok {
+		out, err := json.MarshalIndent(in["paymentFinalized"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		o.SerializedPaymentFinalized = out
+		o.PaymentFinalizedAcked = in["paymentFinalizedAcked"].(bool)
+	}
+
+	if _, ok := in["orderFulfillments"]; ok {
+		var (
+			ser             []json.RawMessage
+			fulfillmentList pb.FulfillmentList
+		)
+		out, err := json.MarshalIndent(in["orderFulfillments"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(out, &ser)
+		if err != nil {
+			return err
+		}
+		for _, s := range ser {
+			fulfillment := new(pb.OrderFulfillment)
+			if err := jsonpb.UnmarshalString(string(s), fulfillment); err != nil {
+				return err
+			}
+			fulfillmentList.Messages = append(fulfillmentList.Messages, &pb.FulfillmentList_Message{
+				FulfillmentMessage: fulfillment,
+			})
+		}
+
+		out2, err := marshaler.MarshalToString(&fulfillmentList)
+		if err != nil {
+			return err
+		}
+
+		o.SerializedOrderFulfillments = []byte(out2)
+		o.OrderFulfillmentAcked = in["orderFulfillmentsAcked"].(bool)
+	}
+
+	if _, ok := in["refunds"]; ok {
+		var (
+			ser        []json.RawMessage
+			refundList pb.RefundList
+		)
+		out, err := json.MarshalIndent(in["refunds"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(out, &ser)
+		if err != nil {
+			return err
+		}
+		for _, s := range ser {
+			refund := new(pb.Refund)
+			if err := jsonpb.UnmarshalString(string(s), refund); err != nil {
+				return err
+			}
+			refundList.Messages = append(refundList.Messages, &pb.RefundList_Message{
+				RefundMessage: refund,
+			})
+		}
+
+		out2, err := marshaler.MarshalToString(&refundList)
+		if err != nil {
+			return err
+		}
+
+		o.SerializedRefunds = []byte(out2)
+		o.RefundAcked = in["refundsAcked"].(bool)
+	}
+
+	if _, ok := in["paymentsSent"]; ok {
+		var (
+			ser              []json.RawMessage
+			paymentsSentList pb.PaymentSentList
+		)
+		out, err := json.MarshalIndent(in["paymentsSent"].(map[string]interface{}), "", "    ")
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(out, &ser)
+		if err != nil {
+			return err
+		}
+		for _, s := range ser {
+			ps := new(pb.PaymentSent)
+			if err := jsonpb.UnmarshalString(string(s), ps); err != nil {
+				return err
+			}
+			paymentsSentList.Messages = append(paymentsSentList.Messages, &pb.PaymentSentList_Message{
+				PaymentSentMessage: ps,
+			})
+		}
+
+		out2, err := marshaler.MarshalToString(&paymentsSentList)
+		if err != nil {
+			return err
+		}
+
+		o.SerializedPaymentSent = []byte(out2)
+		o.PaymentSentAcked = in["paymentsSentAcked"].(bool)
+	}
+
+	if _, ok := in["parkedMessages"]; ok {
+		parked := new(npb.OrderList)
+		if err := jsonpb.UnmarshalString(in["parkedMessages"].(string), parked); err != nil {
+			return err
+		}
+
+		out, err := json.MarshalIndent(parked, "", "    ")
+		if err != nil {
+			return err
+		}
+
+		o.ParkedMessages = out
+	}
+
+	if _, ok := in["erroredMessages"]; ok {
+		errored := new(npb.OrderList)
+		if err := jsonpb.UnmarshalString(in["erroredMessages"].(string), errored); err != nil {
+			return err
+		}
+
+		out, err := json.MarshalIndent(errored, "", "    ")
+		if err != nil {
+			return err
+		}
+
+		o.ErroredMessages = out
+	}
+
+	if _, ok := in["transactions"]; ok {
+		o.Transactions = in["transactions"].([]byte)
+	}
+
+	return nil
+}*/

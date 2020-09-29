@@ -7,22 +7,22 @@ import (
 
 // UserPreferences are set by the client and persisted in the database.
 type UserPreferences struct {
-	ID                 int             `json:"-" gorm:"primary_key"`
-	UserAgent          string          `json:"userAgent"`
-	PaymentDataInQR    bool            `json:"paymentDataInQR"`
-	ShowNotifications  bool            `json:"showNotifications"`
-	ShowNsfw           bool            `json:"showNsfw"`
-	ShippingAddresses  json.RawMessage `json:"shippingAddresses"`
-	LocalCurrency      string          `json:"localCurrency"`
-	Country            string          `json:"country"`
-	TermsAndConditions string          `json:"termsAndConditions"`
-	RefundPolicy       string          `json:"refundPolicy"`
-	Blocked            json.RawMessage `json:"blockedNodes"`
-	Mods               json.RawMessage `json:"storeModerators"`
-	MisPaymentBuffer   float32         `json:"mispaymentBuffer"`
-	AutoConfirm        bool            `json:"autoConfirm"`
-	EmailNotifications string          `json:"emailNotifications"`
-	PrefCurrencies     json.RawMessage `json:"preferredCurrencies"`
+	ID                 int     `json:"-" gorm:"primary_key"`
+	UserAgent          string  `json:"userAgent"`
+	PaymentDataInQR    bool    `json:"paymentDataInQR"`
+	ShowNotifications  bool    `json:"showNotifications"`
+	ShowNsfw           bool    `json:"showNsfw"`
+	ShippingAddresses  []byte  `json:"shippingAddresses"`
+	LocalCurrency      string  `json:"localCurrency"`
+	Country            string  `json:"country"`
+	TermsAndConditions string  `json:"termsAndConditions"`
+	RefundPolicy       string  `json:"refundPolicy"`
+	Blocked            []byte  `json:"blockedNodes"`
+	Mods               []byte  `json:"storeModerators"`
+	MisPaymentBuffer   float32 `json:"mispaymentBuffer"`
+	AutoConfirm        bool    `json:"autoConfirm"`
+	EmailNotifications string  `json:"emailNotifications"`
+	PrefCurrencies     []byte  `json:"preferredCurrencies"`
 }
 
 type shippingAddress struct {

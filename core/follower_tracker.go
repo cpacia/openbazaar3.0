@@ -2,13 +2,14 @@ package core
 
 import (
 	"context"
+	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/repo"
-	"github.com/jinzhu/gorm"
 	host "github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"gorm.io/gorm"
 	"os"
 	"sync"
 	"time"
@@ -106,7 +107,7 @@ func (t *FollowerTracker) Close() {
 
 		err := t.repo.DB().Update(func(tx database.Tx) error {
 			var stat models.FollowerStat
-			if err := tx.Read().Where("peer_id = ?", pid.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			if err := tx.Read().Where("peer_id = ?", pid.Pretty()).First(&stat).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
 			stat.PeerID = pid.Pretty()
@@ -193,7 +194,7 @@ func (t *FollowerTracker) listenEvents() {
 
 				err := t.repo.DB().Update(func(tx database.Tx) error {
 					var stat models.FollowerStat
-					if err := tx.Read().Where("peer_id = ?", notif.Peer.Pretty()).First(&stat).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+					if err := tx.Read().Where("peer_id = ?", notif.Peer.Pretty()).First(&stat).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 						return err
 					}
 					stat.PeerID = notif.Peer.Pretty()
@@ -283,7 +284,7 @@ func (t *FollowerTracker) tryConnectFollowers() {
 	err := t.repo.DB().View(func(tx database.Tx) error {
 		return tx.Read().Order("connected_duration asc").Order("last_connection asc").Find(&stats).Error
 	})
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Errorf("Error loading followers from db %s", err)
 	}
 

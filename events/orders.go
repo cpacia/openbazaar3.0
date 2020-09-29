@@ -116,7 +116,7 @@ type DisputeOpen struct {
 
 type CaseOpen struct {
 	Notification
-	OrderID        string    `json:"orderID"`
+	CaseID         string    `json:"caseID"`
 	Thumbnail      Thumbnail `json:"thumbnail"`
 	DisputerID     string    `json:"disputerID"`
 	DisputerHandle string    `json:"disputerHandle"`
@@ -126,13 +126,12 @@ type CaseOpen struct {
 
 type CaseUpdate struct {
 	Notification
-	OrderID        string    `json:"orderId"`
+	CaseID         string    `json:"caseID"`
 	Thumbnail      Thumbnail `json:"thumbnail"`
 	DisputerID     string    `json:"disputerID"`
 	DisputerHandle string    `json:"disputerHandle"`
 	DisputeeID     string    `json:"disputeeID"`
 	DisputeeHandle string    `json:"disputeeHandle"`
-	Buyer          string    `json:"buyer"`
 }
 
 type DisputeClose struct {

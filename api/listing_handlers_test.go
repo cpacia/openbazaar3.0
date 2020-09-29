@@ -439,7 +439,7 @@ func TestListingHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusConflict,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "listing exists. use PUT to update."}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "listing exists. use PUT to update"}`)), nil
 			},
 		},
 		{
@@ -532,7 +532,7 @@ func TestListingHandlers(t *testing.T) {
 			},
 			statusCode: http.StatusConflict,
 			expectedResponse: func() ([]byte, error) {
-				return []byte(fmt.Sprintf("%s\n", `{"error": "listing does not exist. use POST to create."}`)), nil
+				return []byte(fmt.Sprintf("%s\n", `{"error": "listing does not exist. use POST to create"}`)), nil
 			},
 		},
 		{

@@ -8,7 +8,7 @@ import (
 
 type StoreAndForwardServers struct {
 	PeerID      string `gorm:"primary_key"`
-	SNFServers  json.RawMessage
+	SNFServers  []byte
 	LastUpdated time.Time
 }
 

@@ -18,8 +18,8 @@ import (
 	fpath "github.com/ipfs/go-path"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"gorm.io/gorm"
 	"math"
 	"math/rand"
 	"os"
@@ -235,7 +235,7 @@ func (n *OpenBazaarNode) handleAckMessage(from peer.ID, message *pb.Message) err
 		}
 		return nil
 	})
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
 
@@ -349,7 +349,7 @@ func (n *OpenBazaarNode) syncMessages() {
 			err = n.repo.DB().View(func(tx database.Tx) error {
 				return tx.Read().Where("recipient = ?", notif.Peer.Pretty()).Find(&messages).Error
 			})
-			if err != nil && !gorm.IsRecordNotFoundError(err) {
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				log.Error("syncMessages outgoing messages lookup error: %s", err)
 				return
 			}
@@ -408,7 +408,7 @@ func (n *OpenBazaarNode) publishHandler() {
 		lastPublish = event.Time
 		return nil
 	})
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Error("Error loading last republish time: %s", err.Error())
 	}
 

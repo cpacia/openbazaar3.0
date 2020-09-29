@@ -45,7 +45,6 @@ func TestNotifier(t *testing.T) {
 		&events.OrderFulfillment{},
 		&events.OrderCompletion{},
 		&events.DisputeOpen{},
-		&events.DisputeUpdate{},
 		&events.DisputeClose{},
 		&events.DisputeAccepted{},
 		&events.VendorFinalizedPayment{},

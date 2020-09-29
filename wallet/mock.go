@@ -328,9 +328,7 @@ func (w *MockWallet) Start() {
 				}
 				for _, in := range tx.From {
 					if _, ok := w.addrs[in.Address]; ok {
-						if _, ok := w.utxos[hex.EncodeToString(in.ID)]; ok {
-							delete(w.utxos, hex.EncodeToString(in.ID))
-						}
+						delete(w.utxos, hex.EncodeToString(in.ID))
 						total = total.Sub(in.Amount)
 						relevant = true
 					}

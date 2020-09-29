@@ -17,10 +17,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ipfs/go-cid"
-	"github.com/jinzhu/gorm"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/op/go-logging"
+	"gorm.io/gorm"
 	"sort"
 	"time"
 )
@@ -123,9 +123,9 @@ func (op *OrderProcessor) ProcessMessage(dbtx database.Tx, peer peer.ID, message
 		err   error
 	)
 	err = dbtx.Read().Where("id = ?", message.OrderID).First(&order).Error
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
-	} else if gorm.IsRecordNotFoundError(err) && message.MessageType != npb.OrderMessage_ORDER_OPEN {
+	} else if errors.Is(err, gorm.ErrRecordNotFound) && message.MessageType != npb.OrderMessage_ORDER_OPEN {
 		// Order does not exist in the DB and the message type is not an order open. This can happen
 		// in the case where we download offline messages out of order. In this case we will park
 		// the message so that we can try again later if we receive other messages.

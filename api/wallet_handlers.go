@@ -6,7 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 	"strings"
@@ -192,7 +192,7 @@ func (g *Gateway) handleGETTransactions(w http.ResponseWriter, r *http.Request) 
 			status = "CONFIRMED"
 		}
 		metadata, err := g.node.GetTransactionMetadata(tx.ID)
-		if err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			http.Error(w, wrapError(err), http.StatusInternalServerError)
 			return
 		}

@@ -1,13 +1,14 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"gorm.io/gorm"
 	"os"
 )
 
@@ -34,7 +35,7 @@ func (n *OpenBazaarNode) SavePreferences(prefs *models.UserPreferences, done cha
 			newModMap     = make(map[peer.ID]bool)
 		)
 		err := tx.Read().First(&currentPrefs).Error
-		if err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 

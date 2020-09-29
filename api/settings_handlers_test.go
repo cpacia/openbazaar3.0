@@ -39,7 +39,7 @@ func TestSettingsHandlers(t *testing.T) {
 			statusCode: http.StatusOK,
 			expectedResponse: func() ([]byte, error) {
 				n := nodeConfig{
-					PeerId:  "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi",
+					PeerID:  "12D3KooWBfmETW1ZbkdZbKKPpE3jpjyQ5WBXoDF8y9oE8vMQPKLi",
 					Testnet: true,
 					Tor:     true,
 					Wallets: []string{"BTC"},

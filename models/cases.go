@@ -13,6 +13,8 @@ type Case struct {
 	BuyerContract  json.RawMessage
 	VendorContract json.RawMessage
 
+	ValidationErrors json.RawMessage
+
 	SerializedDisputeOpen  json.RawMessage
 	SerializedDisputeClose json.RawMessage
 
@@ -88,5 +90,20 @@ func (c *Case) PutDisputeUpdate(disputeUpdate *pb.DisputeUpdate) error {
 		c.BuyerContract = disputeUpdate.Contract
 	}
 
+	return nil
+}
+
+func (c *Case) PutValidationErrors(validationErrors []error) error {
+	errStrs := make([]string, 0, len(validationErrors))
+	for _, err := range validationErrors {
+		errStrs = append(errStrs, err.Error())
+	}
+
+	out, err := json.MarshalIndent(errStrs, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	c.ValidationErrors = out
 	return nil
 }

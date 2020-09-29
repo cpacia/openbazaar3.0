@@ -200,6 +200,11 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 		t.Fatal("Timeout waiting on channel")
 	}
 
+	confirmAck2, err := network.Nodes()[0].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Reconnecting nodes should trigger node 1 to send the order to node 0 again.
 	time.Sleep(1)
 	network.Nodes()[0].networkService = net.NewNetworkService(network.Nodes()[0].ipfsNode.PeerHost, net.NewBanManager(nil), true)
@@ -235,6 +240,12 @@ func TestOpenBazaarNode_ConfirmOrder(t *testing.T) {
 
 	select {
 	case <-txSub1.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+
+	select {
+	case <-confirmAck2.Out():
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}

@@ -18,11 +18,11 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/ipfs/go-cid"
 	ipath "github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/jinzhu/gorm"
 	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/multiformats/go-multihash"
+	"gorm.io/gorm"
 	"math/big"
 	"os"
 	"regexp"
@@ -187,7 +187,7 @@ func (n *OpenBazaarNode) GetMyListingBySlug(slug string) (*pb.SignedListing, err
 		if err != nil {
 			return fmt.Errorf("%w: listing not found", coreiface.ErrNotFound)
 		}
-		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
@@ -224,7 +224,7 @@ func (n *OpenBazaarNode) GetMyListingByCID(cid cid.Cid) (*pb.SignedListing, erro
 		if err != nil {
 			return fmt.Errorf("%w: listing not found", coreiface.ErrNotFound)
 		}
-		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Where("slug = ?", slug).Find(&coupons).Error; !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		listing.Cid = cid.String()
@@ -483,9 +483,8 @@ func (n *OpenBazaarNode) saveListingToDB(dbtx database.Tx, listing *pb.Listing) 
 	if err := n.validateListing(sl); err != nil {
 		if errors.Is(err, coreiface.ErrInternalServer) {
 			return cid.Cid{}, err
-		} else {
-			return cid.Cid{}, fmt.Errorf("%w: %s", coreiface.ErrBadRequest, err)
 		}
+		return cid.Cid{}, fmt.Errorf("%w: %s", coreiface.ErrBadRequest, err)
 	}
 
 	// Save listing

@@ -12,8 +12,8 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"gorm.io/gorm"
 	"os"
 	"strconv"
 	"time"
@@ -39,7 +39,7 @@ func (n *OpenBazaarNode) SetProfile(profile *models.Profile, done chan<- struct{
 
 	err := n.repo.DB().Update(func(tx database.Tx) error {
 		var prefs models.UserPreferences
-		if err := tx.Read().First(&prefs).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().First(&prefs).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 

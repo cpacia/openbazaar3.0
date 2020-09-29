@@ -30,7 +30,6 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/corehttp"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
-	"github.com/jinzhu/gorm"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -46,6 +45,7 @@ import (
 	madns "github.com/multiformats/go-multiaddr-dns"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/op/go-logging"
+	"gorm.io/gorm"
 	"net"
 	"net/http"
 	"os"
@@ -504,7 +504,7 @@ func InitializeMultiwallet(mw multiwallet.Multiwallet, db database.Database, cre
 			err := db.View(func(tx database.Tx) error {
 				return tx.Read().Where("name = ?", "bip44").First(&bip44ModelKey).Error
 			})
-			if gorm.IsRecordNotFoundError(err) {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("can not initialize wallet %s: seed does not exist in database", ct.CurrencyCode())
 			} else if err != nil {
 				return err
@@ -544,12 +544,14 @@ func constructDHTRouting(mode dht.ModeOpt) func(ctx context.Context, host host.H
 	return func(ctx context.Context, host host.Host, dstore datastore.Batching, validator record.Validator, addrs ...peer.AddrInfo) (routing.Routing, error) {
 		return dual.New(
 			ctx, host,
-			dht.Concurrency(10),
-			dht.Mode(mode),
-			dht.Datastore(dstore),
-			dht.Validator(validator),
-			dht.ProtocolPrefix(ProtocolDHT),
-			dht.MaxRecordAge(maxRecordAge),
+			dual.DHTOption(
+				dht.Concurrency(10),
+				dht.Mode(mode),
+				dht.Datastore(dstore),
+				dht.Validator(validator),
+				dht.ProtocolPrefix(ProtocolDHT),
+				dht.MaxRecordAge(maxRecordAge),
+			),
 		)
 	}
 }

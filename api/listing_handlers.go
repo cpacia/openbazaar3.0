@@ -121,7 +121,7 @@ func (g *Gateway) handlePOSTListing(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := g.node.GetMyListingBySlug(listing.Slug); !errors.Is(err, coreiface.ErrNotFound) {
-		http.Error(w, wrapError(errors.New("listing exists. use PUT to update.")), http.StatusConflict)
+		http.Error(w, wrapError(errors.New("listing exists. use PUT to update")), http.StatusConflict)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (g *Gateway) handlePUTListing(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := g.node.GetMyListingBySlug(listing.Slug); errors.Is(err, coreiface.ErrNotFound) {
-		http.Error(w, wrapError(errors.New("listing does not exist. use POST to create.")), http.StatusConflict)
+		http.Error(w, wrapError(errors.New("listing does not exist. use POST to create")), http.StatusConflict)
 		return
 	}
 

@@ -266,8 +266,13 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	// Next we're going to do the same but for a moderated order. Node 1 purchase a moderated
 	// listing from node 0.
+	ackSub2, err := network.Nodes()[1].eventBus.Subscribe(&events.MessageACK{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	purchase.Moderator = network.Nodes()[2].Identity().Pretty()
-	_, _, paymentAmount, err = network.Nodes()[1].PurchaseListing(context.Background(), purchase)
+	orderID, _, paymentAmount, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +285,12 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	// Block until node 1 receives the order ACK.
 	select {
-	case <-ackSub1.Out():
+	case <-ackSub2.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
+	}
+	select {
+	case <-ackSub2.Out():
 	case <-time.After(time.Second * 10):
 		t.Fatal("Timeout waiting on channel")
 	}
@@ -296,7 +306,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	// Load the order from node 0 and make sure it was saved correctly.
 	var order3 models.Order
 	err = network.Nodes()[0].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order3).Error
+		return tx.Read().Where("id = ?", orderID).Last(&order3).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -309,7 +319,7 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 	// Load the order from node 1 and make sure it was saved correctly.
 	var order4 models.Order
 	err = network.Nodes()[1].repo.DB().View(func(tx database.Tx) error {
-		return tx.Read().Where("id = ?", orderNotif.OrderID).Last(&order4).Error
+		return tx.Read().Where("id = ?", orderID).Last(&order4).Error
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -338,15 +348,15 @@ func TestOpenBazaarNode_PurchaseListing(t *testing.T) {
 
 	// Send the direct purchase from node 1 to node 0.
 	purchase.Moderator = ""
-	orderID, _, paymentAmount, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
+	orderID, _, paymentAmount2, err := network.Nodes()[1].PurchaseListing(context.Background(), purchase)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Validate the expected amount is correct.
 	expectedAmount = "4992221"
-	if paymentAmount.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
-		t.Errorf("Returned incorrect amount. Expected %s, got %s", expectedAmount, paymentAmount.Amount)
+	if paymentAmount2.Amount.Cmp(iwallet.NewAmount(expectedAmount)) != 0 {
+		t.Errorf("Returned incorrect amount. Expected %s, got %s", expectedAmount, paymentAmount2.Amount)
 	}
 
 	// Load the order from node 1 and make sure it was saved correctly.

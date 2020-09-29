@@ -51,7 +51,7 @@ func (op *OrderProcessor) processRatingSignaturesMessage(dbtx database.Tx, order
 	}
 
 	for i, sig := range rs.Sigs {
-		listing, err := extractListing(orderOpen.Items[i].ListingHash, orderOpen.Listings)
+		listing, err := utils.ExtractListing(orderOpen.Items[i].ListingHash, orderOpen.Listings)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func (op *OrderProcessor) sendRatingSignatures(dbtx database.Tx, order *models.O
 		Timestamp: ptypes.TimestampNow(),
 	}
 	for i, item := range orderOpen.Items {
-		listing, err := extractListing(item.ListingHash, orderOpen.Listings)
+		listing, err := utils.ExtractListing(item.ListingHash, orderOpen.Listings)
 		if err != nil {
 			return err
 		}

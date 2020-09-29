@@ -8,7 +8,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/utils"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 	"io/ioutil"
 	"os"
 	"path"
@@ -41,7 +41,7 @@ func TestFFSqliteDB_UpdateAndView(t *testing.T) {
 
 	var messages []models.OutgoingMessage
 	err = db.View(func(tx database.Tx) error {
-		if err := tx.Read().Find(&messages).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Find(&messages).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		return nil
@@ -68,7 +68,7 @@ func TestFFSqliteDB_UpdateAndView(t *testing.T) {
 
 	var messages2 []models.OutgoingMessage
 	err = db.View(func(tx database.Tx) error {
-		if err := tx.Read().Find(&messages2).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Find(&messages2).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		return nil
@@ -121,7 +121,7 @@ func TestFFSqliteDB_Rollback(t *testing.T) {
 		profile  *models.Profile
 	)
 	err = db.View(func(tx database.Tx) error {
-		if err := tx.Read().Find(&messages).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Find(&messages).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		profile, err = tx.GetProfile()

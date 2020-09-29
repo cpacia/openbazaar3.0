@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/database"
@@ -9,9 +10,10 @@ import (
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/orders/utils"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/jinzhu/gorm"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"gorm.io/gorm"
 )
 
 func (n *OpenBazaarNode) OpenDispute(orderID models.OrderID, reason string, done chan struct{}) error {
@@ -138,22 +140,55 @@ func (n *OpenBazaarNode) handleDisputeMessage(from peer.ID, message *npb.Message
 			return err
 		}
 
-		// TODO: validate dispute open (openedBy == peer)
+		orderOpen, err := extractOrderOpen(disputeOpen.Contract)
+		if err != nil {
+			return err
+		}
+
+		var (
+			disputer       = orderOpen.BuyerID.PeerID
+			disputerHandle = orderOpen.BuyerID.Handle
+			disputee       = orderOpen.Listings[0].Listing.VendorID.PeerID
+			disputeeHandle = orderOpen.Listings[0].Listing.VendorID.Handle
+		)
+		if disputeOpen.OpenedBy == pb.DisputeOpen_VENDOR {
+			disputer = orderOpen.Listings[0].Listing.VendorID.PeerID
+			disputerHandle = orderOpen.Listings[0].Listing.VendorID.Handle
+			disputee = orderOpen.BuyerID.PeerID
+			disputeeHandle = orderOpen.BuyerID.Handle
+		}
+
+		validationErrors, err := n.validateDisputeOpen(from, disputeOpen)
+		if err != nil {
+			return err
+		}
 
 		return n.repo.DB().Update(func(dbtx database.Tx) error {
 			dbtx.RegisterCommitHook(func() {
-				// TODO: add details
-				n.eventBus.Emit(&events.CaseOpen{})
+				n.eventBus.Emit(&events.CaseOpen{
+					CaseID:         order.OrderID,
+					DisputerID:     disputer,
+					DisputerHandle: disputerHandle,
+					DisputeeID:     disputee,
+					DisputeeHandle: disputeeHandle,
+					Thumbnail: events.Thumbnail{
+						Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
+						Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
+					},
+				})
 				log.Infof("Received new case. ID: %s", order.OrderID)
 			})
 
 			var disputeCase models.Case
 			err := dbtx.Read().Where("id = ?", order.OrderID).First(&disputeCase).Error
-			if err != nil && !gorm.IsRecordNotFoundError(err) {
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
 
 			disputeCase.ID = models.OrderID(order.OrderID)
+			if err := disputeCase.PutValidationErrors(validationErrors); err != nil {
+				return err
+			}
 
 			if disputeCase.SerializedDisputeOpen != nil {
 				return fmt.Errorf("received duplicate DISPUTE_OPEN message from %s", from.Pretty())
@@ -171,16 +206,43 @@ func (n *OpenBazaarNode) handleDisputeMessage(from peer.ID, message *npb.Message
 			return err
 		}
 
+		orderOpen, err := extractOrderOpen(disputeUpdate.Contract)
+		if err != nil {
+			return err
+		}
+
+		var (
+			disputer       = orderOpen.BuyerID.PeerID
+			disputerHandle = orderOpen.BuyerID.Handle
+			disputee       = orderOpen.Listings[0].Listing.VendorID.PeerID
+			disputeeHandle = orderOpen.Listings[0].Listing.VendorID.Handle
+		)
+		if orderOpen.BuyerID.PeerID == from.Pretty() {
+			disputer = orderOpen.Listings[0].Listing.VendorID.PeerID
+			disputerHandle = orderOpen.Listings[0].Listing.VendorID.Handle
+			disputee = orderOpen.BuyerID.PeerID
+			disputeeHandle = orderOpen.BuyerID.Handle
+		}
+
 		return n.repo.DB().Update(func(dbtx database.Tx) error {
 			dbtx.RegisterCommitHook(func() {
-				// TODO: add details
-				n.eventBus.Emit(&events.CaseUpdate{})
+				n.eventBus.Emit(&events.CaseUpdate{
+					CaseID:         order.OrderID,
+					DisputerID:     disputer,
+					DisputerHandle: disputerHandle,
+					DisputeeID:     disputee,
+					DisputeeHandle: disputeeHandle,
+					Thumbnail: events.Thumbnail{
+						Tiny:  orderOpen.Listings[0].Listing.Item.Images[0].Tiny,
+						Small: orderOpen.Listings[0].Listing.Item.Images[0].Small,
+					},
+				})
 				log.Infof("Received case update for case %s", order.OrderID)
 			})
 
 			var disputeCase models.Case
 			err := dbtx.Read().Where("id = ?", order.OrderID).First(&disputeCase).Error
-			if err != nil && !gorm.IsRecordNotFoundError(err) {
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
 
@@ -196,4 +258,98 @@ func (n *OpenBazaarNode) handleDisputeMessage(from peer.ID, message *npb.Message
 		})
 	}
 	return nil
+}
+
+func (n *OpenBazaarNode) validateDisputeOpen(from peer.ID, dispute *pb.DisputeOpen) (validationErrors []error, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch x := r.(type) {
+			case string:
+				err = fmt.Errorf("dispute contract missing required field: %s", x)
+			case error:
+				err = fmt.Errorf("dispute contract missing required field: %w", x)
+			default:
+				err = errors.New("unknown dispute open validation panic")
+			}
+		}
+	}()
+
+	orderOpen, err := extractOrderOpen(dispute.Contract)
+	if err != nil {
+		return nil, err
+	}
+
+	openedByPeer := orderOpen.BuyerID.PeerID
+	if dispute.OpenedBy == pb.DisputeOpen_VENDOR {
+		openedByPeer = orderOpen.Listings[0].Listing.VendorID.PeerID
+	}
+
+	if openedByPeer != from.Pretty() {
+		return nil, errors.New("dispute open openedBy peerID does not match peer that sent the message")
+	}
+
+	if orderOpen.Payment.Moderator != n.Identity().Pretty() {
+		return nil, errors.New("selected moderator does not match own peerID")
+	}
+
+	if orderOpen.Payment.Method != pb.OrderOpen_Payment_MODERATED {
+		return nil, errors.New("order payment method is not type moderated")
+	}
+
+	wal, err := n.multiwallet.WalletForCurrencyCode(orderOpen.Payment.Coin)
+	if err != nil {
+		return nil, fmt.Errorf("cannot validate order. coin not supported by moderator. %w", err)
+	}
+
+	for i, listing := range orderOpen.Listings {
+		err := n.validateListing(listing)
+		if err != nil {
+			validationErrors = append(validationErrors, fmt.Errorf("listing %d in contract is invalid: %s", i, err.Error()))
+		}
+	}
+
+	var escrowTimeoutHours uint32
+	for i, item := range orderOpen.Items {
+		listing, err := utils.ExtractListing(item.ListingHash, orderOpen.Listings)
+		if err != nil {
+			validationErrors = append(validationErrors, fmt.Errorf("order does not contain any listings that match the listing ID for item %d", i))
+			continue
+		}
+
+		if listing.Metadata.EscrowTimeoutHours > escrowTimeoutHours {
+			escrowTimeoutHours = listing.Metadata.EscrowTimeoutHours
+		}
+	}
+
+	if err := utils.ValidateBuyerID(orderOpen.BuyerID); err != nil {
+		validationErrors = append(validationErrors, fmt.Errorf("invalid buyer ID in order: %s", err.Error()))
+	}
+
+	if err := utils.ValidatePayment(orderOpen, escrowTimeoutHours, wal); err != nil {
+		validationErrors = append(validationErrors, fmt.Errorf("order payment is invalid: %s", err.Error()))
+	}
+
+	return validationErrors, nil
+}
+
+func extractOrderOpen(contract []byte) (*pb.OrderOpen, error) {
+	var c map[string]interface{}
+	if err := json.Unmarshal(contract, &c); err != nil {
+		return nil, err
+	}
+	if _, ok := c["orderOpen"]; !ok {
+		return nil, errors.New("orderOpen not found in contract")
+	}
+	if _, ok := c["orderOpen"].(map[string]interface{}); !ok {
+		return nil, errors.New("orderOpen not correct type")
+	}
+	out, err := json.Marshal(c["orderOpen"])
+	if err != nil {
+		return nil, err
+	}
+	orderOpen := new(pb.OrderOpen)
+	if err := jsonpb.UnmarshalString(string(out), orderOpen); err != nil {
+		return nil, err
+	}
+	return orderOpen, nil
 }

@@ -3,7 +3,6 @@ package orders
 import (
 	"bytes"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -18,12 +17,10 @@ import (
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	crypto "github.com/libp2p/go-libp2p-core/crypto"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"math"
 	"math/big"
 	"strings"
-	"time"
 )
 
 func (op *OrderProcessor) processOrderOpenMessage(dbtx database.Tx, order *models.Order, peer peer.ID, message *npb.OrderMessage) (interface{}, error) {
@@ -244,7 +241,7 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 		}
 		// Let's check to make sure there is a listing for each
 		// item in the order.
-		listing, err := extractListing(item.ListingHash, order.Listings)
+		listing, err := utils.ExtractListing(item.ListingHash, order.Listings)
 		if err != nil {
 			return fmt.Errorf("listing not found in order for item %s", item.ListingHash)
 		}
@@ -312,138 +309,13 @@ func (op *OrderProcessor) validateOrderOpen(dbtx database.Tx, order *pb.OrderOpe
 	}
 
 	// Validate buyer ID
-	if order.BuyerID.Pubkeys == nil {
-		return errors.New("buyer id pubkeys is nil")
-	}
-	idPubkey, err := crypto.UnmarshalPublicKey(order.BuyerID.Pubkeys.Identity)
-	if err != nil {
-		return fmt.Errorf("invalid buyer ID pubkey: %s", err)
-	}
-	pid, err := peer.IDFromPublicKey(idPubkey)
-	if err != nil {
-		return fmt.Errorf("invalid buyer ID pubkey: %s", err)
-	}
-	if pid.Pretty() != order.BuyerID.PeerID {
-		return errors.New("buyer ID does not match pubkey")
-	}
-	escrowPubkey, err := btcec.ParsePubKey(order.BuyerID.Pubkeys.Escrow, btcec.S256())
-	if err != nil {
-		return errors.New("invalid buyer escrow pubkey")
-	}
-	sig, err := btcec.ParseSignature(order.BuyerID.Sig, btcec.S256())
-	if err != nil {
-		return errors.New("invalid buyer ID signature")
-	}
-	idHash := sha256.Sum256([]byte(order.BuyerID.PeerID))
-	valid := sig.Verify(idHash[:], escrowPubkey)
-	if !valid {
-		return errors.New("invalid buyer ID signature")
+	if err := utils.ValidateBuyerID(order.BuyerID); err != nil {
+		return fmt.Errorf("invalid buyer ID: %s", err.Error())
 	}
 
 	// Validate payment
-	if order.Payment.Amount == "" {
-		return errors.New("payment amount not set")
-	}
-	if ok := validateBigString(order.Payment.Amount); !ok {
-		return errors.New("payment amount not valid")
-	}
-	if order.Payment.Address == "" {
-		return errors.New("order payment address is empty")
-	}
-	chaincode, err := hex.DecodeString(order.Payment.Chaincode)
-	if err != nil {
-		return fmt.Errorf("chaincode parse error: %s", err)
-	}
-	vendorEscrowPubkey, err := btcec.ParsePubKey(order.Listings[0].Listing.VendorID.Pubkeys.Escrow, btcec.S256())
-	if err != nil {
-		return err
-	}
-	vendorKey, err := utils.GenerateEscrowPublicKey(vendorEscrowPubkey, chaincode)
-	if err != nil {
-		return err
-	}
-	buyerEscrowPubkey, err := btcec.ParsePubKey(order.BuyerID.Pubkeys.Escrow, btcec.S256())
-	if err != nil {
-		return err
-	}
-	buyerKey, err := utils.GenerateEscrowPublicKey(buyerEscrowPubkey, chaincode)
-	if err != nil {
-		return err
-	}
-	if order.Payment.Method == pb.OrderOpen_Payment_MODERATED {
-		_, err := peer.Decode(order.Payment.Moderator)
-		if err != nil {
-			return errors.New("invalid moderator selection")
-		}
-		moderatorEscrowPubkey, err := btcec.ParsePubKey(order.Payment.ModeratorKey, btcec.S256())
-		if err != nil {
-			return err
-		}
-		moderatorKey, err := utils.GenerateEscrowPublicKey(moderatorEscrowPubkey, chaincode)
-		if err != nil {
-			return err
-		}
-
-		escrowTimeoutWallet, walletSupportsEscrowTimeout := wal.(iwallet.EscrowWithTimeout)
-		if !walletSupportsEscrowTimeout {
-			escrowTimeoutHours = 0
-		}
-		var (
-			address iwallet.Address
-			script  []byte
-		)
-		if escrowTimeoutHours > 0 {
-			timeout := time.Hour * time.Duration(escrowTimeoutHours)
-			address, script, err = escrowTimeoutWallet.CreateMultisigWithTimeout([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2, timeout, *vendorKey)
-			if err != nil {
-				return err
-			}
-		} else {
-			escrowWallet, ok := wal.(iwallet.Escrow)
-			if !ok {
-				return errors.New("wallet does not support escrow")
-			}
-			address, script, err = escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey, *moderatorKey}, 2)
-			if err != nil {
-				return err
-			}
-		}
-
-		if order.Payment.Address != address.String() {
-			return errors.New("invalid moderated payment address")
-		}
-		if order.Payment.Script != hex.EncodeToString(script) {
-			return errors.New("invalid moderated payment script")
-		}
-	} else if order.Payment.Method == pb.OrderOpen_Payment_CANCELABLE {
-		escrowWallet, ok := wal.(iwallet.Escrow)
-		if !ok {
-			return errors.New("wallet does not support escrow")
-		}
-		address, script, err := escrowWallet.CreateMultisigAddress([]btcec.PublicKey{*buyerKey, *vendorKey}, 1)
-		if err != nil {
-			return err
-		}
-		if order.Payment.Address != address.String() {
-			return errors.New("invalid cancelable payment address")
-		}
-		if order.Payment.Script != hex.EncodeToString(script) {
-			return errors.New("invalid cancelable payment script")
-		}
-	} else if order.Payment.Method != pb.OrderOpen_Payment_DIRECT {
-		return errors.New("invalid payment method")
-	}
-	_, err = models.CurrencyDefinitions.Lookup(order.Payment.Coin)
-	if err != nil {
-		return errors.New("unknown payment currency")
-	}
-	if order.Payment.Method != pb.OrderOpen_Payment_DIRECT {
-		if order.Payment.EscrowReleaseFee == "" {
-			return errors.New("escrow release fee is empty")
-		}
-		if ok := validateBigString(order.Payment.EscrowReleaseFee); !ok {
-			return errors.New("escrow release fee not valid")
-		}
+	if err := utils.ValidatePayment(order, escrowTimeoutHours, wal); err != nil {
+		return fmt.Errorf("invalid payment: %s", err.Error())
 	}
 
 	// Validate rating keys
@@ -489,7 +361,7 @@ func CalculateOrderTotal(order *pb.OrderOpen, erp *wallet.ExchangeRateProvider) 
 			return models.OrderTotals{}, fmt.Errorf("item %d quantity is not a positive integer", i)
 		}
 
-		listing, err := extractListing(item.ListingHash, order.Listings)
+		listing, err := utils.ExtractListing(item.ListingHash, order.Listings)
 		if err != nil {
 			return models.OrderTotals{}, fmt.Errorf("listing not found in contract for item %s", item.ListingHash)
 		}
@@ -809,21 +681,6 @@ func convertCurrencyAmount(value *models.CurrencyValue, paymentCurrency *models.
 	return converted.Amount, nil
 }
 
-// extractListing will return the listing with the given hash from the provided
-// slice of listings if it exists.
-func extractListing(hash string, listings []*pb.SignedListing) (*pb.Listing, error) {
-	for _, sl := range listings {
-		mh, err := utils.HashListing(sl)
-		if err != nil {
-			return nil, err
-		}
-		if mh.B58String() == hash {
-			return sl.Listing, nil
-		}
-	}
-	return nil, fmt.Errorf("listing %s not found in order", hash)
-}
-
 // getSelectedSku returns the SKU from the listing which matches the provided options.
 func getSelectedSku(listing *pb.Listing, options []*pb.OrderOpen_Item_Option) (*pb.Listing_Item_Sku, error) {
 	if len(listing.Item.Options) == 0 {
@@ -845,10 +702,4 @@ func getSelectedSku(listing *pb.Listing, options []*pb.OrderOpen_Item_Option) (*
 		}
 	}
 	return nil, errors.New("selected sku not found in listing")
-}
-
-// validateBigString validates that the string is a base10 big number.
-func validateBigString(s string) bool {
-	_, ok := new(big.Int).SetString(s, 10)
-	return ok
 }

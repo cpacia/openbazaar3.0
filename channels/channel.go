@@ -21,10 +21,10 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	caopts "github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/jinzhu/gorm"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/op/go-logging"
+	"gorm.io/gorm"
 	"sort"
 	"strconv"
 	"strings"
@@ -126,7 +126,7 @@ func (c *Channel) Publish(ctx context.Context, message string) error {
 	err = c.db.View(func(tx database.Tx) error {
 		return tx.Read().Where("topic=?", c.topic).First(&channelRec).Error
 	})
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
 	if err == nil {
@@ -179,7 +179,7 @@ func (c *Channel) Messages(ctx context.Context, from *cid.Cid, limit int) ([]mod
 		err := c.db.View(func(tx database.Tx) error {
 			return tx.Read().Where("topic=?", c.topic).First(&channelRec).Error
 		})
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ChannelMessage{}, nil
 		} else if err != nil {
 			return nil, err
@@ -255,11 +255,11 @@ func (c *Channel) Close() {
 // before the bootstrap finishes we will set that message as the head and
 // terminate the bootstrapping.
 func (c *Channel) run() error {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background()) //nolint
 	sub, err := c.pubsub.Subscribe(ctx, topicPrefix+c.topic, caopts.PubSub.Discover(true))
 	if err != nil {
 		log.Errorf("Error subscribing to channel, topic %s: %s", c.topic, err)
-		return err
+		return err //nolint
 	}
 
 	go c.bootstrapState()
@@ -313,7 +313,7 @@ func (c *Channel) run() error {
 			err = c.db.Update(func(tx database.Tx) error {
 				var channelRec models.Channel
 				err := tx.Read().Where("topic=?", c.topic).First(&channelRec).Error
-				if err != nil && !gorm.IsRecordNotFoundError(err) {
+				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 					return err
 				}
 				channelRec.Topic = c.topic
@@ -464,7 +464,7 @@ func (c *Channel) bootstrapState() {
 	err = c.db.Update(func(tx database.Tx) error {
 		var channelRec models.Channel
 		err := tx.Read().Where("topic=?", c.topic).First(&channelRec).Error
-		if err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		channelRec.Topic = c.topic

@@ -3,7 +3,7 @@ package database
 import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // PublicData is the interface for access to the node's IPFS public

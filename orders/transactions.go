@@ -3,6 +3,7 @@ package orders
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -11,8 +12,8 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders/utils"
 	iwallet "github.com/cpacia/wallet-interface"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -24,7 +25,7 @@ func (op *OrderProcessor) processWalletTransaction(transaction iwallet.Transacti
 		for _, to := range transaction.To {
 			var order models.Order
 			err := tx.Read().Where("payment_address = ?", to.Address.String()).First(&order).Error
-			if gorm.IsRecordNotFoundError(err) {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
 			} else if err != nil {
 				return err
@@ -41,7 +42,7 @@ func (op *OrderProcessor) processWalletTransaction(transaction iwallet.Transacti
 		for _, from := range transaction.From {
 			var order models.Order
 			err := tx.Read().Where("payment_address = ?", from.Address.String()).First(&order).Error
-			if gorm.IsRecordNotFoundError(err) {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
 			} else if err != nil {
 				return err
@@ -215,7 +216,7 @@ func (op *OrderProcessor) checkForMorePayments() {
 	err := op.db.Update(func(dbtx database.Tx) error {
 		var orders []models.Order
 		err := dbtx.Read().Where("open = ?", true).First(&orders).Error
-		if err != nil && gorm.IsRecordNotFoundError(err) {
+		if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 

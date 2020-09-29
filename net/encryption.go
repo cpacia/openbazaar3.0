@@ -20,8 +20,8 @@ const (
 	EphemeralPublicKeyBytes = 32
 )
 
-// Nacl box decryption failed
-var BoxDecryptionError = errors.New("failed to decrypt curve25519")
+// ErrBoxDecryption Nacl box decryption failed
+var ErrBoxDecryption = errors.New("failed to decrypt curve25519")
 
 // Encrypt encrypt a message with the public key. Currently only ed25519
 // is supported.
@@ -112,7 +112,7 @@ func decryptCurve25519(privKey *crypto.Ed25519PrivateKey, ciphertext []byte) ([]
 
 	plaintext, success := box.Open(plaintext, ct, &nonce, &ephemPubkey, curve25519Privkey)
 	if !success {
-		return nil, BoxDecryptionError
+		return nil, ErrBoxDecryption
 	}
 	return plaintext, nil
 }

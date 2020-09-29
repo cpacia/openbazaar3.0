@@ -52,7 +52,7 @@ func (g *Gateway) handleGETProfile(w http.ResponseWriter, r *http.Request) {
 
 func (g *Gateway) handlePOSTProfile(w http.ResponseWriter, r *http.Request) {
 	if _, err := g.node.GetMyProfile(); !errors.Is(err, coreiface.ErrNotFound) {
-		http.Error(w, wrapError(errors.New("profile exists. use PUT to update.")), http.StatusConflict)
+		http.Error(w, wrapError(errors.New("profile exists. use PUT to update")), http.StatusConflict)
 		return
 	}
 
@@ -76,7 +76,7 @@ func (g *Gateway) handlePOSTProfile(w http.ResponseWriter, r *http.Request) {
 
 func (g *Gateway) handlePUTProfile(w http.ResponseWriter, r *http.Request) {
 	if _, err := g.node.GetMyProfile(); errors.Is(err, coreiface.ErrNotFound) {
-		http.Error(w, "profile does not exists. use POST to create.", http.StatusConflict)
+		http.Error(w, "profile does not exists. use POST to create", http.StatusConflict)
 		return
 	}
 

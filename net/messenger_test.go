@@ -3,6 +3,7 @@ package net
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	storeandforward "github.com/cpacia/go-store-and-forward"
 	"github.com/cpacia/openbazaar3.0/database"
@@ -11,11 +12,11 @@ import (
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/jinzhu/gorm"
 	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	ma "github.com/multiformats/go-multiaddr"
+	"gorm.io/gorm"
 	"net"
 	"testing"
 	"time"
@@ -147,7 +148,7 @@ func TestMessenger(t *testing.T) {
 	err = messenger1.db.View(func(tx database.Tx) error {
 		return tx.Read().Find(&messages2).Error
 	})
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Error(err)
 	}
 

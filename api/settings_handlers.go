@@ -11,7 +11,7 @@ import (
 )
 
 type nodeConfig struct {
-	PeerId  string   `json:"peerID"`
+	PeerID  string   `json:"peerID"`
 	Testnet bool     `json:"testnet"`
 	Tor     bool     `json:"tor"`
 	Wallets []string `json:"wallets"`
@@ -19,7 +19,7 @@ type nodeConfig struct {
 
 func (g *Gateway) handleGETConfig(w http.ResponseWriter, r *http.Request) {
 	ret := nodeConfig{
-		PeerId:  g.node.Identity().Pretty(),
+		PeerID:  g.node.Identity().Pretty(),
 		Testnet: g.node.UsingTestnet(),
 		Tor:     g.node.UsingTorMode(),
 	}

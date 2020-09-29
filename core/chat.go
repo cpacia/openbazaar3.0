@@ -8,8 +8,8 @@ import (
 	"github.com/cpacia/openbazaar3.0/models"
 	"github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/jinzhu/gorm"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -45,7 +45,7 @@ func (n *OpenBazaarNode) SendChatMessage(to peer.ID, message string, orderID mod
 
 	err = n.repo.DB().Update(func(tx database.Tx) error {
 		var prev models.ChatMessage
-		if err := tx.Read().Order("timestamp desc").Where("peer_id = ? AND outgoing = ?", to.Pretty(), true).Last(&prev).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err := tx.Read().Order("timestamp desc").Where("peer_id = ? AND outgoing = ?", to.Pretty(), true).Last(&prev).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
@@ -109,8 +109,8 @@ func (n *OpenBazaarNode) SendTypingMessage(to peer.ID, orderID models.OrderID) e
 func (n *OpenBazaarNode) MarkChatMessagesAsRead(peer peer.ID, orderID models.OrderID) error {
 	return n.repo.DB().Update(func(tx database.Tx) error {
 		// Check unread count. If zero we can just exit.
-		var unreadCount int
-		if err := tx.Read().Where("peer_id = ? AND read = ? AND order_id = ? AND outgoing = ?", peer.Pretty(), false, orderID.String(), false).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+		var unreadCount int64
+		if err := tx.Read().Where("peer_id = ? AND read = ? AND order_id = ? AND outgoing = ?", peer.Pretty(), false, orderID.String(), false).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
@@ -178,8 +178,8 @@ func (n *OpenBazaarNode) GetChatConversations() ([]models.ChatConversation, erro
 			if err := tx.Read().Order("timestamp desc").Where("peer_id = ?", peer).Last(&message).Error; err != nil {
 				return err
 			}
-			var unreadCount int
-			if err := tx.Read().Where("peer_id = ? AND read = ? AND order_id = ? AND outgoing = ?", peer, false, "", false).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
+			var unreadCount int64
+			if err := tx.Read().Where("peer_id = ? AND read = ? AND order_id = ? AND outgoing = ?", peer, false, "", false).Find(&models.ChatMessage{}).Count(&unreadCount).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
 
@@ -188,7 +188,7 @@ func (n *OpenBazaarNode) GetChatConversations() ([]models.ChatConversation, erro
 				PeerID:    peer,
 				Outgoing:  message.Outgoing,
 				Timestamp: message.Timestamp,
-				Unread:    unreadCount,
+				Unread:    int(unreadCount),
 			}
 			convos = append(convos, convo)
 		}
@@ -215,7 +215,7 @@ func (n *OpenBazaarNode) GetChatMessagesByPeer(peer peer.ID, limit int, offsetID
 		}
 		return tx.Read().Where("peer_id = ?", peer.Pretty()).Where("order_id = ?", "").Limit(limit).Order("timestamp desc").Find(&messages).Error
 	})
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 	return messages, nil
@@ -235,7 +235,7 @@ func (n *OpenBazaarNode) GetChatMessagesByOrderID(orderID models.OrderID, limit 
 		}
 		return tx.Read().Where("order_id = ?", orderID.String()).Order("timestamp desc").Limit(limit).Find(&messages).Error
 	})
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 	return messages, nil
