@@ -105,7 +105,7 @@ func TestOrderProcessor_processDisputeOpenMessage(t *testing.T) {
 		Payment: &pb.OrderOpen_Payment{
 			Coin:      iwallet.CtMock,
 			Moderator: "12D3KooWHnpVyu9XDeFoAVayqr9hvc9xPqSSHtCSFLEkKgcz5Wro",
-			Method: pb.OrderOpen_Payment_MODERATED,
+			Method:    pb.OrderOpen_Payment_MODERATED,
 		},
 	}
 
