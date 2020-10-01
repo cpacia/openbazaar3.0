@@ -10,15 +10,15 @@ import (
 type Case struct {
 	ID OrderID `gorm:"primary_key"`
 
-	BuyerContract  json.RawMessage
-	VendorContract json.RawMessage
+	BuyerContract  []byte
+	VendorContract []byte
 
-	ValidationErrors json.RawMessage
+	ValidationErrors []byte
 
-	SerializedDisputeOpen  json.RawMessage
-	SerializedDisputeClose json.RawMessage
+	SerializedDisputeOpen  []byte
+	SerializedDisputeClose []byte
 
-	ParkedUpdate json.RawMessage
+	ParkedUpdate []byte
 }
 
 func (c *Case) DisuteOpenMessage() (*pb.DisputeOpen, error) {

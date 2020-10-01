@@ -928,133 +928,141 @@ func (o *Order) FundingTotal() (iwallet.Amount, error) {
 	return totalPaid, nil
 }
 
+// MarshalBinary returns a serialized protobuf format.
+func (o *Order) MarshalBinary() ([]byte, error) {
+	contract, err := o.toProtobuf()
+	if err != nil {
+		return nil, err
+	}
+
+	return proto.Marshal(contract)
+}
+
 // MarshalJSON provides custom JSON marshalling for the order model. Since this method is primarily
 // used to return data to the API, this is the appropriate place to normalize the data to the format
 // the API is expecting.
 func (o *Order) MarshalJSON() ([]byte, error) {
-	out := make(map[string]interface{})
-	out["orderID"] = o.ID.String()
-	out["role"] = string(o.Role())
+	contract, err := o.toProtobuf()
+	if err != nil {
+		return nil, err
+	}
 
-	if o.SerializedOrderOpen != nil {
-		out["orderOpen"] = o.SerializedOrderOpen
-		out["orderOpenAcked"] = o.OrderOpenAcked
+	out, err := marshaler.MarshalToString(contract)
+	if err != nil {
+		return nil, err
 	}
-	if o.SerializedOrderReject != nil {
-		out["orderReject"] = o.SerializedOrderReject
-		out["orderRejectAcked"] = o.OrderRejectAcked
+
+	return []byte(out), nil
+}
+
+func (o *Order) toProtobuf() (*pb.Contract, error) {
+	contract := pb.Contract{
+		OrderID: o.ID.String(),
+		Role:    string(o.Role()),
 	}
-	if o.SerializedOrderCancel != nil {
-		out["orderCancel"] = o.SerializedOrderCancel
-		out["orderCancelAcked"] = o.OrderCancelAcked
+
+	var err error
+	contract.OrderOpen, err = o.OrderOpenMessage()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
-	if o.SerializedOrderConfirmation != nil {
-		out["orderConfirmation"] = o.SerializedOrderConfirmation
-		out["orderConfirmationAcked"] = o.OrderConfirmationAcked
+	contract.OrderReject, err = o.OrderRejectMessage()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
-	if o.SerializedOrderComplete != nil {
-		out["orderComplete"] = o.SerializedOrderComplete
-		out["orderCompleteAcked"] = o.OrderCompleteAcked
+	contract.OrderCancel, err = o.OrderCancelMessage()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
-	if o.SerializedDisputeOpen != nil {
-		out["disputeOpen"] = o.SerializedDisputeOpen
-		do, err := o.DisputeOpenMessage()
-		if err != nil {
-			return nil, err
-		}
-		if do.OpenedBy == pb.DisputeOpen_BUYER && o.Role() == RoleBuyer ||
-			do.OpenedBy == pb.DisputeOpen_VENDOR && o.Role() == RoleVendor {
-			out["disputeOpenOtherPartyAcked"] = o.DisputeOpenOtherPartyAcked
-			out["disputeOpenModeratorAcked"] = o.DisputeOpenModeratorAcked
-		}
+	contract.OrderConfirmation, err = o.OrderConfirmationMessage()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
-	if o.SerializedDisputeClosed != nil {
-		out["disputeClosed"] = o.SerializedDisputeClosed
-		out["disputeClosedAcked"] = o.DisputeClosedAcked
+	contract.OrderComplete, err = o.OrderCompleteMessage()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
-	if o.SerializedDisputeUpdate != nil {
-		out["disputeUpdate"] = o.SerializedDisputeUpdate
-		out["disputeUpdateAcked"] = o.DisputeUpdateAcked
+	contract.DisputeOpen, err = o.DisputeOpenMessage()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
-	if o.SerializedPaymentFinalized != nil {
-		out["paymentFinalized"] = o.SerializedPaymentFinalized
-		out["paymentFinalizedAcked"] = o.PaymentFinalizedAcked
+	contract.DisputeClose, err = o.DisputeClosedMessage()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
-	if o.SerializedOrderFulfillments != nil {
-		fulfillmentList := new(pb.FulfillmentList)
-		if err := jsonpb.UnmarshalString(string(o.SerializedOrderFulfillments), fulfillmentList); err != nil {
-			return nil, err
-		}
-		ser := make([]json.RawMessage, 0, len(fulfillmentList.Messages))
-		for _, fulfillment := range fulfillmentList.Messages {
-			serializedFulfillment, err := marshaler.MarshalToString(fulfillment.FulfillmentMessage)
-			if err != nil {
-				return nil, err
-			}
-			ser = append(ser, []byte(serializedFulfillment))
-		}
-		out["orderFulfillments"] = ser
-		out["orderFulfillmentsAcked"] = o.OrderFulfillmentAcked
+	contract.DisputeUpdate, err = o.DisputeUpdateMessage()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
-	if o.SerializedRefunds != nil {
-		refundList := new(pb.RefundList)
-		if err := jsonpb.UnmarshalString(string(o.SerializedRefunds), refundList); err != nil {
-			return nil, err
-		}
-		ser := make([]json.RawMessage, 0, len(refundList.Messages))
-		for _, refund := range refundList.Messages {
-			serializedRefund, err := marshaler.MarshalToString(refund.RefundMessage)
-			if err != nil {
-				return nil, err
-			}
-			ser = append(ser, []byte(serializedRefund))
-		}
-		out["refunds"] = ser
-		out["refundsAcked"] = o.RefundAcked
+	contract.PaymentFinalized, err = o.PaymentFinalizedMessage()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
-	if o.SerializedPaymentSent != nil {
-		paymentSentList := new(pb.PaymentSentList)
-		if err := jsonpb.UnmarshalString(string(o.SerializedPaymentSent), paymentSentList); err != nil {
-			return nil, err
-		}
-		ser := make([]json.RawMessage, 0, len(paymentSentList.Messages))
-		for _, payment := range paymentSentList.Messages {
-			serializedPayment, err := marshaler.MarshalToString(payment.PaymentSentMessage)
-			if err != nil {
-				return nil, err
-			}
-			ser = append(ser, []byte(serializedPayment))
-		}
-		out["paymentsSent"] = ser
-		out["paymentsSentAcked"] = o.PaymentSentAcked
+	contract.OrderFulfillments, err = o.OrderFulfillmentMessages()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
 	}
+	contract.Refunds, err = o.Refunds()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
+	}
+	contract.PaymentsSent, err = o.PaymentSentMessages()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
+	}
+
 	if o.ParkedMessages != nil {
 		parked := new(npb.OrderList)
 		if err := json.Unmarshal(o.ParkedMessages, parked); err != nil {
 			return nil, err
 		}
-		m, err := marshaler.MarshalToString(parked)
-		if err != nil {
-			return nil, err
-		}
-		out["parkedMessages"] = m
+		contract.ParkedMessages = parked
 	}
+
 	if o.ErroredMessages != nil {
 		errored := new(npb.OrderList)
 		if err := json.Unmarshal(o.ParkedMessages, errored); err != nil {
 			return nil, err
 		}
-		m, err := marshaler.MarshalToString(errored)
+		contract.ErroredMessages = errored
+	}
+
+	var transactions []*pb.Contract_Transaction
+	txs, err := o.GetTransactions()
+	if err != nil && !errors.Is(err, ErrMessageDoesNotExist) {
+		return nil, err
+	}
+	for _, tx := range txs {
+		ts, err := ptypes.TimestampProto(tx.Timestamp)
 		if err != nil {
 			return nil, err
 		}
-		out["erroredMessages"] = m
+		transactions = append(transactions, &pb.Contract_Transaction{
+			Txid:      tx.ID.String(),
+			Value:     tx.Value.String(),
+			Timestamp: ts,
+		})
 	}
-	if o.Transactions != nil {
-		out["transactions"] = o.Transactions
-	}
+	contract.Transactions = transactions
 
-	return json.MarshalIndent(out, "", "    ")
+	contract.OrderOpenAcked = o.OrderOpenAcked
+	contract.OrderRejectAcked = o.OrderRejectAcked
+	contract.OrderCancelAcked = o.OrderCancelAcked
+	contract.OrderConfirmationAcked = o.OrderConfirmationAcked
+	contract.OrderCompleteAcked = o.OrderCompleteAcked
+	contract.DisputeUpdateAcked = o.DisputeUpdateAcked
+	contract.DisputeCloseAcked = o.DisputeClosedAcked
+	contract.PaymentFinalizedAcked = o.PaymentFinalizedAcked
+	contract.FulfillmentsAcked = o.OrderFulfillmentAcked
+	contract.RefundsAcked = o.RefundAcked
+	contract.PaymentsSentAcked = o.PaymentSentAcked
+
+	if contract.DisputeOpen != nil && (contract.DisputeOpen.OpenedBy == pb.DisputeOpen_BUYER && o.Role() == RoleBuyer ||
+		contract.DisputeOpen.OpenedBy == pb.DisputeOpen_VENDOR && o.Role() == RoleVendor) {
+		contract.DisputeOpenOtherPartyAcked = o.DisputeOpenOtherPartyAcked
+		contract.DisputeOpenModeratorAcked = o.DisputeOpenModeratorAcked
+	}
+	return &contract, nil
 }
 
 /*

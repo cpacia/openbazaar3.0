@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/database"
@@ -10,7 +9,7 @@ import (
 	npb "github.com/cpacia/openbazaar3.0/net/pb"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
 	"github.com/cpacia/openbazaar3.0/orders/utils"
-	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"gorm.io/gorm"
@@ -61,7 +60,7 @@ func (n *OpenBazaarNode) OpenDispute(orderID models.OrderID, reason string, done
 		from = vendor
 	}
 
-	serializedContract, err := order.MarshalJSON()
+	serializedContract, err := order.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -333,23 +332,9 @@ func (n *OpenBazaarNode) validateDisputeOpen(from peer.ID, dispute *pb.DisputeOp
 }
 
 func extractOrderOpen(contract []byte) (*pb.OrderOpen, error) {
-	var c map[string]interface{}
-	if err := json.Unmarshal(contract, &c); err != nil {
+	var c pb.Contract
+	if err := proto.Unmarshal(contract, &c); err != nil {
 		return nil, err
 	}
-	if _, ok := c["orderOpen"]; !ok {
-		return nil, errors.New("orderOpen not found in contract")
-	}
-	if _, ok := c["orderOpen"].(map[string]interface{}); !ok {
-		return nil, errors.New("orderOpen not correct type")
-	}
-	out, err := json.Marshal(c["orderOpen"])
-	if err != nil {
-		return nil, err
-	}
-	orderOpen := new(pb.OrderOpen)
-	if err := jsonpb.UnmarshalString(string(out), orderOpen); err != nil {
-		return nil, err
-	}
-	return orderOpen, nil
+	return c.OrderOpen, nil
 }

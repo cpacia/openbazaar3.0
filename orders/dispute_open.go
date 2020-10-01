@@ -92,7 +92,7 @@ func (op *OrderProcessor) processDisputeOpenMessage(dbtx database.Tx, order *mod
 
 		log.Infof("Processed own DISPUTE_OPEN for orderID: %s", order.ID)
 	} else {
-		serializedContract, err := order.MarshalJSON()
+		serializedContract, err := order.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}

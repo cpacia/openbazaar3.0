@@ -5,6 +5,7 @@ import "google/protobuf/timestamp.proto";
 import "countrycodes.proto";
 import "listing.proto";
 import "common.proto";
+import "message.proto";
 
 message OrderOpen {
     repeated SignedListing listings     = 1;
@@ -251,5 +252,58 @@ message RefundList {
     message Message {
         Refund refundMessage = 1;
         bytes signature      = 2;
+    }
+}
+
+message Contract {
+    string OrderID = 1;
+    string Role    = 2;
+
+    OrderOpen orderOpen = 3;
+    bool orderOpenAcked = 4;
+
+    OrderReject orderReject = 5;
+    bool orderRejectAcked   = 6;
+
+    OrderCancel orderCancel = 7;
+    bool orderCancelAcked   = 8;
+
+    OrderConfirmation orderConfirmation = 9;
+    bool orderConfirmationAcked         = 10;
+
+    OrderComplete orderComplete = 11;
+    bool orderCompleteAcked     = 12;
+
+    DisputeOpen disputeOpen         = 13;
+    bool disputeOpenOtherPartyAcked = 14;
+    bool disputeOpenModeratorAcked  = 15;
+
+    DisputeClose disputeClose = 16;
+    bool disputeCloseAcked    = 17;
+
+    DisputeUpdate disputeUpdate = 18;
+    bool disputeUpdateAcked     = 19;
+
+    PaymentFinalized paymentFinalized = 20;
+    bool paymentFinalizedAcked        = 21;
+
+    repeated OrderFulfillment orderFulfillments = 22;
+    bool fulfillmentsAcked            = 23;
+
+    repeated Refund refunds = 24;
+    bool refundsAcked  = 25;
+
+    repeated PaymentSent paymentsSent = 26;
+    bool paymentsSentAcked       = 27;
+
+    OrderList parkedMessages  = 28;
+    OrderList erroredMessages = 29;
+
+    repeated Transaction transactions = 30;
+
+    message Transaction {
+        string txid                         = 1;
+        string value                        = 2;
+        google.protobuf.Timestamp timestamp = 3;
     }
 }
