@@ -67,7 +67,7 @@ func (n *OpenBazaarNode) FulfillOrder(orderID models.OrderID, fulfillments []mod
 		fulfillmentMsg.Fulfillments = append(fulfillmentMsg.Fulfillments, item)
 	}
 
-	if !order.CanFulfill(n.Identity()) {
+	if !order.CanFulfill() {
 		return fmt.Errorf("%w: order is not in a state where it can be fulfilled", coreiface.ErrBadRequest)
 	}
 

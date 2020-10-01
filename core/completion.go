@@ -37,7 +37,7 @@ func (n *OpenBazaarNode) CompleteOrder(orderID models.OrderID, ratings []models.
 		return err
 	}
 
-	if !order.CanComplete(n.Identity()) {
+	if !order.CanComplete() {
 		return fmt.Errorf("%w: order is not in a state where it can be completed", coreiface.ErrBadRequest)
 	}
 

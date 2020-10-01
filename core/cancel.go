@@ -31,7 +31,7 @@ func (n *OpenBazaarNode) CancelOrder(orderID models.OrderID, done chan struct{})
 		return err
 	}
 
-	if !order.CanCancel(n.Identity()) {
+	if !order.CanCancel() {
 		return fmt.Errorf("%w: order is not in a state where it can be canceled", coreiface.ErrBadRequest)
 	}
 

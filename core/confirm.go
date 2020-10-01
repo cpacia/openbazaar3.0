@@ -30,7 +30,7 @@ func (n *OpenBazaarNode) ConfirmOrder(orderID models.OrderID, done chan struct{}
 		return err
 	}
 
-	if !order.CanConfirm(n.Identity()) {
+	if !order.CanConfirm() {
 		return fmt.Errorf("%w: order is not in a state where it can be confirmed", coreiface.ErrBadRequest)
 	}
 

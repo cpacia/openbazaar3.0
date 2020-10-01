@@ -633,17 +633,15 @@ func (o *Order) GetErroredMessages() ([]*npb.OrderMessage, error) {
 
 // CanReject returns whether or not this order is in a state where the user can
 // reject the order.
-func (o *Order) CanReject(ourPeerID peer.ID) bool {
+func (o *Order) CanReject() bool {
 	// OrderOpen must exist.
-	orderOpen, err := o.OrderOpenMessage()
+	_, err := o.OrderOpenMessage()
 	if err != nil {
 		return false
 	}
-	if orderOpen.BuyerID == nil {
-		return false
-	}
+
 	// Only vendors can reject.
-	if orderOpen.BuyerID.PeerID == ourPeerID.Pretty() {
+	if o.Role() != RoleVendor {
 		return false
 	}
 
@@ -661,17 +659,15 @@ func (o *Order) CanReject(ourPeerID peer.ID) bool {
 
 // CanConfirm returns whether or not this order is in a state where the user can
 // confirm the order.
-func (o *Order) CanConfirm(ourPeerID peer.ID) bool {
+func (o *Order) CanConfirm() bool {
 	// OrderOpen must exist.
-	orderOpen, err := o.OrderOpenMessage()
+	_, err := o.OrderOpenMessage()
 	if err != nil {
 		return false
 	}
-	if orderOpen.BuyerID == nil {
-		return false
-	}
+
 	// Only vendors can confirm.
-	if orderOpen.BuyerID.PeerID == ourPeerID.Pretty() {
+	if o.Role() != RoleVendor {
 		return false
 	}
 
@@ -689,21 +685,15 @@ func (o *Order) CanConfirm(ourPeerID peer.ID) bool {
 
 // CanCancel returns whether or not this order is in a state where the user can
 // cancel the order.
-func (o *Order) CanCancel(ourPeerID peer.ID) bool {
+func (o *Order) CanCancel() bool {
 	// OrderOpen must exist.
-	orderOpen, err := o.OrderOpenMessage()
+	_, err := o.OrderOpenMessage()
 	if err != nil {
 		return false
 	}
 
-	if len(orderOpen.Listings) == 0 ||
-		orderOpen.Listings[0].Listing == nil ||
-		orderOpen.Listings[0].Listing.VendorID == nil {
-		return false
-	}
-
 	// Only buyers can confirm.
-	if orderOpen.Listings[0].Listing.VendorID.PeerID == ourPeerID.Pretty() {
+	if o.Role() != RoleBuyer {
 		return false
 	}
 
@@ -721,17 +711,15 @@ func (o *Order) CanCancel(ourPeerID peer.ID) bool {
 
 // CanRefund returns whether or not this order is in a state where the user can
 // refund the order.
-func (o *Order) CanRefund(ourPeerID peer.ID) bool {
+func (o *Order) CanRefund() bool {
 	// OrderOpen must exist.
 	orderOpen, err := o.OrderOpenMessage()
 	if err != nil {
 		return false
 	}
-	if orderOpen.BuyerID == nil {
-		return false
-	}
+
 	// Only vendors can refund.
-	if orderOpen.BuyerID.PeerID == ourPeerID.Pretty() {
+	if o.Role() != RoleVendor {
 		return false
 	}
 
@@ -750,17 +738,15 @@ func (o *Order) CanRefund(ourPeerID peer.ID) bool {
 
 // CanFulfill returns whether or not this order is in a state where the user can
 // fulfill the order.
-func (o *Order) CanFulfill(ourPeerID peer.ID) bool {
+func (o *Order) CanFulfill() bool {
 	// OrderOpen must exist.
-	orderOpen, err := o.OrderOpenMessage()
+	_, err := o.OrderOpenMessage()
 	if err != nil {
 		return false
 	}
-	if orderOpen.BuyerID == nil {
-		return false
-	}
+
 	// Only vendors can fulfill.
-	if orderOpen.BuyerID.PeerID == ourPeerID.Pretty() {
+	if o.Role() != RoleVendor {
 		return false
 	}
 
@@ -799,21 +785,15 @@ func (o *Order) CanFulfill(ourPeerID peer.ID) bool {
 
 // CanComplete returns whether or not this order is in a state where the user can
 // complete the order and leave a rating.
-func (o *Order) CanComplete(ourPeerID peer.ID) bool {
+func (o *Order) CanComplete() bool {
 	// OrderOpen must exist.
-	orderOpen, err := o.OrderOpenMessage()
+	_, err := o.OrderOpenMessage()
 	if err != nil {
 		return false
 	}
 
-	if len(orderOpen.Listings) == 0 ||
-		orderOpen.Listings[0].Listing == nil ||
-		orderOpen.Listings[0].Listing.VendorID == nil {
-		return false
-	}
-
 	// Only buyers can complete.
-	if orderOpen.Listings[0].Listing.VendorID.PeerID == ourPeerID.Pretty() {
+	if o.Role() != RoleBuyer {
 		return false
 	}
 
@@ -840,7 +820,46 @@ func (o *Order) CanComplete(ourPeerID peer.ID) bool {
 	return true
 }
 
-// IsFunded returns whether this order is fully funded or not.
+// CanDispute returns whether or not this order is in a state where the user can
+// dispute the order.
+func (o *Order) CanDispute() bool {
+	// OrderOpen must exist.
+	_, err := o.OrderOpenMessage()
+	if err != nil {
+		return false
+	}
+
+	// Only buyers and vendors can dispute.
+	if o.Role() != RoleBuyer && o.Role() != RoleVendor {
+		return false
+	}
+
+	if o.Role() == RoleVendor {
+		fulfilled, err := o.IsFulfilled()
+		if err != nil {
+			return false
+		}
+
+		// Vendor must fulfill order prior to disputing.
+		if !fulfilled {
+			return false
+		}
+	}
+
+	// Cannot dispute if the order has been completed.
+	if o.SerializedOrderComplete != nil || o.SerializedPaymentFinalized != nil {
+		return false
+	}
+
+	// Cannot dispute if a dispute is open.
+	if o.UnderActiveDispute() {
+		return false
+	}
+
+	return true
+}
+
+// UnderActiveDispute returns whether this order is currently being disputed.
 func (o *Order) UnderActiveDispute() bool {
 	if o.SerializedDisputeOpen != nil && o.SerializedDisputeClosed == nil {
 		return true
@@ -1064,246 +1083,3 @@ func (o *Order) toProtobuf() (*pb.Contract, error) {
 	}
 	return &contract, nil
 }
-
-/*
-// UnmarshalJSON provides custom JSON unmarshalling for the order model. It requires the data to be
-// in the format provided by MarshalJSON.
-func (o *Order) UnmarshalJSON(data []byte) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			switch x := r.(type) {
-			case string:
-				err = errors.New(x)
-			case error:
-				err = x
-			default:
-				err = errors.New("unknown panic")
-			}
-		}
-	}()
-
-	var in map[string]interface{}
-	if err := json.Unmarshal(data, &in); err != nil {
-		return err
-	}
-
-	o.ID = OrderID(in["orderID"].(string))
-	o.MyRole = in["role"].(string)
-
-	if _, ok := in["orderOpen"]; ok {
-		out, err := json.MarshalIndent(in["orderOpen"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		o.SerializedOrderOpen = out
-		o.OrderOpenAcked = in["orderOpenAcked"].(bool)
-	}
-
-	if _, ok := in["orderReject"]; ok {
-		out, err := json.MarshalIndent(in["orderReject"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		o.SerializedOrderReject = out
-		o.OrderRejectAcked = in["orderRejectAcked"].(bool)
-	}
-
-	if _, ok := in["orderCancel"]; ok {
-		out, err := json.MarshalIndent(in["orderCancel"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		o.SerializedOrderCancel = out
-		o.OrderCancelAcked = in["orderCancelAcked"].(bool)
-	}
-
-	if _, ok := in["orderConfirmation"]; ok {
-		out, err := json.MarshalIndent(in["orderConfirmation"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		o.SerializedOrderConfirmation = out
-		o.OrderConfirmationAcked = in["orderConfirmationAcked"].(bool)
-	}
-
-	if _, ok := in["orderComplete"]; ok {
-		out, err := json.MarshalIndent(in["orderComplete"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		o.SerializedOrderComplete = out
-		o.OrderCompleteAcked = in["orderCompleteAcked"].(bool)
-	}
-
-	if _, ok := in["disputeOpen"]; ok {
-		out, err := json.MarshalIndent(in["disputeOpen"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		o.SerializedOrderOpen = out
-		if _, ok := in["disputeOpenOtherPartyAcked"]; ok {
-			o.DisputeOpenOtherPartyAcked = in["disputeOpenOtherPartyAcked"].(bool)
-		}
-		if _, ok := in["disputeOpenModeratorAcked"]; ok {
-			o.DisputeOpenModeratorAcked = in["disputeOpenModeratorAcked"].(bool)
-		}
-	}
-
-	if _, ok := in["disputeClosed"]; ok {
-		out, err := json.MarshalIndent(in["disputeClosed"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		o.SerializedDisputeClosed = out
-		o.DisputeClosedAcked = in["disputeClosedAcked"].(bool)
-	}
-
-	if _, ok := in["disputeUpdate"]; ok {
-		out, err := json.MarshalIndent(in["disputeUpdate"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		o.SerializedDisputeUpdate = out
-		o.DisputeUpdateAcked = in["disputeUpdateAcked"].(bool)
-	}
-
-	if _, ok := in["paymentFinalized"]; ok {
-		out, err := json.MarshalIndent(in["paymentFinalized"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		o.SerializedPaymentFinalized = out
-		o.PaymentFinalizedAcked = in["paymentFinalizedAcked"].(bool)
-	}
-
-	if _, ok := in["orderFulfillments"]; ok {
-		var (
-			ser             []json.RawMessage
-			fulfillmentList pb.FulfillmentList
-		)
-		out, err := json.MarshalIndent(in["orderFulfillments"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-
-		err = json.Unmarshal(out, &ser)
-		if err != nil {
-			return err
-		}
-		for _, s := range ser {
-			fulfillment := new(pb.OrderFulfillment)
-			if err := jsonpb.UnmarshalString(string(s), fulfillment); err != nil {
-				return err
-			}
-			fulfillmentList.Messages = append(fulfillmentList.Messages, &pb.FulfillmentList_Message{
-				FulfillmentMessage: fulfillment,
-			})
-		}
-
-		out2, err := marshaler.MarshalToString(&fulfillmentList)
-		if err != nil {
-			return err
-		}
-
-		o.SerializedOrderFulfillments = []byte(out2)
-		o.OrderFulfillmentAcked = in["orderFulfillmentsAcked"].(bool)
-	}
-
-	if _, ok := in["refunds"]; ok {
-		var (
-			ser        []json.RawMessage
-			refundList pb.RefundList
-		)
-		out, err := json.MarshalIndent(in["refunds"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		err = json.Unmarshal(out, &ser)
-		if err != nil {
-			return err
-		}
-		for _, s := range ser {
-			refund := new(pb.Refund)
-			if err := jsonpb.UnmarshalString(string(s), refund); err != nil {
-				return err
-			}
-			refundList.Messages = append(refundList.Messages, &pb.RefundList_Message{
-				RefundMessage: refund,
-			})
-		}
-
-		out2, err := marshaler.MarshalToString(&refundList)
-		if err != nil {
-			return err
-		}
-
-		o.SerializedRefunds = []byte(out2)
-		o.RefundAcked = in["refundsAcked"].(bool)
-	}
-
-	if _, ok := in["paymentsSent"]; ok {
-		var (
-			ser              []json.RawMessage
-			paymentsSentList pb.PaymentSentList
-		)
-		out, err := json.MarshalIndent(in["paymentsSent"].(map[string]interface{}), "", "    ")
-		if err != nil {
-			return err
-		}
-		err = json.Unmarshal(out, &ser)
-		if err != nil {
-			return err
-		}
-		for _, s := range ser {
-			ps := new(pb.PaymentSent)
-			if err := jsonpb.UnmarshalString(string(s), ps); err != nil {
-				return err
-			}
-			paymentsSentList.Messages = append(paymentsSentList.Messages, &pb.PaymentSentList_Message{
-				PaymentSentMessage: ps,
-			})
-		}
-
-		out2, err := marshaler.MarshalToString(&paymentsSentList)
-		if err != nil {
-			return err
-		}
-
-		o.SerializedPaymentSent = []byte(out2)
-		o.PaymentSentAcked = in["paymentsSentAcked"].(bool)
-	}
-
-	if _, ok := in["parkedMessages"]; ok {
-		parked := new(npb.OrderList)
-		if err := jsonpb.UnmarshalString(in["parkedMessages"].(string), parked); err != nil {
-			return err
-		}
-
-		out, err := json.MarshalIndent(parked, "", "    ")
-		if err != nil {
-			return err
-		}
-
-		o.ParkedMessages = out
-	}
-
-	if _, ok := in["erroredMessages"]; ok {
-		errored := new(npb.OrderList)
-		if err := jsonpb.UnmarshalString(in["erroredMessages"].(string), errored); err != nil {
-			return err
-		}
-
-		out, err := json.MarshalIndent(errored, "", "    ")
-		if err != nil {
-			return err
-		}
-
-		o.ErroredMessages = out
-	}
-
-	if _, ok := in["transactions"]; ok {
-		o.Transactions = in["transactions"].([]byte)
-	}
-
-	return nil
-}*/

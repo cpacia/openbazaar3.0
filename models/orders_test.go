@@ -8,7 +8,6 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	peer "github.com/libp2p/go-libp2p-core/peer"
 	"testing"
 	"time"
 )
@@ -629,54 +628,25 @@ func TestOrder_ParkedMessages(t *testing.T) {
 func TestOrder_CanCancel(t *testing.T) {
 	tests := []struct {
 		setup     func(order *Order) error
-		ourID     string
+		ourRole   OrderRole
 		canCancel bool
 	}{
 		{
 			// Success
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
-				return err
-			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-			canCancel: true,
-		},
-		{
-			// Nil vendorID
-			setup: func(order *Order) error {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-			canCancel: false,
+			ourRole: RoleBuyer,
+			canCancel: true,
 		},
 		{
 			// Is vendor
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+			ourRole: RoleVendor,
 			canCancel: false,
 		},
 		{
@@ -684,207 +654,107 @@ func TestOrder_CanCancel(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole:    RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil reject
 			setup: func(order *Order) error {
 				order.SerializedOrderReject = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole:  RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil cancel
 			setup: func(order *Order) error {
 				order.SerializedOrderCancel = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil confirmation
 			setup: func(order *Order) error {
 				order.SerializedOrderConfirmation = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil fulfillment
 			setup: func(order *Order) error {
 				order.SerializedOrderFulfillments = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil complete
 			setup: func(order *Order) error {
 				order.SerializedOrderComplete = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil dispute open
 			setup: func(order *Order) error {
 				order.SerializedDisputeOpen = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil dispute close
 			setup: func(order *Order) error {
 				order.SerializedDisputeClosed = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil dispute update
 			setup: func(order *Order) error {
 				order.SerializedDisputeUpdate = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil refund
 			setup: func(order *Order) error {
 				order.SerializedRefunds = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canCancel: false,
 		},
 		{
 			// Non nil payment finalized
 			setup: func(order *Order) error {
 				order.SerializedPaymentFinalized = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canCancel: false,
 		},
 	}
@@ -894,13 +764,9 @@ func TestOrder_CanCancel(t *testing.T) {
 		if err := test.setup(&order); err != nil {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
+		order.SetRole(test.ourRole)
 
-		pid, err := peer.Decode(test.ourID)
-		if err != nil {
-			t.Errorf("Test %d peerID decode error: %s", i, err)
-		}
-
-		canCancel := order.CanCancel(pid)
+		canCancel := order.CanCancel()
 		if canCancel != test.canCancel {
 			t.Errorf("Test %d: Got incorrect result. Expected %t, got %t", i, test.canCancel, canCancel)
 		}
@@ -951,42 +817,25 @@ func TestOrder_ErroredMessages(t *testing.T) {
 func TestOrder_CanReject(t *testing.T) {
 	tests := []struct {
 		setup     func(order *Order) error
-		ourID     string
+		ourRole   OrderRole
 		canReject bool
 	}{
 		{
 			// Success
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
-				return err
-			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-			canReject: true,
-		},
-		{
-			// Nil buyerID
-			setup: func(order *Order) error {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-			canReject: false,
+			ourRole: RoleVendor,
+			canReject: true,
 		},
 		{
 			// Is buyer
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canReject: false,
 		},
 		{
@@ -994,147 +843,107 @@ func TestOrder_CanReject(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil reject
 			setup: func(order *Order) error {
 				order.SerializedOrderReject = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil cancel
 			setup: func(order *Order) error {
 				order.SerializedOrderCancel = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil confirmation
 			setup: func(order *Order) error {
 				order.SerializedOrderConfirmation = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil fulfillment
 			setup: func(order *Order) error {
 				order.SerializedOrderFulfillments = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil complete
 			setup: func(order *Order) error {
 				order.SerializedOrderComplete = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil dispute open
 			setup: func(order *Order) error {
 				order.SerializedDisputeOpen = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil dispute close
 			setup: func(order *Order) error {
 				order.SerializedDisputeClosed = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil dispute update
 			setup: func(order *Order) error {
 				order.SerializedDisputeUpdate = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil refund
 			setup: func(order *Order) error {
 				order.SerializedRefunds = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 		{
 			// Non nil payment finalized
 			setup: func(order *Order) error {
 				order.SerializedPaymentFinalized = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canReject: false,
 		},
 	}
@@ -1144,39 +953,151 @@ func TestOrder_CanReject(t *testing.T) {
 		if err := test.setup(&order); err != nil {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
+		order.SetRole(test.ourRole)
 
-		pid, err := peer.Decode(test.ourID)
-		if err != nil {
-			t.Errorf("Test %d peerID decode error: %s", i, err)
-		}
-
-		canReject := order.CanReject(pid)
+		canReject := order.CanReject()
 		if canReject != test.canReject {
-			t.Errorf("Got incorrect result. Expected %t, got %t", test.canReject, canReject)
+			t.Errorf("Test %d: Got incorrect result. Expected %t, got %t", i, test.canReject, canReject)
 		}
 	}
 }
 
+func TestOrder_CanDispute(t *testing.T) {
+	tests := []struct {
+		setup     func(order *Order) error
+		ourRole   OrderRole
+		canDispute bool
+	}{
+		{
+			// Success vendor
+			setup: func(order *Order) error {
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Payment: &pb.OrderOpen_Payment{
+						Method: pb.OrderOpen_Payment_DIRECT,
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+					},
+				}))
+				if err != nil {
+					return err
+				}
+				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+					Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+						{
+							ItemIndex: 0,
+						},
+					},
+				}))
+				if err != nil {
+					return err
+				}
+				return err
+			},
+			ourRole: RoleVendor,
+			canDispute: true,
+		},
+		{
+			// Success buyer
+			setup: func(order *Order) error {
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
+			},
+			ourRole: RoleBuyer,
+			canDispute: true,
+		},
+		{
+			// OrderOpen is nil
+			setup: func(order *Order) error {
+				return nil
+			},
+			ourRole: RoleVendor,
+			canDispute: false,
+		},
+		{
+			// Not Buyer or vendor
+			setup: func(order *Order) error {
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
+			},
+			ourRole: RoleModerator,
+			canDispute: false,
+		},
+		{
+			// Not fulfilled
+			setup: func(order *Order) error {
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+					},
+				}))
+			},
+			ourRole: RoleVendor,
+			canDispute: false,
+		},
+		{
+			// Order is complete
+			setup: func(order *Order) error {
+				order.SerializedOrderComplete = []byte{0x00}
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
+			},
+			ourRole: RoleBuyer,
+			canDispute: false,
+		},
+		{
+			// Order is finalized
+			setup: func(order *Order) error {
+				order.SerializedPaymentFinalized = []byte{0x00}
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
+			},
+			ourRole: RoleBuyer,
+			canDispute: false,
+		},
+		{
+			// Under active dispute
+			setup: func(order *Order) error {
+				order.SerializedDisputeOpen = []byte{0x00}
+				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
+			},
+			ourRole: RoleBuyer,
+			canDispute: false,
+		},
+	}
+
+	for i, test := range tests {
+		var order Order
+		if err := test.setup(&order); err != nil {
+			t.Errorf("Test %d setup failed: %s", i, err)
+		}
+		order.SetRole(test.ourRole)
+
+		canDispute := order.CanDispute()
+		if canDispute != test.canDispute {
+			t.Errorf("Test %d: Got incorrect result. Expected %t, got %t", i, test.canDispute, canDispute)
+		}
+	}
+}
+
+
 func TestOrder_CanRefund(t *testing.T) {
 	tests := []struct {
 		setup     func(order *Order) error
-		ourID     string
+		ourRole   OrderRole
 		canRefund bool
 	}{
 		{
 			// Success
 			setup: func(order *Order) error {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
 				}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canRefund: true,
 		},
 		{
@@ -1185,23 +1106,20 @@ func TestOrder_CanRefund(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canRefund: false,
 		},
 		{
 			// Is buyer
 			setup: func(order *Order) error {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
 				}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canRefund: false,
 		},
 		{
@@ -1209,7 +1127,7 @@ func TestOrder_CanRefund(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canRefund: false,
 		},
 		{
@@ -1217,16 +1135,13 @@ func TestOrder_CanRefund(t *testing.T) {
 			setup: func(order *Order) error {
 				order.SerializedOrderReject = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_CANCELABLE,
 					},
 				}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canRefund: false,
 		},
 		{
@@ -1234,16 +1149,13 @@ func TestOrder_CanRefund(t *testing.T) {
 			setup: func(order *Order) error {
 				order.SerializedOrderCancel = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
 				}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canRefund: false,
 		},
 		{
@@ -1251,16 +1163,13 @@ func TestOrder_CanRefund(t *testing.T) {
 			setup: func(order *Order) error {
 				order.SerializedOrderComplete = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
 				}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canRefund: false,
 		},
 		{
@@ -1268,16 +1177,13 @@ func TestOrder_CanRefund(t *testing.T) {
 			setup: func(order *Order) error {
 				order.SerializedPaymentFinalized = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
 				}))
 				return err
 			},
-			ourID:     "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canRefund: false,
 		},
 	}
@@ -1287,13 +1193,9 @@ func TestOrder_CanRefund(t *testing.T) {
 		if err := test.setup(&order); err != nil {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
+		order.SetRole(test.ourRole)
 
-		pid, err := peer.Decode(test.ourID)
-		if err != nil {
-			t.Errorf("Test %d peerID decode error: %s", i, err)
-		}
-
-		canRefund := order.CanRefund(pid)
+		canRefund := order.CanRefund()
 		if canRefund != test.canRefund {
 			t.Errorf("Test %d: Got incorrect result. Expected %t, got %t", i, test.canRefund, canRefund)
 		}
@@ -1303,16 +1205,13 @@ func TestOrder_CanRefund(t *testing.T) {
 func TestOrder_CanFulfill(t *testing.T) {
 	tests := []struct {
 		setup      func(order *Order) error
-		ourID      string
+		ourRole    OrderRole
 		canFulfill bool
 	}{
 		{
 			// Success
 			setup: func(order *Order) error {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
@@ -1328,16 +1227,13 @@ func TestOrder_CanFulfill(t *testing.T) {
 				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole:    RoleVendor,
 			canFulfill: true,
 		},
 		{
 			// Unfunded
 			setup: func(order *Order) error {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 						Amount: iwallet.NewAmount(1).String(),
@@ -1354,25 +1250,45 @@ func TestOrder_CanFulfill(t *testing.T) {
 				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canFulfill: false,
 		},
 		{
-			// Nil buyerID
+			// Already fulfilled
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
+					Payment: &pb.OrderOpen_Payment{
+						Method: pb.OrderOpen_Payment_DIRECT,
+					},
+					Items: []*pb.OrderOpen_Item{
+						{
+							ListingHash: "abc",
+						},
+					},
+				}))
+				if err != nil {
+					return err
+				}
+				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderFulfillment{
+					Fulfillments: []*pb.OrderFulfillment_FulfilledItem{
+						{
+							ItemIndex: 0,
+						},
+					},
+				}))
+				if err != nil {
+					return err
+				}
+				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole:    RoleVendor,
 			canFulfill: false,
 		},
 		{
 			// Is buyer
 			setup: func(order *Order) error {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
@@ -1384,7 +1300,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canFulfill: false,
 		},
 		{
@@ -1392,7 +1308,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canFulfill: false,
 		},
 		{
@@ -1400,9 +1316,6 @@ func TestOrder_CanFulfill(t *testing.T) {
 			setup: func(order *Order) error {
 				order.SerializedOrderReject = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_CANCELABLE,
 					},
@@ -1414,7 +1327,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canFulfill: false,
 		},
 		{
@@ -1422,9 +1335,6 @@ func TestOrder_CanFulfill(t *testing.T) {
 			setup: func(order *Order) error {
 				order.SerializedOrderCancel = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
@@ -1440,7 +1350,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canFulfill: false,
 		},
 		{
@@ -1448,9 +1358,6 @@ func TestOrder_CanFulfill(t *testing.T) {
 			setup: func(order *Order) error {
 				order.SerializedOrderComplete = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
@@ -1466,7 +1373,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canFulfill: false,
 		},
 		{
@@ -1474,9 +1381,6 @@ func TestOrder_CanFulfill(t *testing.T) {
 			setup: func(order *Order) error {
 				order.SerializedPaymentFinalized = []byte{0x00}
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
 					Payment: &pb.OrderOpen_Payment{
 						Method: pb.OrderOpen_Payment_DIRECT,
 					},
@@ -1492,7 +1396,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canFulfill: false,
 		},
 	}
@@ -1502,13 +1406,9 @@ func TestOrder_CanFulfill(t *testing.T) {
 		if err := test.setup(&order); err != nil {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
+		order.SetRole(test.ourRole)
 
-		pid, err := peer.Decode(test.ourID)
-		if err != nil {
-			t.Errorf("Test %d peerID decode error: %s", i, err)
-		}
-
-		canFulfill := order.CanFulfill(pid)
+		canFulfill := order.CanFulfill()
 		if canFulfill != test.canFulfill {
 			t.Errorf("Test %d: Got incorrect result. Expected %t, got %t", i, test.canFulfill, canFulfill)
 		}
@@ -1518,42 +1418,25 @@ func TestOrder_CanFulfill(t *testing.T) {
 func TestOrder_CanConfirm(t *testing.T) {
 	tests := []struct {
 		setup      func(order *Order) error
-		ourID      string
+		ourRole    OrderRole
 		canConfirm bool
 	}{
 		{
 			// Success
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
-				return err
-			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-			canConfirm: true,
-		},
-		{
-			// Nil buyerID
-			setup: func(order *Order) error {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-			canConfirm: false,
+			ourRole: RoleVendor,
+			canConfirm: true,
 		},
 		{
 			// Is buyer
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canConfirm: false,
 		},
 		{
@@ -1561,147 +1444,107 @@ func TestOrder_CanConfirm(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil reject
 			setup: func(order *Order) error {
 				order.SerializedOrderReject = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil cancel
 			setup: func(order *Order) error {
 				order.SerializedOrderCancel = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil confirmation
 			setup: func(order *Order) error {
 				order.SerializedOrderConfirmation = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil fulfillment
 			setup: func(order *Order) error {
 				order.SerializedOrderFulfillments = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil complete
 			setup: func(order *Order) error {
 				order.SerializedOrderComplete = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil dispute open
 			setup: func(order *Order) error {
 				order.SerializedDisputeOpen = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil dispute close
 			setup: func(order *Order) error {
 				order.SerializedDisputeClosed = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil dispute update
 			setup: func(order *Order) error {
 				order.SerializedDisputeUpdate = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil refund
 			setup: func(order *Order) error {
 				order.SerializedRefunds = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 		{
 			// Non nil payment finalized
 			setup: func(order *Order) error {
 				order.SerializedPaymentFinalized = []byte{0x00}
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					BuyerID: &pb.ID{
-						PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:      "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleVendor,
 			canConfirm: false,
 		},
 	}
@@ -1711,15 +1554,11 @@ func TestOrder_CanConfirm(t *testing.T) {
 		if err := test.setup(&order); err != nil {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
+		order.SetRole(test.ourRole)
 
-		pid, err := peer.Decode(test.ourID)
-		if err != nil {
-			t.Errorf("Test %d peerID decode error: %s", i, err)
-		}
-
-		canConfirm := order.CanConfirm(pid)
+		canConfirm := order.CanConfirm()
 		if canConfirm != test.canConfirm {
-			t.Errorf("Got incorrect result. Expected %t, got %t", test.canConfirm, canConfirm)
+			t.Errorf("Test %d: Got incorrect result. Expected %t, got %t", i, test.canConfirm, canConfirm)
 		}
 	}
 }
@@ -1727,31 +1566,13 @@ func TestOrder_CanConfirm(t *testing.T) {
 func TestOrder_CanComplete(t *testing.T) {
 	tests := []struct {
 		setup       func(order *Order) error
-		ourID       string
+		ourRole     OrderRole
 		canComplete bool
 	}{
 		{
 			// Success
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-					Items: []*pb.OrderOpen_Item{
-						{
-							ListingHash: "abc",
-						},
-						{
-							ListingHash: "123",
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				if err != nil {
 					return err
 				}
@@ -1766,35 +1587,16 @@ func TestOrder_CanComplete(t *testing.T) {
 					},
 				}))
 			},
-			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canComplete: true,
-		},
-		{
-			// Nil vendorID
-			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
-				return err
-			},
-			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
-			canComplete: false,
 		},
 		{
 			// Is Vendor
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourID:       "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
+			ourRole: RoleVendor,
 			canComplete: false,
 		},
 		{
@@ -1802,58 +1604,28 @@ func TestOrder_CanComplete(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole:     RoleBuyer,
 			canComplete: false,
 		},
 		{
 			// Not fulfilled
 			setup: func(order *Order) error {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
 					Items: []*pb.OrderOpen_Item{
 						{
-							ListingHash: "abc",
-						},
-						{
-							ListingHash: "123",
+							ListingHash: "",
 						},
 					},
 				}))
 				return err
 			},
-			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canComplete: false,
 		},
 		{
 			// Completed
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-					Items: []*pb.OrderOpen_Item{
-						{
-							ListingHash: "abc",
-						},
-						{
-							ListingHash: "123",
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				order.SerializedOrderComplete = []byte{0x00}
 				if err != nil {
 					return err
@@ -1869,31 +1641,13 @@ func TestOrder_CanComplete(t *testing.T) {
 					},
 				}))
 			},
-			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canComplete: false,
 		},
 		{
 			// Payment Finalized
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-					Items: []*pb.OrderOpen_Item{
-						{
-							ListingHash: "abc",
-						},
-						{
-							ListingHash: "123",
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				order.SerializedPaymentFinalized = []byte{0x00}
 				if err != nil {
 					return err
@@ -1909,31 +1663,13 @@ func TestOrder_CanComplete(t *testing.T) {
 					},
 				}))
 			},
-			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canComplete: false,
 		},
 		{
 			// Dispute Open
 			setup: func(order *Order) error {
-				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{
-					Listings: []*pb.SignedListing{
-						{
-							Listing: &pb.Listing{
-								VendorID: &pb.ID{
-									PeerID: "QmT5NvUtoM5nWFfrQdVrFtvGfKFmG7AHE8P34isapyhCxX",
-								},
-							},
-						},
-					},
-					Items: []*pb.OrderOpen_Item{
-						{
-							ListingHash: "abc",
-						},
-						{
-							ListingHash: "123",
-						},
-					},
-				}))
+				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				order.SerializedDisputeOpen = []byte{0x00}
 				if err != nil {
 					return err
@@ -1949,7 +1685,7 @@ func TestOrder_CanComplete(t *testing.T) {
 					},
 				}))
 			},
-			ourID:       "QmPFZPt6FJMZFQABX44RnxmZGh2XGW8ev7KKEMpL8YMxd4",
+			ourRole: RoleBuyer,
 			canComplete: false,
 		},
 	}
@@ -1960,14 +1696,11 @@ func TestOrder_CanComplete(t *testing.T) {
 			t.Errorf("Test %d setup failed: %s", i, err)
 		}
 
-		pid, err := peer.Decode(test.ourID)
-		if err != nil {
-			t.Errorf("Test %d peerID decode error: %s", i, err)
-		}
+		order.SetRole(test.ourRole)
 
-		canComplete := order.CanComplete(pid)
+		canComplete := order.CanComplete()
 		if canComplete != test.canComplete {
-			t.Errorf("Got incorrect result. Expected %t, got %t", test.canComplete, canComplete)
+			t.Errorf("Test %d: Got incorrect result. Expected %t, got %t", i, test.canComplete, canComplete)
 		}
 	}
 }

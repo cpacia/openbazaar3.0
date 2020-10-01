@@ -23,7 +23,7 @@ func (n *OpenBazaarNode) RejectOrder(orderID models.OrderID, reason string, done
 		return err
 	}
 
-	if !order.CanReject(n.Identity()) {
+	if !order.CanReject() {
 		return fmt.Errorf("%w: order is not in a state where it can be rejected", coreiface.ErrBadRequest)
 	}
 

@@ -44,7 +44,7 @@ func (n *OpenBazaarNode) RefundOrder(orderID models.OrderID, done chan struct{})
 		return err
 	}
 
-	if !order.CanRefund(n.Identity()) {
+	if !order.CanRefund() {
 		return errors.New("order is not in a state where it can be refunded ")
 	}
 

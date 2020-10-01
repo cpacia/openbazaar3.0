@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
@@ -33,7 +34,9 @@ func (n *OpenBazaarNode) OpenDispute(orderID models.OrderID, reason string, done
 		return err
 	}
 
-	// FIXME: check can dispute here
+	if !order.CanDispute() {
+		return fmt.Errorf("%w: order is not in a state where it can be disputed", coreiface.ErrBadRequest)
+	}
 
 	buyer, err := order.Buyer()
 	if err != nil {
