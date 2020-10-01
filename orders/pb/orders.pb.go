@@ -4,11 +4,11 @@
 package pb
 
 import (
-	"fmt"
+	fmt "fmt"
 	"github.com/cpacia/openbazaar3.0/net/pb"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"math"
+	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
