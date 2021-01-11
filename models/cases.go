@@ -13,7 +13,8 @@ type Case struct {
 	BuyerContract  []byte
 	VendorContract []byte
 
-	ValidationErrors []byte
+	BuyerValidationErrors  []byte
+	VendorValidationErrors []byte
 
 	SerializedDisputeOpen  []byte
 	SerializedDisputeClose []byte
@@ -93,7 +94,7 @@ func (c *Case) PutDisputeUpdate(disputeUpdate *pb.DisputeUpdate) error {
 	return nil
 }
 
-func (c *Case) PutValidationErrors(validationErrors []error) error {
+func (c *Case) PutValidationErrors(validationErrors []error, role OrderRole) error {
 	errStrs := make([]string, 0, len(validationErrors))
 	for _, err := range validationErrors {
 		errStrs = append(errStrs, err.Error())
@@ -103,7 +104,10 @@ func (c *Case) PutValidationErrors(validationErrors []error) error {
 	if err != nil {
 		return err
 	}
-
-	c.ValidationErrors = out
+	if role == RoleVendor {
+		c.VendorValidationErrors = out
+	} else {
+		c.BuyerValidationErrors = out
+	}
 	return nil
 }

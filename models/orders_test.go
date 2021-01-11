@@ -637,7 +637,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: true,
 		},
 		{
@@ -646,7 +646,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canCancel: false,
 		},
 		{
@@ -654,7 +654,7 @@ func TestOrder_CanCancel(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourRole:    RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -664,7 +664,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole:  RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -674,7 +674,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -684,7 +684,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -694,7 +694,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -704,7 +704,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -714,7 +714,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -724,7 +724,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -734,7 +734,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -744,7 +744,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 		{
@@ -754,7 +754,7 @@ func TestOrder_CanCancel(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canCancel: false,
 		},
 	}
@@ -826,7 +826,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: true,
 		},
 		{
@@ -835,7 +835,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canReject: false,
 		},
 		{
@@ -843,7 +843,7 @@ func TestOrder_CanReject(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -853,7 +853,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -863,7 +863,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -873,7 +873,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -883,7 +883,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -893,7 +893,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -903,7 +903,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -913,7 +913,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -923,7 +923,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -933,7 +933,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 		{
@@ -943,7 +943,7 @@ func TestOrder_CanReject(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canReject: false,
 		},
 	}
@@ -964,8 +964,8 @@ func TestOrder_CanReject(t *testing.T) {
 
 func TestOrder_CanDispute(t *testing.T) {
 	tests := []struct {
-		setup     func(order *Order) error
-		ourRole   OrderRole
+		setup      func(order *Order) error
+		ourRole    OrderRole
 		canDispute bool
 	}{
 		{
@@ -996,7 +996,7 @@ func TestOrder_CanDispute(t *testing.T) {
 				}
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canDispute: true,
 		},
 		{
@@ -1004,7 +1004,7 @@ func TestOrder_CanDispute(t *testing.T) {
 			setup: func(order *Order) error {
 				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 			},
-			ourRole: RoleBuyer,
+			ourRole:    RoleBuyer,
 			canDispute: true,
 		},
 		{
@@ -1012,7 +1012,7 @@ func TestOrder_CanDispute(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canDispute: false,
 		},
 		{
@@ -1020,7 +1020,7 @@ func TestOrder_CanDispute(t *testing.T) {
 			setup: func(order *Order) error {
 				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 			},
-			ourRole: RoleModerator,
+			ourRole:    RoleModerator,
 			canDispute: false,
 		},
 		{
@@ -1034,7 +1034,7 @@ func TestOrder_CanDispute(t *testing.T) {
 					},
 				}))
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canDispute: false,
 		},
 		{
@@ -1043,7 +1043,7 @@ func TestOrder_CanDispute(t *testing.T) {
 				order.SerializedOrderComplete = []byte{0x00}
 				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 			},
-			ourRole: RoleBuyer,
+			ourRole:    RoleBuyer,
 			canDispute: false,
 		},
 		{
@@ -1052,7 +1052,7 @@ func TestOrder_CanDispute(t *testing.T) {
 				order.SerializedPaymentFinalized = []byte{0x00}
 				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 			},
-			ourRole: RoleBuyer,
+			ourRole:    RoleBuyer,
 			canDispute: false,
 		},
 		{
@@ -1061,7 +1061,7 @@ func TestOrder_CanDispute(t *testing.T) {
 				order.SerializedDisputeOpen = []byte{0x00}
 				return order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 			},
-			ourRole: RoleBuyer,
+			ourRole:    RoleBuyer,
 			canDispute: false,
 		},
 	}
@@ -1080,7 +1080,6 @@ func TestOrder_CanDispute(t *testing.T) {
 	}
 }
 
-
 func TestOrder_CanRefund(t *testing.T) {
 	tests := []struct {
 		setup     func(order *Order) error
@@ -1097,7 +1096,7 @@ func TestOrder_CanRefund(t *testing.T) {
 				}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canRefund: true,
 		},
 		{
@@ -1106,7 +1105,7 @@ func TestOrder_CanRefund(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canRefund: false,
 		},
 		{
@@ -1119,7 +1118,7 @@ func TestOrder_CanRefund(t *testing.T) {
 				}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:   RoleBuyer,
 			canRefund: false,
 		},
 		{
@@ -1127,7 +1126,7 @@ func TestOrder_CanRefund(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canRefund: false,
 		},
 		{
@@ -1141,7 +1140,7 @@ func TestOrder_CanRefund(t *testing.T) {
 				}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canRefund: false,
 		},
 		{
@@ -1155,7 +1154,7 @@ func TestOrder_CanRefund(t *testing.T) {
 				}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canRefund: false,
 		},
 		{
@@ -1169,7 +1168,7 @@ func TestOrder_CanRefund(t *testing.T) {
 				}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canRefund: false,
 		},
 		{
@@ -1183,7 +1182,7 @@ func TestOrder_CanRefund(t *testing.T) {
 				}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:   RoleVendor,
 			canRefund: false,
 		},
 	}
@@ -1250,7 +1249,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canFulfill: false,
 		},
 		{
@@ -1300,7 +1299,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:    RoleBuyer,
 			canFulfill: false,
 		},
 		{
@@ -1308,7 +1307,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canFulfill: false,
 		},
 		{
@@ -1327,7 +1326,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canFulfill: false,
 		},
 		{
@@ -1350,7 +1349,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canFulfill: false,
 		},
 		{
@@ -1373,7 +1372,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canFulfill: false,
 		},
 		{
@@ -1396,7 +1395,7 @@ func TestOrder_CanFulfill(t *testing.T) {
 				err = order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderConfirmation{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canFulfill: false,
 		},
 	}
@@ -1427,7 +1426,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: true,
 		},
 		{
@@ -1436,7 +1435,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:    RoleBuyer,
 			canConfirm: false,
 		},
 		{
@@ -1444,7 +1443,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 			setup: func(order *Order) error {
 				return nil
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1454,7 +1453,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1464,7 +1463,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1474,7 +1473,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1484,7 +1483,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1494,7 +1493,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1504,7 +1503,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1514,7 +1513,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1524,7 +1523,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1534,7 +1533,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 		{
@@ -1544,7 +1543,7 @@ func TestOrder_CanConfirm(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:    RoleVendor,
 			canConfirm: false,
 		},
 	}
@@ -1587,7 +1586,7 @@ func TestOrder_CanComplete(t *testing.T) {
 					},
 				}))
 			},
-			ourRole: RoleBuyer,
+			ourRole:     RoleBuyer,
 			canComplete: true,
 		},
 		{
@@ -1596,7 +1595,7 @@ func TestOrder_CanComplete(t *testing.T) {
 				err := order.PutMessage(utils.MustWrapOrderMessage(&pb.OrderOpen{}))
 				return err
 			},
-			ourRole: RoleVendor,
+			ourRole:     RoleVendor,
 			canComplete: false,
 		},
 		{
@@ -1619,7 +1618,7 @@ func TestOrder_CanComplete(t *testing.T) {
 				}))
 				return err
 			},
-			ourRole: RoleBuyer,
+			ourRole:     RoleBuyer,
 			canComplete: false,
 		},
 		{
@@ -1641,7 +1640,7 @@ func TestOrder_CanComplete(t *testing.T) {
 					},
 				}))
 			},
-			ourRole: RoleBuyer,
+			ourRole:     RoleBuyer,
 			canComplete: false,
 		},
 		{
@@ -1663,7 +1662,7 @@ func TestOrder_CanComplete(t *testing.T) {
 					},
 				}))
 			},
-			ourRole: RoleBuyer,
+			ourRole:     RoleBuyer,
 			canComplete: false,
 		},
 		{
@@ -1685,7 +1684,7 @@ func TestOrder_CanComplete(t *testing.T) {
 					},
 				}))
 			},
-			ourRole: RoleBuyer,
+			ourRole:     RoleBuyer,
 			canComplete: false,
 		},
 	}

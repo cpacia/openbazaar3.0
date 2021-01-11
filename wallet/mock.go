@@ -69,6 +69,11 @@ func (n *MockWalletNetwork) Start() {
 	}()
 }
 
+// Stop shuts down the wallet network.
+func (n *MockWalletNetwork) Stop() {
+	close(n.shutdown)
+}
+
 // Wallets returns a slice of wallets in this network.
 func (n *MockWalletNetwork) Wallets() []*MockWallet {
 	return n.wallets
@@ -514,17 +519,42 @@ func (w *MockWallet) Balance() (iwallet.Amount, iwallet.Amount, error) {
 	w.mtx.RLock()
 	defer w.mtx.RUnlock()
 
-	// TODO: this is the lazy way of calculating this. It should probably
-	// recursively check if unconfirmed utxos are spends of confirmed parents.
 	confirmed, unconfirmed := iwallet.NewAmount(0), iwallet.NewAmount(0)
 	for _, utxo := range w.utxos {
 		if utxo.height > 0 {
 			confirmed = confirmed.Add(utxo.value)
 		} else {
-			unconfirmed = unconfirmed.Add(utxo.value)
+			if checkIfStxoIsConfirmed(iwallet.TransactionID(utxo.outpoint[:32]), w.transactions) {
+				confirmed = confirmed.Add(iwallet.NewAmount(utxo.value))
+			} else {
+				unconfirmed = unconfirmed.Add(iwallet.NewAmount(utxo.value))
+			}
 		}
 	}
-	return confirmed, unconfirmed, nil
+	return unconfirmed, confirmed, nil
+}
+
+func checkIfStxoIsConfirmed(txid iwallet.TransactionID, txMap map[iwallet.TransactionID]iwallet.Transaction) bool {
+	tx, ok := txMap[txid]
+	if !ok {
+		return false
+	}
+
+	// For each input, recursively check if confirmed
+	inputsConfirmed := true
+	for _, from := range tx.From {
+		checkTx, ok := txMap[iwallet.TransactionID(hex.EncodeToString(from.ID[:32]))]
+		if ok { // Is an stxo. If confirmed we can return true. If no, we need to check the dependency.
+			if checkTx.Height == 0 {
+				if !checkIfStxoIsConfirmed(iwallet.TransactionID(hex.EncodeToString(from.ID[:32])), txMap) {
+					inputsConfirmed = false
+				}
+			}
+		} else { // We don't have the tx in our db so it can't be an stxo. Return false.
+			return false
+		}
+	}
+	return inputsConfirmed
 }
 
 // IsDust returns whether the amount passed in is considered dust by network. This

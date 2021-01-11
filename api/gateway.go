@@ -52,8 +52,9 @@ func NewGateway(node coreiface.CoreIface, config *GatewayConfig, options ...core
 	r := g.newV1Router()
 
 	if !config.NoCors {
-		r.Use(mux.CORSMethodMiddleware(r))
+		// FIXME: this is not using allow origin *
 	}
+	r.Use(mux.CORSMethodMiddleware(r))
 	r.Use(g.AuthenticationMiddleware)
 
 	g.hub = newHub()

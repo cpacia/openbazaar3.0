@@ -6,6 +6,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/api"
 	"github.com/cpacia/openbazaar3.0/channels"
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
+	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/notifications"
@@ -221,6 +222,11 @@ func (n *OpenBazaarNode) IPFSNode() *core.IpfsNode {
 // Multiwallet returns the underlying Multiwallet instance.
 func (n *OpenBazaarNode) Multiwallet() multiwallet.Multiwallet {
 	return n.multiwallet
+}
+
+// DB returns the node's database.
+func (n *OpenBazaarNode) DB() database.Database {
+	return n.repo.DB()
 }
 
 // ExchangeRates returns the node's exchange rate provider.

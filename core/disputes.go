@@ -16,6 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// OpenDispute sends a disputeOpen message to both the moderator and the other party to the order and
+// updates the order state.
 func (n *OpenBazaarNode) OpenDispute(orderID models.OrderID, reason string, done chan struct{}) error {
 	done1, done2 := make(chan struct{}), make(chan struct{})
 	go func() {
@@ -148,12 +150,14 @@ func (n *OpenBazaarNode) handleDisputeMessage(from peer.ID, message *npb.Message
 		}
 
 		var (
+			role           = models.RoleBuyer
 			disputer       = orderOpen.BuyerID.PeerID
 			disputerHandle = orderOpen.BuyerID.Handle
 			disputee       = orderOpen.Listings[0].Listing.VendorID.PeerID
 			disputeeHandle = orderOpen.Listings[0].Listing.VendorID.Handle
 		)
 		if disputeOpen.OpenedBy == pb.DisputeOpen_VENDOR {
+			role = models.RoleVendor
 			disputer = orderOpen.Listings[0].Listing.VendorID.PeerID
 			disputerHandle = orderOpen.Listings[0].Listing.VendorID.Handle
 			disputee = orderOpen.BuyerID.PeerID
@@ -188,7 +192,7 @@ func (n *OpenBazaarNode) handleDisputeMessage(from peer.ID, message *npb.Message
 			}
 
 			disputeCase.ID = models.OrderID(order.OrderID)
-			if err := disputeCase.PutValidationErrors(validationErrors); err != nil {
+			if err := disputeCase.PutValidationErrors(validationErrors, role); err != nil {
 				return err
 			}
 
@@ -250,7 +254,7 @@ func (n *OpenBazaarNode) handleDisputeMessage(from peer.ID, message *npb.Message
 
 			disputeCase.ID = models.OrderID(order.OrderID)
 
-			// TODO: validate the correct peer sent us this message.
+			// TODO: validate dispute update contract
 
 			err = disputeCase.PutDisputeUpdate(disputeUpdate)
 			if err != nil {

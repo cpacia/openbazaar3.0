@@ -54,11 +54,11 @@ const (
 	// RoleUnknown means we haven't yet determined the role.
 	RoleUnknown OrderRole = "unknown"
 	// RoleBuyer represents a buyer.
-	RoleBuyer = "buyer"
+	RoleBuyer OrderRole = "buyer"
 	// RoleVendor represents a vendor.
-	RoleVendor = "vendor"
+	RoleVendor OrderRole = "vendor"
 	// RoleModerator represents a moderator.
-	RoleModerator = "moderator"
+	RoleModerator OrderRole = "moderator"
 )
 
 // Order holds the state of all orders. This model is saved in the

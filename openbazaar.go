@@ -24,6 +24,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	_, err = parser.AddCommand("devnet",
+		"start a local dev net",
+		"The devnet command spins up a local network of three nodes (buyer, vendor, moderator)"+
+			"that connects all three nodes together and uses a mock wallet and mock coins. Each node is pre-populated"+
+			"with data for ease of use.",
+		&cmd.DevNet{})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if _, err := parser.Parse(); err != nil {
 		os.Exit(1)

@@ -216,7 +216,7 @@ func (op *OrderProcessor) checkForMorePayments() {
 	err := op.db.Update(func(dbtx database.Tx) error {
 		var orders []models.Order
 		err := dbtx.Read().Where("open = ?", true).First(&orders).Error
-		if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
