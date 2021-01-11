@@ -23,6 +23,7 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/op/go-logging"
 	"gorm.io/gorm"
 	"sort"
@@ -267,11 +268,11 @@ func (c *Channel) run() error {
 	go func() {
 		for {
 			msg, err := sub.Next(ctx)
-			if err != nil && err != context.Canceled {
+			if err != nil && err != context.Canceled && err != pubsub.ErrSubscriptionCancelled {
 				log.Errorf("Error fetching next channel message, topic %s: %s", c.topic, err)
 				continue
 			}
-			if err == context.Canceled {
+			if err == context.Canceled || err == pubsub.ErrSubscriptionCancelled {
 				return
 			}
 
