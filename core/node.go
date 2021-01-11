@@ -244,3 +244,8 @@ func (n *OpenBazaarNode) Identity() peer.ID {
 func (n *OpenBazaarNode) SubscribeEvent(event interface{}) (events.Subscription, error) {
 	return n.eventBus.Subscribe(event)
 }
+
+// EventBus returns the node's event bus.
+func (n *OpenBazaarNode) EventBus() events.Bus {
+	return n.eventBus
+}
