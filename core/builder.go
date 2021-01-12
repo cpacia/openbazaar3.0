@@ -479,16 +479,16 @@ func (n *OpenBazaarNode) newHTTPGateway(cfg *repo.Config) (*api.Gateway, error) 
 	}
 
 	config := &api.GatewayConfig{
-		Listener:   manet.NetListener(gwLis),
-		NoCors:     cfg.APINoCors,
-		UseSSL:     cfg.UseSSL,
-		SSLCert:    cfg.SSLCertFile,
-		SSLKey:     cfg.SSLKeyFile,
-		Username:   cfg.APIUsername,
-		Password:   cfg.APIPassword,
-		Cookie:     cfg.APICookie,
-		PublicOnly: cfg.APIPublicGateway,
-		AllowedIPs: allowedIPs,
+		Listener:        manet.NetListener(gwLis),
+		AllowAllOrigins: cfg.APIAllowAllOrigins,
+		UseSSL:          cfg.UseSSL,
+		SSLCert:         cfg.SSLCertFile,
+		SSLKey:          cfg.SSLKeyFile,
+		Username:        cfg.APIUsername,
+		Password:        cfg.APIPassword,
+		Cookie:          cfg.APICookie,
+		PublicOnly:      cfg.APIPublicGateway,
+		AllowedIPs:      allowedIPs,
 	}
 
 	return api.NewGateway(n, config, opts...)

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/core/coreiface"
 	"github.com/gorilla/mux"
@@ -14,16 +13,16 @@ import (
 var log = logging.MustGetLogger("API")
 
 type GatewayConfig struct {
-	Listener   net.Listener
-	NoCors     bool
-	AllowedIPs map[string]bool
-	Cookie     string
-	Username   string
-	Password   string
-	UseSSL     bool
-	SSLCert    string
-	SSLKey     string
-	PublicOnly bool
+	Listener        net.Listener
+	AllowAllOrigins bool
+	AllowedIPs      map[string]bool
+	Cookie          string
+	Username        string
+	Password        string
+	UseSSL          bool
+	SSLCert         string
+	SSLKey          string
+	PublicOnly      bool
 }
 
 // Gateway represents an HTTP API gateway
@@ -51,8 +50,8 @@ func NewGateway(node coreiface.CoreIface, config *GatewayConfig, options ...core
 
 	r := g.newV1Router()
 
-	if !config.NoCors {
-		// FIXME: this is not using allow origin *
+	if config.AllowAllOrigins {
+		r.Use(g.CORSAllowAllOriginsMiddleware)
 	}
 	r.Use(mux.CORSMethodMiddleware(r))
 	r.Use(g.AuthenticationMiddleware)
@@ -87,10 +86,11 @@ func (g *Gateway) Close() error {
 // NotifyWebsockets marshals the message to JSON and broadcasts it
 // to all existing websocket connections.
 func (g *Gateway) NotifyWebsockets(message interface{}) error {
-	out, err := json.MarshalIndent(message, "", "    ")
+	out, err := marshalAndSanitizeJSON(message)
 	if err != nil {
 		return err
 	}
+
 	g.hub.Broadcast <- out
 	return nil
 }
@@ -109,6 +109,7 @@ func (g *Gateway) Serve() error {
 
 func (g *Gateway) newV1Router() *mux.Router {
 	r := mux.NewRouter()
+	r.Methods("OPTIONS")
 
 	if !g.config.PublicOnly {
 		r.HandleFunc("/v1/wallet/address", g.handleGETAddress).Methods("GET")

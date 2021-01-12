@@ -52,6 +52,7 @@ func sanitizedProtobufResponse(w http.ResponseWriter, m proto.Message) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprint(w, string(out))
 }
+
 func marshalAndSanitizeJSON(i interface{}) ([]byte, error) {
 	out, err := json.MarshalIndent(i, "", "    ")
 	if err != nil {
