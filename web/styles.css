@@ -27,7 +27,9 @@ body {
     margin-right: 40px;
     color: #fff;
     font-family: arial;
-    position:absolute;
+    position: relative;
+    display: inline-block;
+    white-space: pre;
 }
 
 .sb2:before {

@@ -47,8 +47,8 @@
                 </div>
             </div>
         </div>
-        <div id="msgArea" class="w3-rest w3-blue w3-padding-16" style="height:100%">
-            <div class="w3-white w3-round w3-margin-left w3-margin-right" style="height:calc(100% - 55px);">
+        <div id="msgArea" class="w3-rest w3-blue w3-padding-16" style="height:100%;">
+            <div id="msgs" class="w3-white w3-round w3-margin-left w3-margin-right" style="display:flex; flex-direction: column-reverse;height:calc(100% - 55px);overflow: auto;">
                 <div v-for="m in messages">
                     <div class="w3-row">
                         <div class="w3-col w3-padding-16 tooltip" style="width:100px;padding-left: 25px">
@@ -62,7 +62,7 @@
                             <div class="w3-cell" style="font-size: 12px; padding-left: 5px;">
                                 {{ m.formattedTime }}
                             </div>
-                            <div class="box sb2">
+                            <div class="box sb2" style="margin-left: 20px">
                                 <p>{{ m.message }}</p>
                             </div>
                         </div>
@@ -70,7 +70,9 @@
                 </div>
             </div>
                 <form autocomplete="off" class="w3-container w3-row w3-padding-16">
-                    <div style="padding-left:0"><textarea class="w3-input w3-border" type="text" id="usermsg" name="usgmsg" style="height:40px;resize:none;"></textarea></div>
+                    <div style="padding-left:0">
+                        <textarea class="w3-input w3-border" v-on:keydown.enter.exact.prevent="sendMessage" type="text" id="usermsg" name="usgmsg" style="height:40px;resize:none;"></textarea>
+                    </div>
                 </form>
         </div>
     </div>

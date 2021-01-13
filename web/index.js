@@ -89,7 +89,8 @@ var channels = new Vue({
     data: {
         channels: [
             {name: "General", id:"channel-General", active:true}
-        ]
+        ],
+        activeChannel: "General",
     },
     methods: {
         addToChannelList: function (event) {
@@ -107,11 +108,18 @@ var channels = new Vue({
                 .catch(error => {
                     console.log(error);
                 });
+            messages.messages = [];
+            messages.loadChannelMessages(channel.toLowerCase());
+            channels.activeChannel = channel;
         },
         changeActiveChannel: function (selected) {
             for (var i in channels.channels) {
                 channels.channels[i].active = channels.channels[i].id == selected;
             }
+            var ch = selected.replace("channel-", "");
+            messages.messages = [];
+            messages.loadChannelMessages(ch.toLowerCase());
+            channels.activeChannel = ch;
         }
     },
     beforeMount(){
@@ -126,53 +134,81 @@ var messages = new Vue({
     el: '#msgArea',
     data: {
         messages: [],
+        busy: false,
     },
     methods: {
-        loadChannelMessages: function(channel) {
-            this.messages = [];
-            var currentDate = new Date();
-            axios.get('http://' + apiURL + '/v1/ob/channelmessages/'+channel)
+        loadChannelMessages: function(channel, offsetID) {
+            var offset = "";
+            if (offsetID != null && offsetID != "") {
+                offset = "&offsetID=" + offsetID;
+            }
+            axios.get('http://' + apiURL + '/v1/ob/channelmessages/'+channel+"?limit=7" + offset)
                 .then(function (msgResponse) {
                     for (var i in msgResponse.data) {
-                        var messageTimestamp = new Date(msgResponse.data[i].timestamp);
-                        var formattted = "";
-                        if (messageTimestamp.getDate() == currentDate.getDate()) {
-                            formattted = formatAMPM(messageTimestamp);
-                        } else {
-                            formattted = formatAMPM(messageTimestamp) + " " + messageTimestamp.toDateString();
-                        }
-                        messages.messages.unshift({
-                            name: msgResponse.data[i].peerID,
-                            avatar: "765-default-avatar.png",
-                            formattedTime: formattted,
-                            fromMe: false,
-                            message: msgResponse.data[i].message,
-                            peerID: msgResponse.data[i].peerID,
-                        });
-
-                        (function(peerID) {
-                            axios.get('http://' + apiURL + '/v1/ob/profile/' + peerID)
-                                .then(function (profileResponse) {
-                                    for (var i in messages.messages) {
-                                        if (messages.messages[i].peerID == peerID) {
-                                            messages.messages[i].name = profileResponse.data.name;
-                                            messages.messages[i].avatar = 'http://' + apiURL + '/v1/ob/image/' + profileResponse.data.avatarHashes.small;
-                                        }
-                                    }
-                                })
-                                .catch(error => {
-                                    console.log(error)
-                                });
-                        })(msgResponse.data[i].peerID)
+                        messages.setMessage(msgResponse.data[i], true)
                     }
+                    messages.busy = false;
                 })
                 .catch(error => {
                     console.log(error);
                 });
+        },
+        setMessage: function(message, append) {
+            var currentDate = new Date();
+            var messageTimestamp = new Date(message.timestamp);
+            var formattted = "";
+            if (messageTimestamp.getDate() == currentDate.getDate()) {
+                formattted = formatAMPM(messageTimestamp);
+            } else {
+                formattted = formatAMPM(messageTimestamp) + " " + messageTimestamp.toDateString();
+            }
+            var newMessage = {
+                name: "anonymous",
+                avatar: "765-default-avatar.png",
+                formattedTime: formattted,
+                message: message.message,
+                peerID: message.peerID,
+                cid: message.cid,
+            };
+            if (append) {
+                messages.messages.push(newMessage);
+            } else {
+                messages.messages.unshift(newMessage);
+            }
+
+            (function(peerID) {
+                axios.get('http://' + apiURL + '/v1/ob/profile/' + peerID)
+                    .then(function (profileResponse) {
+                        for (var i in messages.messages) {
+                            if (messages.messages[i].peerID == peerID) {
+                                messages.messages[i].name = profileResponse.data.name;
+                                messages.messages[i].avatar = 'http://' + apiURL + '/v1/ob/image/' + profileResponse.data.avatarHashes.small;
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.log(error)
+                    });
+            })(message.peerID)
+        },
+        sendMessage: function(event) {
+            axios.post('http://' + apiURL + '/v1/ob/channelmessage', {
+                topic: channels.activeChannel.toLowerCase(),
+                message: document.getElementById("usermsg").value
+            })
+                .catch(error => {
+                    console.log(error)
+                });
+            document.getElementById("usermsg").value = "";
+        },
+        loadMore () {
+            messages.busy = true;
+            messages.loadChannelMessages(channels.activeChannel.toLowerCase(), messages.messages[messages.messages.length - 1].cid);
         }
     },
     beforeMount(){
-        this.loadChannelMessages("general")
+        this.messages = [];
+        this.loadChannelMessages("general");
     }
 });
 
@@ -186,3 +222,22 @@ function formatAMPM(date) {
     var strTime = hours + ':' + minutes + ' ' + ampm;
     return strTime;
 }
+
+var ws = new WebSocket("ws://"+apiURL+"/ws");
+ws.onmessage = function (event) {
+    var msg = JSON.parse(event.data);
+    if (msg.channelMessage != null) {
+        messages.setMessage(msg.channelMessage, false)
+    }
+};
+
+document.getElementById("msgs").onscroll = () => {
+    console.log(document.getElementById("msgs").scrollTop);
+    console.log(document.getElementById("msgs").scrollHeight);
+    console.log(document.getElementById("msgs").offsetHeight);
+    console.log(document.getElementById("msgs").clientHeight);
+    let topOfWindow = document.getElementById("msgs").scrollHeight + document.getElementById("msgs").scrollTop - 25 <= document.getElementById("msgs").clientHeight;
+    if (topOfWindow && !messages.busy) {
+        messages.loadMore();
+    }
+};
