@@ -87,30 +87,35 @@ var user = new Vue({
 var channels = new Vue({
     el: '#channelList',
     data: {
-        channels: [
-            {name: "General", id:"channel-General", active:true}
-        ],
-        activeChannel: "General",
+        channels: [],
+        activeChannel: "",
     },
     methods: {
-        addToChannelList: function (event) {
+        addToChannelList: function () {
             let channel = this.$refs.channelInputField.value;
+            this.addChannel(channel, true)
+        },
+        addChannel: function (channel, setActive) {
             document.getElementById('channelModal').style.display='none';
-            for (var i in channels.channels) {
-                channels.channels[i].active = false;
-                if (channels.channels[i].name == channel) {
-                    channels.changeActiveChannel(channels.channels[i].id);
-                    return
+            if (setActive) {
+                for (var i in channels.channels) {
+                    channels.channels[i].active = false;
+                    if (channels.channels[i].name == channel) {
+                        channels.changeActiveChannel(channels.channels[i].id);
+                        return
+                    }
                 }
             }
-            channels.channels.push({name: channel, id: "channel-"+ channel, active:true});
+            channels.channels.push({name: channel, id: "channel-"+ channel, active:setActive, deleteButton: "delete-"+channel});
             axios.post('http://' + apiURL + '/v1/ob/openchannel/' + channel.toLowerCase())
                 .catch(error => {
                     console.log(error);
                 });
-            messages.messages = [];
-            messages.loadChannelMessages(channel.toLowerCase());
-            channels.activeChannel = channel;
+            if (setActive) {
+                messages.messages = [];
+                messages.loadChannelMessages(channel.toLowerCase());
+                channels.activeChannel = channel;
+            }
         },
         changeActiveChannel: function (selected) {
             for (var i in channels.channels) {
@@ -120,12 +125,52 @@ var channels = new Vue({
             messages.messages = [];
             messages.loadChannelMessages(ch.toLowerCase());
             channels.activeChannel = ch;
+        },
+        handleChannelRightClick: function (id) {
+            var x = document.getElementById(id);
+            if (x.className.indexOf("w3-show") == -1 && event.which == 3) {
+                x.className += " w3-show";
+            } else {
+                x.className = x.className.replace(" w3-show", "");
+            }
+        },
+        deleteChannel: function (channelID, buttonID) {
+            var x = document.getElementById(buttonID);
+            x.className = x.className.replace(" w3-show", "");
+
+            var active = false;
+            var channelName = "";
+            for (var i in channels.channels) {
+                if (channels.channels[i].id == channelID) {
+                    channelName = channels.channels[i].name;
+                    active = channels.channels[i].active;
+                    channels.channels.splice(i, 1);
+                    break
+                }
+            }
+            if (active && channels.channels.length > 0) {
+                this.changeActiveChannel(channels.channels[0].id)
+            }
+
+            axios.post('http://' + apiURL + '/v1/ob/closechannel/' + channelName.toLowerCase())
+                .catch(error => {
+                    console.log(error);
+                });
         }
     },
     beforeMount(){
-        axios.post('http://' + apiURL + '/v1/ob/openchannel/general')
+        axios.get('http://' + apiURL + '/v1/ob/channels')
+            .then(function (resp) {
+                if (resp.data.length == 0) {
+                    channels.addChannel("General", true);
+                    return
+                }
+                for (var i in resp.data) {
+                    channels.addChannel(resp.data[i],i==0);
+                }
+            })
             .catch(error => {
-                console.log(error);
+                console.log(error)
             });
     }
 });
@@ -142,12 +187,12 @@ var messages = new Vue({
             if (offsetID != null && offsetID != "") {
                 offset = "&offsetID=" + offsetID;
             }
-            axios.get('http://' + apiURL + '/v1/ob/channelmessages/'+channel+"?limit=7" + offset)
+            axios.get('http://' + apiURL + '/v1/ob/channelmessages/'+channel+"?limit=10" + offset)
                 .then(function (msgResponse) {
                     for (var i in msgResponse.data) {
                         messages.setMessage(msgResponse.data[i], true)
                     }
-                    messages.busy = false;
+                    setTimeout(function() { messages.busy = false; }, 1500);
                 })
                 .catch(error => {
                     console.log(error);
@@ -208,7 +253,6 @@ var messages = new Vue({
     },
     beforeMount(){
         this.messages = [];
-        this.loadChannelMessages("general");
     }
 });
 
@@ -232,10 +276,6 @@ ws.onmessage = function (event) {
 };
 
 document.getElementById("msgs").onscroll = () => {
-    console.log(document.getElementById("msgs").scrollTop);
-    console.log(document.getElementById("msgs").scrollHeight);
-    console.log(document.getElementById("msgs").offsetHeight);
-    console.log(document.getElementById("msgs").clientHeight);
     let topOfWindow = document.getElementById("msgs").scrollHeight + document.getElementById("msgs").scrollTop - 25 <= document.getElementById("msgs").clientHeight;
     if (topOfWindow && !messages.busy) {
         messages.loadMore();

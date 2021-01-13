@@ -23,6 +23,7 @@ type UserPreferences struct {
 	AutoConfirm        bool    `json:"autoConfirm"`
 	EmailNotifications string  `json:"emailNotifications"`
 	PrefCurrencies     []byte  `json:"preferredCurrencies"`
+	ChannelSubs        []byte  `json:"channelSubscriptions"`
 }
 
 type shippingAddress struct {
@@ -38,20 +39,21 @@ type shippingAddress struct {
 }
 
 type prefsJSON struct {
-	PaymentDataInQR     bool              `json:"paymentDataInQR"`
-	ShowNotifications   bool              `json:"showNotifications"`
-	ShowNsfw            bool              `json:"showNsfw"`
-	ShippingAddresses   []shippingAddress `json:"shippingAddresses"`
-	LocalCurrency       string            `json:"localCurrency"`
-	Country             string            `json:"country"`
-	TermsAndConditions  string            `json:"termsAndConditions"`
-	RefundPolicy        string            `json:"refundPolicy"`
-	BlockedNodes        []string          `json:"blockedNodes"`
-	StoreModerators     []string          `json:"storeModerators"`
-	MisPaymentBuffer    float32           `json:"mispaymentBuffer"`
-	AutoConfirm         bool              `json:"autoConfirm"`
-	EmailNotifications  string            `json:"emailNotifications"`
-	PreferredCurrencies []string          `json:"preferredCurrencies"`
+	PaymentDataInQR      bool              `json:"paymentDataInQR"`
+	ShowNotifications    bool              `json:"showNotifications"`
+	ShowNsfw             bool              `json:"showNsfw"`
+	ShippingAddresses    []shippingAddress `json:"shippingAddresses"`
+	LocalCurrency        string            `json:"localCurrency"`
+	Country              string            `json:"country"`
+	TermsAndConditions   string            `json:"termsAndConditions"`
+	RefundPolicy         string            `json:"refundPolicy"`
+	BlockedNodes         []string          `json:"blockedNodes"`
+	StoreModerators      []string          `json:"storeModerators"`
+	MisPaymentBuffer     float32           `json:"mispaymentBuffer"`
+	AutoConfirm          bool              `json:"autoConfirm"`
+	EmailNotifications   string            `json:"emailNotifications"`
+	PreferredCurrencies  []string          `json:"preferredCurrencies"`
+	ChannelSubscriptions []string          `json:"channelSubscriptions"`
 }
 
 // StoreModerators returns the moderator peer IDs.
@@ -103,6 +105,17 @@ func (prefs *UserPreferences) PreferredCurrencies() ([]string, error) {
 	return prefCurrencies, nil
 }
 
+// ChannelSubscriptions returns the channels this node is subscribed to.
+func (prefs *UserPreferences) ChannelSubscriptions() ([]string, error) {
+	var subs []string
+	if prefs.ChannelSubs != nil {
+		if err := json.Unmarshal(prefs.ChannelSubs, &subs); err != nil {
+			return nil, err
+		}
+	}
+	return subs, nil
+}
+
 // UnmarshalJSON unmarshals the JSON object into a UserPreferences object.
 func (prefs *UserPreferences) UnmarshalJSON(b []byte) error {
 	var c0 prefsJSON
@@ -125,6 +138,10 @@ func (prefs *UserPreferences) UnmarshalJSON(b []byte) error {
 		if err != nil {
 			return err
 		}
+		channelSubscriptions, err := json.Marshal(c0.ChannelSubscriptions)
+		if err != nil {
+			return err
+		}
 
 		prefs.PaymentDataInQR = c0.PaymentDataInQR
 		prefs.ShowNotifications = c0.ShowNotifications
@@ -140,6 +157,7 @@ func (prefs *UserPreferences) UnmarshalJSON(b []byte) error {
 		prefs.AutoConfirm = c0.AutoConfirm
 		prefs.EmailNotifications = c0.EmailNotifications
 		prefs.PrefCurrencies = preferredCurrencies
+		prefs.ChannelSubs = channelSubscriptions
 	}
 
 	return err

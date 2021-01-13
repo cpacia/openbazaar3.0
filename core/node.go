@@ -132,6 +132,7 @@ func (n *OpenBazaarNode) Start() {
 		go n.followerTracker.Start()
 		go n.orderProcessor.Start()
 		go n.syncMessages()
+		go n.OpenSavedChannels()
 		go func() {
 			n.multiwallet.Start()
 			n.listenWalletEvents()

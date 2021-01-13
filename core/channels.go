@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cpacia/openbazaar3.0/channels"
@@ -28,7 +29,28 @@ func (n *OpenBazaarNode) OpenChannel(topic string) error {
 	}
 
 	n.channels[topic] = ch
-	return nil
+
+	// Save to preferences
+	prefs, err := n.GetPreferences()
+	if err != nil {
+		return fmt.Errorf("%w: %s", coreiface.ErrInternalServer, err)
+	}
+	subs, err := prefs.ChannelSubscriptions()
+	if err != nil {
+		return err
+	}
+	for _, sub := range subs {
+		if sub == topic {
+			return nil
+		}
+	}
+	subs = append(subs, topic)
+	marshalled, err := json.MarshalIndent(subs, "", "    ")
+	if err != nil {
+		return err
+	}
+	prefs.ChannelSubs = marshalled
+	return n.SavePreferences(prefs, nil)
 }
 
 // CloseChannel closes the chat channel and unsubscribes.
@@ -38,16 +60,55 @@ func (n *OpenBazaarNode) CloseChannel(topic string) error {
 		return fmt.Errorf("%w: channel not open", coreiface.ErrBadRequest)
 	}
 	ch.Close()
-	return nil
+	delete(n.channels, topic)
+
+	// Delete from preferences
+	prefs, err := n.GetPreferences()
+	if err != nil {
+		return fmt.Errorf("%w: %s", coreiface.ErrInternalServer, err)
+	}
+	subs, err := prefs.ChannelSubscriptions()
+	if err != nil {
+		return err
+	}
+	for i, sub := range subs {
+		if sub == topic {
+			subs = append(subs[:i], subs[i+1:]...)
+			break
+		}
+	}
+	marshalled, err := json.MarshalIndent(subs, "", "    ")
+	if err != nil {
+		return err
+	}
+	prefs.ChannelSubs = marshalled
+	return n.SavePreferences(prefs, nil)
 }
 
 // ListChannels returns the list of open channels.
 func (n *OpenBazaarNode) ListChannels() []string {
-	ret := make([]string, 0, len(n.channels))
-	for ch := range n.channels {
-		ret = append(ret, ch)
+	prefs, _ := n.GetPreferences()
+	subs, _ := prefs.ChannelSubscriptions()
+	return subs
+}
+
+// OpenSavedChannels opens each channel saved in the preferences database.
+func (n *OpenBazaarNode) OpenSavedChannels() error {
+	<- n.initialBootstrapChan
+	prefs, err := n.GetPreferences()
+	if err != nil {
+		return err
 	}
-	return ret
+	subs, err := prefs.ChannelSubscriptions()
+	if err != nil {
+		return err
+	}
+	for _, sub := range subs {
+		if err := n.OpenChannel(sub); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // PublishChannelMessage publishes a message to the given channel.

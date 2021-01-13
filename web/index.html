@@ -26,7 +26,7 @@
                     </form>
                 </div>
             </div>
-            <div id="channelList" class="w3-white w3-round w3-margin-top w3-margin-left" style="height:calc(100% - 215px);">
+            <div id="channelList" class="w3-white w3-round w3-margin-top w3-margin-left" style="height:calc(100% - 215px);overflow: auto;">
                 <div class="w3-container w3-row w3-padding-16">
                     <div class="w3-col" style="width:200px;font-size: large;"><p><b>Channels</b></p></div>
                     <div id="channelModal" class="w3-modal">
@@ -42,9 +42,13 @@
                     <div class="w3-rest"><i class="fa fa-plus" onclick="document.getElementById('channelModal').style.display='block'" style="padding-top: 26px; padding-left: 25px; cursor: pointer"></i></div>
                 </div>
                 <div v-for="c in channels" v-bind:key="c.id">
-                    <div v-if="c.active" class="w3-grey channel"><p>#{{ c.name }}</p></div>
-                    <div v-else class="channel" @click="changeActiveChannel(c.id)"><p>#{{ c.name }}</p></div>
+                    <div v-if="c.active" @mousedown="handleChannelRightClick(c.deleteButton)" oncontextmenu="return false;" class="w3-grey channel"><p>#{{ c.name }}</p></div>
+                    <div v-else @mousedown="handleChannelRightClick(c.deleteButton)" oncontextmenu="return false;" class="channel" @click="changeActiveChannel(c.id)"><p>#{{ c.name }}</p></div>
+                    <div v-bind:id="c.deleteButton" class="w3-dropdown-content w3-bar-block w3-border">
+                        <div class="w3-bar-item w3-button" @click="deleteChannel(c.id, c.deleteButton)">Delete</div>
+                    </div>
                 </div>
+
             </div>
         </div>
         <div id="msgArea" class="w3-rest w3-blue w3-padding-16" style="height:100%;">
