@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<title>OpenBazaar Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="styles.css">
+<body>
+
+<div class="w3-container center" style="height:100%">
+    <div class="w3-container w3-blue">
+        <h2>OpenBazaar Chat</h2>
+    </div>
+    <div class="w3-row" style="height:85%;position: relative;">
+        <div class="w3-col w3-blue w3-padding-16" style="width:300px;height:100%;">
+            <div id="avatar" class="w3-white w3-round w3-margin-left w3-container" style="height:200px;text-align: center; padding-top: 50px">
+                <div v-if="userProfilePic"><img v-on:click="selectAvatar" v-bind:src="userProfilePic" style="height:75px; width:75px;object-fit: cover;border-radius: 50%; cursor: pointer"></div>
+                <div v-else><img id="avatar" v-on:click="selectAvatar" src="765-default-avatar.png" style="height:75px; width:75px;object-fit: cover;border-radius: 50%; cursor: pointer"></div>
+                <div v-if="showName">
+                    <p v-if="name" style="cursor: pointer" v-on:click="toggleNameInput">{{ name }}</p>
+                    <p v-else style="cursor: pointer" v-on:click="toggleNameInput">anonymous</p>
+                </div>
+                <div v-else>
+                    <form @submit="updateProfileName" id="nameForm" class="w3-container w3-row w3-padding-16">
+                        <input type="text" autocomplete="off" ref="nameInputField" class="w3-input w3-border">
+                    </form>
+                </div>
+            </div>
+            <div id="channelList" class="w3-white w3-round w3-margin-top w3-margin-left" style="height:calc(100% - 215px);">
+                <div class="w3-container w3-row w3-padding-16">
+                    <div class="w3-col" style="width:200px;font-size: large;"><p><b>Channels</b></p></div>
+                    <div id="channelModal" class="w3-modal">
+                        <div class="w3-modal-content w3-animate-top" style="max-width:400px">
+                            <div class="w3-container">
+                                <span onclick="document.getElementById('channelModal').style.display='none'" class="w3-button w3-display-topright">&times;</span>
+                                <form @submit="addToChannelList" onsubmit="return false" id="channelForm" class="w3-container w3-row w3-padding-16">
+                                    <input type="text" autocomplete="off" ref="channelInputField" placeholder="Enter a channel name" class="w3-input w3-border" style="width:300px">
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w3-rest"><i class="fa fa-plus" onclick="document.getElementById('channelModal').style.display='block'" style="padding-top: 26px; padding-left: 25px; cursor: pointer"></i></div>
+                </div>
+                <div v-for="c in channels" v-bind:key="c.id">
+                    <div v-if="c.active" class="w3-grey channel"><p>#{{ c.name }}</p></div>
+                    <div v-else class="channel" @click="changeActiveChannel(c.id)"><p>#{{ c.name }}</p></div>
+                </div>
+            </div>
+        </div>
+        <div id="msgArea" class="w3-rest w3-blue w3-padding-16" style="height:100%">
+            <div class="w3-white w3-round w3-margin-left w3-margin-right" style="height:calc(100% - 55px);">
+                <div v-for="m in messages">
+                    <div class="w3-row">
+                        <div class="w3-col w3-padding-16 tooltip" style="width:100px;padding-left: 25px">
+                            <img id="avatar" v-bind:src="m.avatar" style="height:55px; width:55px;object-fit: cover;border-radius: 50%">
+                            <span class="tooltiptext">{{ m.peerID }}</span>
+                        </div>
+                        <div class="w3-rest w3-padding-16">
+                            <div class="w3-cell">
+                                <b>{{ m.name }}</b>
+                            </div>
+                            <div class="w3-cell" style="font-size: 12px; padding-left: 5px;">
+                                {{ m.formattedTime }}
+                            </div>
+                            <div class="box sb2">
+                                <p>{{ m.message }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                <form autocomplete="off" class="w3-container w3-row w3-padding-16">
+                    <div style="padding-left:0"><textarea class="w3-input w3-border" type="text" id="usermsg" name="usgmsg" style="height:40px;resize:none;"></textarea></div>
+                </form>
+        </div>
+    </div>
+</div>
+
+</body>
+<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="index.js"></script>
+</html>
