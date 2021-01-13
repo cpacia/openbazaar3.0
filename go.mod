@@ -15,6 +15,7 @@ require (
 	github.com/cretz/bine v0.1.0
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/disintegration/imaging v1.6.2
+	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/fatih/color v1.9.0
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.2

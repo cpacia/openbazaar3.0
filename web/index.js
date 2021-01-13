@@ -1,4 +1,4 @@
-var apiURL = "localhost:4006";
+var apiURL = "localhost:4002";
 
 var user = new Vue({
     el: '#avatar',

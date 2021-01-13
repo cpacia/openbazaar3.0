@@ -89,6 +89,9 @@ func (n *OpenBazaarNode) CloseChannel(topic string) error {
 func (n *OpenBazaarNode) ListChannels() []string {
 	prefs, _ := n.GetPreferences()
 	subs, _ := prefs.ChannelSubscriptions()
+	if subs == nil {
+		return []string{}
+	}
 	return subs
 }
 

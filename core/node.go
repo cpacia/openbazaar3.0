@@ -13,8 +13,11 @@ import (
 	"github.com/cpacia/openbazaar3.0/orders"
 	"github.com/cpacia/openbazaar3.0/repo"
 	"github.com/cpacia/openbazaar3.0/wallet"
+	"github.com/cpacia/openbazaar3.0/web"
+	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/ipfs/go-ipfs/core"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"net/http"
 	"os"
 	"sync/atomic"
 	"time"
@@ -139,6 +142,14 @@ func (n *OpenBazaarNode) Start() {
 		}()
 		go n.gateway.Serve()
 		go n.notifier.Start()
+
+		go func() {
+			http.Handle("/",
+				http.FileServer(
+					&assetfs.AssetFS{Asset: web.Asset, AssetDir: web.AssetDir, AssetInfo: web.AssetInfo, Prefix: "", Fallback: "index.html"}))
+			http.ListenAndServe(":9000", nil)
+		}()
+
 		if err := n.removeDisabledCoinsFromListings(); err != nil && !os.IsNotExist(err) {
 			log.Errorf("Error removing disabled coins from listings: %s", err)
 		}
