@@ -338,7 +338,7 @@ func (c *Channel) run() error {
 			}
 
 			if !wasBoostrapped {
-				log.Infof("Bootstrapped channel %s with %d cids", c.topic, 1)
+				log.Infof("Bootstrapped channel %s with %d cid(s)", c.topic, 1)
 				c.bus.Emit(&events.ChannelBootstrapped{Topic: c.topic})
 			}
 
@@ -481,7 +481,7 @@ func (c *Channel) bootstrapState() {
 		log.Errorf("Error updating db with cids from peers: %s", err)
 	}
 
-	log.Infof("Bootstrapped channel %s with %d cids", c.topic, len(ids))
+	log.Infof("Bootstrapped channel %s with %d cid(s)", c.topic, len(ids))
 
 	c.boostrapped = true
 	c.bus.Emit(&events.ChannelBootstrapped{Topic: c.topic})

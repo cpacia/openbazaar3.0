@@ -23,13 +23,19 @@ body {
     padding-right: 15px;
     text-align: left;
     font-weight: 900;
-    word-wrap: break-word;
     margin-right: 40px;
     color: #fff;
     font-family: arial;
     position: relative;
     display: inline-block;
-    white-space: pre;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-all;
+    line-break: strict;
+    hyphens: none;
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    white-space: pre-wrap;
 }
 
 .sb2:before {
