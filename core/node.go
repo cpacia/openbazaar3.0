@@ -138,6 +138,7 @@ func (n *OpenBazaarNode) Start() {
 		}()
 		go n.gateway.Serve()
 		go n.notifier.Start()
+		go n.OpenSavedChannels()
 		if err := n.removeDisabledCoinsFromListings(); err != nil && !os.IsNotExist(err) {
 			log.Errorf("Error removing disabled coins from listings: %s", err)
 		}

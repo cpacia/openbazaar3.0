@@ -218,13 +218,15 @@ func (c *Channel) Messages(ctx context.Context, from *cid.Cid, limit int) ([]mod
 			if err != nil || !valid {
 				continue
 			}
-			ret = append(ret, models.ChannelMessage{
-				PeerID:    cm.PeerID,
-				Topic:     c.topic,
-				Message:   cm.Message,
-				Timestamp: time.Unix(cm.Timestamp.Seconds, int64(cm.Timestamp.Nanos)),
-				Cid:       nd.Cid().String(),
-			})
+			if from == nil || nd.Cid().String() != from.String() {
+				ret = append(ret, models.ChannelMessage{
+					PeerID:    cm.PeerID,
+					Topic:     c.topic,
+					Message:   cm.Message,
+					Timestamp: time.Unix(cm.Timestamp.Seconds, int64(cm.Timestamp.Nanos)),
+					Cid:       nd.Cid().String(),
+				})
+			}
 
 			for _, link := range nd.Links() {
 				nextLevel[link.Cid] = true
@@ -336,7 +338,7 @@ func (c *Channel) run() error {
 			}
 
 			if !wasBoostrapped {
-				log.Infof("Bootstrapped channel %s with %d cids", c.topic, 1)
+				log.Infof("Bootstrapped channel %s with %d cid(s)", c.topic, 1)
 				c.bus.Emit(&events.ChannelBootstrapped{Topic: c.topic})
 			}
 
@@ -479,7 +481,7 @@ func (c *Channel) bootstrapState() {
 		log.Errorf("Error updating db with cids from peers: %s", err)
 	}
 
-	log.Infof("Bootstrapped channel %s with %d cids", c.topic, len(ids))
+	log.Infof("Bootstrapped channel %s with %d cid(s)", c.topic, len(ids))
 
 	c.boostrapped = true
 	c.bus.Emit(&events.ChannelBootstrapped{Topic: c.topic})
