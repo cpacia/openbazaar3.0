@@ -86,7 +86,7 @@ func stylesCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "styles.css", size: 1380, mode: os.FileMode(436), modTime: time.Unix(1610581225, 0)}
+	info := bindataFileInfo{name: "styles.css", size: 1380, mode: os.FileMode(436), modTime: time.Unix(1610589331, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -106,7 +106,7 @@ func indexJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "index.js", size: 10373, mode: os.FileMode(436), modTime: time.Unix(1610565424, 0)}
+	info := bindataFileInfo{name: "index.js", size: 10373, mode: os.FileMode(436), modTime: time.Unix(1610589331, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -126,7 +126,7 @@ func indexHtml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "index.html", size: 5812, mode: os.FileMode(436), modTime: time.Unix(1610556412, 0)}
+	info := bindataFileInfo{name: "index.html", size: 5812, mode: os.FileMode(436), modTime: time.Unix(1610589331, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -146,7 +146,7 @@ func _765DefaultAvatarPng() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "765-default-avatar.png", size: 6298, mode: os.FileMode(436), modTime: time.Unix(1610413058, 0)}
+	info := bindataFileInfo{name: "765-default-avatar.png", size: 6298, mode: os.FileMode(436), modTime: time.Unix(1610589331, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
