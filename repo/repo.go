@@ -16,7 +16,7 @@ import (
 	"github.com/cpacia/openbazaar3.0/version"
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/ipfs/go-ipfs/namesys"
+	"github.com/ipfs/go-ipfs/fuse/ipns"
 	"github.com/ipfs/go-ipfs/plugin/loader"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	"github.com/op/go-logging"
@@ -371,7 +371,7 @@ func initializeIpnsKeyspace(repoRoot string, privKeyBytes []byte) error {
 	}
 	defer nd.Close()
 
-	return namesys.InitializeKeyspace(ctx, nd.Namesys, nd.Pinning, nd.PrivateKey)
+	return ipns.InitializeKeyspace(nd, nd.PrivateKey)
 }
 
 func mustDefaultConfig() *config.Config {

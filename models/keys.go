@@ -4,6 +4,6 @@ package models
 // database. The name field identifies the key and is used as
 // the primary key.
 type Key struct {
-	Name  string `gorm:"primary_key"`
+	Name  string `gorm:"primaryKey"`
 	Value []byte
 }

@@ -3,12 +3,13 @@ package net
 import (
 	"context"
 	"github.com/cpacia/openbazaar3.0/net/pb"
-	ggio "github.com/gogo/protobuf/io"
+	"github.com/golang/protobuf/proto"
 	ctxio "github.com/jbenet/go-context/io"
 	host "github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	msgio "github.com/libp2p/go-msgio"
 	"github.com/op/go-logging"
 	"io"
 	"sync"
@@ -91,7 +92,7 @@ func (ns *NetworkService) HandleNewStream(s inet.Stream) {
 func (ns *NetworkService) handleNewMessage(s inet.Stream) {
 	defer s.Close()
 	contextReader := ctxio.NewReader(ns.ctx, s)
-	reader := ggio.NewDelimitedReader(contextReader, inet.MessageSizeMax)
+	reader := msgio.NewVarintReaderSize(contextReader, inet.MessageSizeMax)
 	remotePeer := s.Conn().RemotePeer()
 
 	if ns.banManager.IsBanned(remotePeer) {
@@ -107,13 +108,21 @@ func (ns *NetworkService) handleNewMessage(s inet.Stream) {
 		}
 
 		pmes := new(pb.Message)
-		if err := reader.ReadMsg(pmes); err != nil {
+		msgBytes, err := reader.ReadMsg()
+		if err != nil {
+			reader.ReleaseMsg(msgBytes)
 			s.Reset()
 			if err == io.EOF {
 				log.Debugf("Peer %s closed stream", remotePeer)
 			}
 			return
 		}
+		if err := proto.Unmarshal(msgBytes, pmes); err != nil {
+			reader.ReleaseMsg(msgBytes)
+			s.Reset()
+			return
+		}
+		reader.ReleaseMsg(msgBytes)
 		// Check again
 		if ns.banManager.IsBanned(remotePeer) {
 			log.Debugf("Received message from banned peer %s. Closing.", remotePeer)

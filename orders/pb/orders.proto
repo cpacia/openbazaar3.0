@@ -1,11 +1,11 @@
 syntax = "proto3";
-option go_package = "pb";
+option go_package = "../pb";
 
 import "google/protobuf/timestamp.proto";
 import "countrycodes.proto";
 import "listing.proto";
 import "common.proto";
-import "message.proto";
+import "msg.proto";
 
 message OrderOpen {
     repeated SignedListing listings     = 1;

@@ -583,12 +583,14 @@ func (n *OpenBazaarNode) listenNetworkEvents() {
 		if serverMap[conn.RemotePeer().Pretty()] {
 			log.Debugf("Established connection to store and forward server %s", conn.RemotePeer().Pretty())
 		}
+		log.Notice("connected")
 		n.eventBus.Emit(&events.PeerConnected{Peer: conn.RemotePeer()})
 	}
 	disConnected := func(_ inet.Network, conn inet.Conn) {
 		if serverMap[conn.RemotePeer().Pretty()] {
 			log.Debugf("Disconnected from store and forward server %s", conn.RemotePeer().Pretty())
 		}
+		log.Notice("disconnected")
 		n.eventBus.Emit(&events.PeerDisconnected{Peer: conn.RemotePeer()})
 	}
 

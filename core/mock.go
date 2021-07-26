@@ -17,8 +17,8 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/bootstrap"
 	coremock "github.com/ipfs/go-ipfs/core/mock"
-	"github.com/ipfs/go-ipfs/namesys"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
+	"github.com/ipfs/go-namesys"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -215,7 +215,10 @@ func NewMocknet(numNodes int) (*Mocknet, error) {
 			return nil, err
 		}
 
-		ipfsNode.Namesys = namesys.NewNameSystem(ipfsNode.Routing, ipfsNode.Repo.Datastore(), 0)
+		ipfsNode.Namesys, err = namesys.NewNameSystem(ipfsNode.Routing, namesys.WithDatastore(ipfsNode.Repo.Datastore()))
+		if err != nil {
+			return nil, err
+		}
 
 		banManager := net.NewBanManager(nil)
 		service := net.NewNetworkService(ipfsNode.PeerHost, banManager, true)

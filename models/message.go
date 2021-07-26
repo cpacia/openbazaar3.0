@@ -10,7 +10,7 @@ import (
 // peer. It will remain in the database until the remote peer ACKs
 // the message.
 type OutgoingMessage struct {
-	ID                string `gorm:"primary_key"`
+	ID                string `gorm:"primaryKey"`
 	Recipient         string `gorm:"index"`
 	SerializedMessage []byte
 	MessageType       string
@@ -30,5 +30,5 @@ func (m *OutgoingMessage) Message() (*pb.Message, error) {
 // all received message IDs in the database so we can tell when we've
 // received a duplicate.
 type IncomingMessage struct {
-	ID string `gorm:"primary_key"`
+	ID string `gorm:"primaryKey"`
 }

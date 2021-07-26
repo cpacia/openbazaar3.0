@@ -5,9 +5,9 @@ import (
 	"github.com/cpacia/openbazaar3.0/database"
 	"github.com/cpacia/openbazaar3.0/events"
 	"github.com/cpacia/openbazaar3.0/models"
+	"github.com/cpacia/openbazaar3.0/models/factory"
+	"github.com/cpacia/openbazaar3.0/net"
 	"github.com/cpacia/openbazaar3.0/net/pb"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"testing"
 	"time"
 )
@@ -83,117 +83,68 @@ func Test_SendAndReceiveAcks(t *testing.T) {
 }
 
 func TestOpenBazaarNode_syncMessages(t *testing.T) {
-	mocknet, err := NewMocknet(2)
+	network, err := NewMocknet(2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer mocknet.TearDown()
+	defer network.TearDown()
 
-	for _, node := range mocknet.Nodes() {
-		go node.syncMessages()
-	}
+	listing := factory.NewPhysicalListing("tshirt")
 
-	// Disconnect the two nodes.
-	if err := mocknet.Nodes()[0].ipfsNode.PeerHost.Network().Conns()[0].Close(); err != nil {
+	done := make(chan struct{})
+	if err := network.Nodes()[0].SaveListing(listing, done); err != nil {
 		t.Fatal(err)
 	}
-
-	// Build three chat messages and save them to the outgoing message table.
-	chatMsg := pb.ChatMessage{
-		Message:   "Hello",
-		OrderID:   "",
-		Timestamp: ptypes.TimestampNow(),
-		Flag:      pb.ChatMessage_MESSAGE,
+	select {
+	case <-done:
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
 	}
 
-	payload, err := ptypes.MarshalAny(&chatMsg)
+	// Cancelable order
+	// We're going to disconnect the nodes, make the purchase, and then reconnect. This should cause node 1
+	// to resend the order upon reconnection.
+	network.Nodes()[0].networkService.Close()
+	go network.Nodes()[1].syncMessages()
+	if err := network.ipfsNet.UnlinkPeers(network.Nodes()[0].Identity(), network.Nodes()[1].Identity()); err != nil {
+		t.Fatal(err)
+	}
+	err = network.Nodes()[1].SendChatMessage(network.Nodes()[0].Identity(), "message1", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = network.Nodes()[1].SendChatMessage(network.Nodes()[0].Identity(), "message2", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = network.Nodes()[1].SendChatMessage(network.Nodes()[0].Identity(), "message3", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	m1 := newMessageWithID()
-	m2 := newMessageWithID()
-	m3 := newMessageWithID()
-
-	m1.MessageType = pb.Message_CHAT
-	m2.MessageType = pb.Message_CHAT
-	m3.MessageType = pb.Message_CHAT
-
-	m1.Payload = payload
-	m2.Payload = payload
-	m3.Payload = payload
-
-	err = mocknet.Nodes()[0].repo.DB().Update(func(tx database.Tx) error {
-		ser, err := proto.Marshal(m1)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		err = tx.Save(&models.OutgoingMessage{
-			ID:                m1.MessageID,
-			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
-			SerializedMessage: ser,
-			Timestamp:         time.Now().Add(-time.Minute),
-			LastAttempt:       time.Now(),
-		})
-		if err != nil {
-			return err
-		}
-
-		ser, err = proto.Marshal(m2)
-		if err != nil {
-			return err
-		}
-
-		err = tx.Save(&models.OutgoingMessage{
-			ID:                m2.MessageID,
-			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
-			SerializedMessage: ser,
-			Timestamp:         time.Now().Add(-time.Minute),
-			LastAttempt:       time.Now(),
-		})
-		if err != nil {
-			return err
-		}
-
-		ser, err = proto.Marshal(m3)
-		if err != nil {
-			return err
-		}
-
-		err = tx.Save(&models.OutgoingMessage{
-			ID:                m3.MessageID,
-			Recipient:         mocknet.Nodes()[1].Identity().Pretty(),
-			SerializedMessage: ser,
-			Timestamp:         time.Now().Add(-time.Minute),
-			LastAttempt:       time.Now(),
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	sub, err := network.Nodes()[0].eventBus.Subscribe(&events.ChatMessage{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sub, err := mocknet.Nodes()[1].SubscribeEvent(&events.ChatMessage{})
-	if err != nil {
+
+	// Reconnecting nodes should trigger node 1 to send the messages to node 0 again.
+	time.Sleep(1)
+	network.Nodes()[0].networkService = net.NewNetworkService(network.Nodes()[0].ipfsNode.PeerHost, net.NewBanManager(nil), true)
+	network.Nodes()[0].registerHandlers()
+
+	if _, err := network.ipfsNet.LinkPeers(network.Nodes()[0].Identity(), network.Nodes()[1].Identity()); err != nil {
 		t.Fatal(err)
 	}
 
-	// Connect the peers again.
-	if _, err := mocknet.Nodes()[0].ipfsNode.PeerHost.Network().DialPeer(context.Background(), mocknet.Nodes()[1].Identity()); err != nil {
-		t.Fatal(err)
+	select {
+	case <-sub.Out():
+	case <-time.After(time.Second * 10):
+		t.Fatal("Timeout waiting on channel")
 	}
 
-	// Chat messages should be transferred on connection.
-	for i := 0; i < 3; i++ {
-		<-sub.Out()
-	}
-
-	messages, err := mocknet.Nodes()[1].GetChatMessagesByPeer(mocknet.Nodes()[0].Identity(), -1, "")
+	messages, err := network.Nodes()[1].GetChatMessagesByPeer(network.Nodes()[0].Identity(), -1, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -525,9 +525,9 @@ func (w *MockWallet) Balance() (iwallet.Amount, iwallet.Amount, error) {
 			confirmed = confirmed.Add(utxo.value)
 		} else {
 			if checkIfStxoIsConfirmed(iwallet.TransactionID(utxo.outpoint[:32]), w.transactions) {
-				confirmed = confirmed.Add(iwallet.NewAmount(utxo.value))
+				confirmed = confirmed.Add(utxo.value)
 			} else {
-				unconfirmed = unconfirmed.Add(iwallet.NewAmount(utxo.value))
+				unconfirmed = unconfirmed.Add(utxo.value)
 			}
 		}
 	}

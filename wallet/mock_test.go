@@ -488,7 +488,7 @@ func TestMockWalletNetwork(t *testing.T) {
 		t.Error("Failed to record new txn")
 	}
 
-	confirmed, unconfirmed, err := network.Wallets()[0].Balance()
+	unconfirmed, confirmed, err := network.Wallets()[0].Balance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -527,7 +527,7 @@ func TestMockWalletNetwork(t *testing.T) {
 
 	<-blockSub.Out()
 
-	confirmed, unconfirmed, err = network.Wallets()[0].Balance()
+	unconfirmed, confirmed, err = network.Wallets()[0].Balance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +573,7 @@ func TestMockWalletNetwork(t *testing.T) {
 		t.Error("Failed to record new txn")
 	}
 
-	confirmed, unconfirmed, err = network.Wallets()[2].Balance()
+	unconfirmed, confirmed, err = network.Wallets()[2].Balance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -598,7 +598,7 @@ func TestMockWalletNetwork(t *testing.T) {
 		t.Error("Failed to record new txn")
 	}
 
-	confirmed, unconfirmed, err = network.Wallets()[0].Balance()
+	unconfirmed, confirmed, err = network.Wallets()[0].Balance()
 	if err != nil {
 		t.Fatal(err)
 	}

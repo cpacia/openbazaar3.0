@@ -3,7 +3,7 @@ package utils
 import (
 	"crypto/sha256"
 	"github.com/cpacia/openbazaar3.0/orders/pb"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/multiformats/go-multihash"
 )
 

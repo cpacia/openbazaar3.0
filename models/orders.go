@@ -64,7 +64,7 @@ const (
 // Order holds the state of all orders. This model is saved in the
 // database indexed by the order ID.
 type Order struct {
-	ID OrderID `gorm:"primary_key"`
+	ID OrderID `gorm:"primaryKey"`
 
 	PaymentAddress string `gorm:"index"`
 

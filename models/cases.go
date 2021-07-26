@@ -8,7 +8,7 @@ import (
 )
 
 type Case struct {
-	ID OrderID `gorm:"primary_key"`
+	ID OrderID `gorm:"primaryKey"`
 
 	BuyerContract  []byte
 	VendorContract []byte

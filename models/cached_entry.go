@@ -8,7 +8,7 @@ import (
 // CachedIPNSEntry holds a cached IPNS recrod. This is stored in our
 // database.
 type CachedIPNSEntry struct {
-	PeerID string `gorm:"primary_key"`
+	PeerID string `gorm:"primaryKey"`
 	CID    string
 }
 

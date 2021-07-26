@@ -340,6 +340,7 @@ func (n *OpenBazaarNode) syncMessages() {
 	for {
 		select {
 		case event := <-connectedSub.Out():
+			log.Notice("here")
 			notif, ok := event.(*events.PeerConnected)
 			if !ok {
 				log.Error("syncMessages type assertion failed on PeerConnected")

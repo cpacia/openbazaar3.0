@@ -13,7 +13,7 @@ import (
 )
 
 type ChatMessage struct {
-	MessageID string    `gorm:"primary_key" json:"messageID"`
+	MessageID string    `gorm:"primaryKey" json:"messageID"`
 	PeerID    string    `gorm:"index" json:"peerID"`
 	OrderID   string    `gorm:"index" json:"subject"`
 	Timestamp time.Time `gorm:"index" json:"timestamp"`
@@ -76,7 +76,7 @@ type ChannelMessage struct {
 }
 
 type Channel struct {
-	Topic       string `gorm:"primary_key"`
+	Topic       string `gorm:"primaryKey"`
 	LastMessage time.Time
 	Head        []byte
 }
